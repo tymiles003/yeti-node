@@ -35,6 +35,9 @@
 #include "RegexMapper.h"
 #include "AmEventQueueProcessor.h"
 
+#include "SBCLogicInterface.h"
+class SBCLogicInterface;
+
 #include "CallLeg.h"
 class SBCCallLeg;
 
@@ -67,28 +70,17 @@ class SBCFactory: public AmSessionFactory,
     public AmDynInvokeFactory
 {
 
-  std::map<string, SBCCallProfile> call_profiles;
-  
-  vector<string> active_profile;
-  AmMutex profiles_mut;
+  SBCLogicInterface *logic;
+  int LoadLogicModule();
 
   auto_ptr<CallLegCreator> callLegCreator;
   auto_ptr<SimpleRelayCreator> simpleRelayCreator;
 
-  void listProfiles(const AmArg& args, AmArg& ret);
-  void reloadProfiles(const AmArg& args, AmArg& ret);
-  void reloadProfile(const AmArg& args, AmArg& ret);
-  void loadProfile(const AmArg& args, AmArg& ret);
-  void getActiveProfile(const AmArg& args, AmArg& ret);
-  void setActiveProfile(const AmArg& args, AmArg& ret);
   void getRegexMapNames(const AmArg& args, AmArg& ret);
   void setRegexMap(const AmArg& args, AmArg& ret);
   void loadCallcontrolModules(const AmArg& args, AmArg& ret);
   void postControlCmd(const AmArg& args, AmArg& ret);
 
-  SBCCallProfile* getActiveProfileMatch(const AmSipRequest& req, 
-					ParamReplacerCtx& ctx);
-  
   bool CCRoute(const AmSipRequest& req,
 	       vector<AmDynInvoke*>& cc_modules,
 	       SBCCallProfile& call_profile,

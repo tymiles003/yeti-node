@@ -167,6 +167,11 @@ int SBCFactory::onLoad()
     return -1;
   }
 
+  if(LoadLogicModule()){
+      ERROR("couldn't load logic_module\n");
+      return -1;
+  }
+
   string load_cc_plugins = cfg.getParameter("load_cc_plugins");
   if (!load_cc_plugins.empty()) {
     INFO("loading call control plugins '%s' from '%s'\n",
@@ -183,38 +188,6 @@ int SBCFactory::onLoad()
     WARN("session_timer plug-in not loaded - "
 	 "SIP Session Timers will not be supported\n");
   }
-
-  vector<string> profiles_names = explode(cfg.getParameter("profiles"), ",");
-  for (vector<string>::iterator it =
-	 profiles_names.begin(); it != profiles_names.end(); it++) {
-    string profile_file_name = AmConfig::ModConfigPath + *it + ".sbcprofile.conf";
-    if (!call_profiles[*it].readFromConfiguration(*it, profile_file_name)) {
-      ERROR("configuring SBC call profile from '%s'\n", profile_file_name.c_str());
-      return -1;
-    }
-  }
-
-  active_profile = explode(cfg.getParameter("active_profile"), ",");
-  if (active_profile.empty()) {
-    ERROR("active_profile not set.\n");
-    return -1;
-  }
-
-  string active_profile_s;
-  for (vector<string>::iterator it =
-	 active_profile.begin(); it != active_profile.end(); it++) {
-    if (it->empty())
-      continue;
-    if (((*it)[0] != '$') && call_profiles.find(*it) == call_profiles.end()) {
-      ERROR("call profile active_profile '%s' not loaded!\n", it->c_str());
-      return -1;
-    }
-    active_profile_s+=*it;
-    if (it != active_profile.end()-1)
-      active_profile_s+=", ";
-  }
-
-  INFO("SBC: active profile: '%s'\n", active_profile_s.c_str());
 
   vector<string> regex_maps = explode(cfg.getParameter("regex_maps"), ",");
   for (vector<string>::iterator it =
@@ -247,47 +220,50 @@ int SBCFactory::onLoad()
   return 0;
 }
 
-/** get the first matching profile name from active profiles */
-SBCCallProfile* SBCFactory::getActiveProfileMatch(const AmSipRequest& req,
-						  ParamReplacerCtx& ctx) 
-{
-  string profile, profile_rule;
-  vector<string>::const_iterator it = active_profile.begin();
-  for (; it != active_profile.end(); it++) {
+int SBCFactory::LoadLogicModule(){
+    AmArg args, ret;
 
-    if (it->empty())
-      continue;
-
-    if (*it == "$(paramhdr)")
-      profile = get_header_keyvalue(ctx.app_param,"profile");
-    else if (*it == "$(ruri.user)")
-      profile = req.user;
-    else
-      profile = ctx.replaceParameters(*it, "active_profile", req);
-
-    if (!profile.empty()) {
-      profile_rule = *it;
-      break;
+    string load_logic_module = cfg.getParameter("load_logic_module");
+    if(load_logic_module.empty()){
+      ERROR("No logic module path present\n");
+      return -1;
     }
-  }
 
-  DBG("active profile = %s\n", profile.c_str());
+    if (AmPlugIn::instance()->load(AmConfig::PlugInPath,load_logic_module) < 0) {
+      ERROR("loading logic module '%s' from '%s'\n",
+        load_logic_module.c_str(), AmConfig::PlugInPath.c_str());
+      return -1;
+    }
 
-  map<string, SBCCallProfile>::iterator prof_it = call_profiles.find(profile);
-  if (prof_it==call_profiles.end()) {
-    ERROR("could not find call profile '%s'"
-	  " (matching active_profile rule: '%s')\n",
-	  profile.c_str(), profile_rule.c_str());
+    AmDynInvokeFactory* lm_fact = AmPlugIn::instance()->getFactory4Di(load_logic_module);
+    if (NULL == lm_fact) {
+      ERROR("logic module '%s' not loaded\n", load_logic_module.c_str());
+      return -1;
+    }
 
-    return NULL;
-  }
+    AmDynInvoke* lm_di = lm_fact->getInstance();
+    if(NULL == lm_di) {
+      ERROR("could not get a DI reference\n");
+      return -1;
+    }
 
-  DBG("using call profile '%s' (from matching active_profile rule '%s')\n",
-      profile.c_str(), profile_rule.c_str());
+    try {
+      lm_di->invoke("getLogicInterfaceHandler", args, ret);
+      SBCLogicInterface *iface = (SBCLogicInterface *)(ret[0].asObject());
+      if (iface){
+        DBG("logic interface offered by logic module '%s'\n", load_logic_module.c_str());
+        logic = iface;
+      } else {
+        WARN("BUG: returned invalid logic interface by logic_module '%s'\n", load_logic_module.c_str());
+        return -1;
+      }
+    } catch (...) {
+      DBG("logic interface not supported by logic module '%s'\n", load_logic_module.c_str());
+      return -1;
+    }
 
-  return &prof_it->second;
+    return 0;
 }
-
 
 AmSession* SBCFactory::onInvite(const AmSipRequest& req, const string& app_name,
 				const map<string,string>& app_params)
@@ -295,20 +271,12 @@ AmSession* SBCFactory::onInvite(const AmSipRequest& req, const string& app_name,
   ParamReplacerCtx ctx;
   ctx.app_param = getHeader(req.hdrs, PARAM_HDR, true);
 
-  profiles_mut.lock();
-  const SBCCallProfile* p_call_profile = getActiveProfileMatch(req, ctx);
-  if(!p_call_profile) {
-    profiles_mut.unlock();
-    throw AmSession::Exception(500,SIP_REPLY_SERVER_INTERNAL_ERROR);
-  }
+  const SBCCallProfile& call_profile = logic->getCallProfile(req,ctx,InDialogRequest);
 
-  const SBCCallProfile& call_profile = *p_call_profile;
   if(!call_profile.refuse_with.empty()) {
     if(call_profile.refuse(ctx, req) < 0) {
-      profiles_mut.unlock();
       throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
     }
-    profiles_mut.unlock();
     return NULL;
   }
 
@@ -329,7 +297,6 @@ AmSession* SBCFactory::onInvite(const AmSipRequest& req, const string& app_name,
       DBG("uac auth enabled for caller session.\n");
     }
   }
-  profiles_mut.unlock();
 
   return b2b_dlg;
 }
@@ -350,20 +317,13 @@ void oodHandlingTerminated(const AmSipRequest &req, vector<AmDynInvoke*>& cc_mod
 void SBCFactory::onOoDRequest(const AmSipRequest& req)
 {
   DBG("processing message %s %s\n", req.method.c_str(), req.r_uri.c_str());  
-  profiles_mut.lock();
 
   ParamReplacerCtx ctx;
   ctx.app_param = getHeader(req.hdrs, PARAM_HDR, true);
 
   string profile_rule;
-  const SBCCallProfile* p_call_profile = getActiveProfileMatch(req, ctx);
-  if(!p_call_profile) {
-    profiles_mut.unlock();
-    throw AmSession::Exception(500,SIP_REPLY_SERVER_INTERNAL_ERROR);
-  }
-  
-  SBCCallProfile call_profile(*p_call_profile);
-  profiles_mut.unlock();
+
+  SBCCallProfile& call_profile =logic->getCallProfile(req,ctx,OutOfDialogRequest);
 
   ctx.call_profile = &call_profile;
   call_profile.eval_cc_list(ctx,req);
@@ -426,22 +386,7 @@ void SBCFactory::onOoDRequest(const AmSipRequest& req)
 void SBCFactory::invoke(const string& method, const AmArg& args, 
 				AmArg& ret)
 {
-  if (method == "listProfiles"){
-    listProfiles(args, ret);
-  } else if (method == "reloadProfiles"){
-    reloadProfiles(args,ret);
-  } else if (method == "loadProfile"){
-    args.assertArrayFmt("u");
-    loadProfile(args,ret);
-  } else if (method == "reloadProfile"){
-    args.assertArrayFmt("u");
-    reloadProfile(args,ret);
-  } else if (method == "getActiveProfile"){
-    getActiveProfile(args,ret);
-  } else if (method == "setActiveProfile"){
-    args.assertArrayFmt("u");
-    setActiveProfile(args,ret);
-  } else if (method == "getRegexMapNames"){
+  if (method == "getRegexMapNames"){
     getRegexMapNames(args,ret);
   } else if (method == "setRegexMap"){
     args.assertArrayFmt("u");
@@ -453,12 +398,6 @@ void SBCFactory::invoke(const string& method, const AmArg& args,
     args.assertArrayFmt("ss"); // at least call-ltag, cmd
     postControlCmd(args,ret);
   } else if(method == "_list"){ 
-    ret.push(AmArg("listProfiles"));
-    ret.push(AmArg("reloadProfiles"));
-    ret.push(AmArg("reloadProfile"));
-    ret.push(AmArg("loadProfile"));
-    ret.push(AmArg("getActiveProfile"));
-    ret.push(AmArg("setActiveProfile"));
     ret.push(AmArg("getRegexMapNames"));
     ret.push(AmArg("setRegexMap"));
     ret.push(AmArg("loadCallcontrolModules"));
@@ -468,151 +407,6 @@ void SBCFactory::invoke(const string& method, const AmArg& args,
     B2BMediaStatistics::instance()->getReport(args, ret);
   }  else
     throw AmDynInvoke::NotImplemented(method);
-}
-
-void SBCFactory::listProfiles(const AmArg& args, AmArg& ret) {
-  profiles_mut.lock();
-  for (std::map<string, SBCCallProfile>::iterator it=
-	 call_profiles.begin(); it != call_profiles.end(); it++) {
-    AmArg p;
-    p["name"] = it->first;
-    p["md5"] = it->second.md5hash;
-    p["path"] = it->second.profile_file;
-    ret.push((p));
-  }
-  profiles_mut.unlock();
-}
-
-void SBCFactory::reloadProfiles(const AmArg& args, AmArg& ret) {
-  std::map<string, SBCCallProfile> new_call_profiles;
-  
-  bool failed = false;
-  string res = "OK";
-  AmArg profile_list;
-  profiles_mut.lock();
-  for (std::map<string, SBCCallProfile>::iterator it=
-	 call_profiles.begin(); it != call_profiles.end(); it++) {
-    new_call_profiles[it->first] = SBCCallProfile();
-    if (!new_call_profiles[it->first].readFromConfiguration(it->first,
-							    it->second.profile_file)) {
-      ERROR("reading call profile file '%s'\n", it->second.profile_file.c_str());
-      res = "Error reading call profile for "+it->first+" from "+it->second.profile_file+
-	+"; no profiles reloaded";
-      failed = true;
-      break;
-    }
-    AmArg p;
-    p["name"] = it->first;
-    p["md5"] = it->second.md5hash;
-    p["path"] = it->second.profile_file;
-    profile_list.push(p);
-  }
-  if (!failed) {
-    call_profiles = new_call_profiles;
-    ret.push(200);
-  } else {
-    ret.push(500);
-  }
-  ret.push(res);
-  ret.push(profile_list);
-  profiles_mut.unlock();
-}
-
-void SBCFactory::reloadProfile(const AmArg& args, AmArg& ret) {
-  bool failed = false;
-  string res = "OK";
-  AmArg p;
-  if (!args[0].hasMember("name")) {
-    ret.push(400);
-    ret.push("Parameters error: expected ['name': profile_name] ");
-    return;
-  }
-
-  profiles_mut.lock();
-  std::map<string, SBCCallProfile>::iterator it=
-    call_profiles.find(args[0]["name"].asCStr());
-  if (it == call_profiles.end()) {
-    res = "profile '"+string(args[0]["name"].asCStr())+"' not found";
-    failed = true;
-  } else {
-    SBCCallProfile new_cp;
-    if (!new_cp.readFromConfiguration(it->first, it->second.profile_file)) {
-      ERROR("reading call profile file '%s'\n", it->second.profile_file.c_str());
-      res = "Error reading call profile for "+it->first+" from "+it->second.profile_file;
-      failed = true;
-    } else {
-      it->second = new_cp;
-      p["name"] = it->first;
-      p["md5"] = it->second.md5hash;
-      p["path"] = it->second.profile_file;
-    }
-  }
-  profiles_mut.unlock();
-
-  if (!failed) {
-    ret.push(200);
-    ret.push(res);
-    ret.push(p);
-  } else {
-    ret.push(500);
-    ret.push(res);
-  }
-}
-
-void SBCFactory::loadProfile(const AmArg& args, AmArg& ret) {
-  if (!args[0].hasMember("name") || !args[0].hasMember("path")) {
-    ret.push(400);
-    ret.push("Parameters error: expected ['name': profile_name] "
-	     "and ['path': profile_path]");
-    return;
-  }
-  SBCCallProfile cp;
-  if (!cp.readFromConfiguration(args[0]["name"].asCStr(), args[0]["path"].asCStr())) {
-    ret.push(500);
-    ret.push("Error reading sbc call profile for "+string(args[0]["name"].asCStr())+
-	     " from file "+string(args[0]["path"].asCStr()));
-    return;
-  }
-
-  profiles_mut.lock();
-  call_profiles[args[0]["name"].asCStr()] = cp;
-  profiles_mut.unlock();
-  ret.push(200);
-  ret.push("OK");
-  AmArg p;
-  p["name"] = args[0]["name"];
-  p["md5"] = cp.md5hash;
-  p["path"] = args[0]["path"];
-  ret.push(p);
-}
-
-void SBCFactory::getActiveProfile(const AmArg& args, AmArg& ret) {
-  profiles_mut.lock();
-  AmArg p;
-  for (vector<string>::iterator it=active_profile.begin();
-       it != active_profile.end(); it++) {
-    p["active_profile"].push(*it);
-  }
-  profiles_mut.unlock();
-  ret.push(200);
-  ret.push("OK");
-  ret.push(p);
-}
-
-void SBCFactory::setActiveProfile(const AmArg& args, AmArg& ret) {
-  if (!args[0].hasMember("active_profile")) {
-    ret.push(400);
-    ret.push("Parameters error: expected ['active_profile': <active_profile list>] ");
-    return;
-  }
-  profiles_mut.lock();
-  active_profile = explode(args[0]["active_profile"].asCStr(), ",");
-  profiles_mut.unlock();
-  ret.push(200);
-  ret.push("OK");
-  AmArg p;
-  p["active_profile"] = args[0]["active_profile"];
-  ret.push(p);  
 }
 
 void SBCFactory::getRegexMapNames(const AmArg& args, AmArg& ret) {

@@ -6,6 +6,15 @@ RegexMapper.cpp
 SBC.cpp
 SBCCallProfile.cpp
 SDPFilter.cpp
+RegisterCache.cpp
+SubscriptionDialog.cpp
+SBCSimpleRelay.cpp
+RegisterDialog.cpp
+arg_conversion.cpp
+SBCEventLog.cpp
+SBCCallLeg.cpp
+CallLeg.cpp
+RateLimit.cpp
 )
 
 SET(sbc_config_files
