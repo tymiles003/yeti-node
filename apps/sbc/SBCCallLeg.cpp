@@ -1548,7 +1548,7 @@ void SBCCallLeg::initCCExtModules()
     try {
       AmArg args, ret;
       (*cc_mod)->invoke("getExtendedInterfaceHandler", args, ret);
-      ExtendedCCInterface *iface = dynamic_cast<ExtendedCCInterface*>(ret[0].asObject());
+      ExtendedCCInterface *iface = reinterpret_cast<ExtendedCCInterface*>(ret[0].asObject());
       if (iface) {
         DBG("extended CC interface offered by cc_module '%s'\n", cc_module.c_str());
         cc_ext.push_back(iface);

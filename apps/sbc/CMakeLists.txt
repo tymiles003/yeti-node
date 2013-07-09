@@ -1,3 +1,6 @@
+
+ADD_SUBDIRECTORY(logic_conrol/yeti)
+
 set (sbc_SRCS
 HeaderFilter.cpp
 ParamReplacer.cpp
@@ -45,3 +48,4 @@ tools/sems-sbc-set-regex-map
 
 SET(sems_module_name sbc)
 INCLUDE(${CMAKE_SOURCE_DIR}/cmake/module.rules.txt)
+

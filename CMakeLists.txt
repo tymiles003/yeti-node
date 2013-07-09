@@ -43,7 +43,7 @@ OPTION(SEMS_USE_MP3           "Build with Lame MP3" OFF)
 OPTION(SEMS_USE_ILBC          "Build with iLBC library (fallback to bundled)" ON)
 OPTION(SEMS_USE_TTS           "Build with Text-to-speech support (requires Flite)" OFF)
 OPTION(SEMS_USE_OPENSSL       "Build with OpenSSL" OFF)
-OPTION(SEMS_USE_MONITORING    "Build with monitoring support" OFF)
+OPTION(SEMS_USE_MONITORING    "Build with monitoring support" ON)
 OPTION(SEMS_USE_IPV6          "Build with IPv6 support" OFF)
 OPTION(MAX_RTP_SESSIONS:int   "How many rtp sessions SEMS will handle simultaneously? (default 2048)" 2048)
 

@@ -249,7 +249,7 @@ int SBCFactory::LoadLogicModule(){
 
     try {
       lm_di->invoke("getLogicInterfaceHandler", args, ret);
-      SBCLogicInterface *iface = (SBCLogicInterface *)(ret[0].asObject());
+      SBCLogicInterface *iface = reinterpret_cast<SBCLogicInterface *>(ret[0].asObject());
       if (iface){
         DBG("logic interface offered by logic module '%s'\n", load_logic_module.c_str());
         logic = iface;
@@ -270,7 +270,6 @@ AmSession* SBCFactory::onInvite(const AmSipRequest& req, const string& app_name,
 {
   ParamReplacerCtx ctx;
   ctx.app_param = getHeader(req.hdrs, PARAM_HDR, true);
-
   const SBCCallProfile& call_profile = logic->getCallProfile(req,ctx,InDialogRequest);
 
   if(!call_profile.refuse_with.empty()) {
