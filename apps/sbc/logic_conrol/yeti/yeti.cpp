@@ -14,17 +14,20 @@ public:
     YetiFactory(const string& name)
 	: AmDynInvokeFactory(name) {}
 
+    ~YetiFactory(){
+        DBG("~YetiFactory()");
+        delete Yeti::instance();
+    }
+
     AmDynInvoke* getInstance(){
-    return Yeti::instance();
+        return Yeti::instance();
     }
 
     int onLoad(){
-      if (Yeti::instance()->onLoad())
-	return -1;
-
-      DBG("template logic control loaded.\n");
-
-      return 0;
+        if (Yeti::instance()->onLoad())
+            return -1;
+        DBG("logic control loaded.\n");
+        return 0;
     }
 };
 
@@ -39,13 +42,26 @@ Yeti* Yeti::instance()
     return _instance;
 }
 
-Yeti::Yeti()
+Yeti::Yeti():
+    router(new SqlRouter()),
+    writer(new CdrWriter())
 {
+    DBG("Yeti()");
 }
 
-Yeti::~Yeti() { }
+
+Yeti::~Yeti() {
+    DBG("~Yeti()");
+    router->stop();
+}
 
 int Yeti::onLoad() {
+    if(cfg.loadFile(AmConfig::ModConfigPath + string(MOD_NAME ".conf"))) {
+      ERROR("No configuration for "MOD_NAME" present (%s)\n",
+       (AmConfig::ModConfigPath + string(MOD_NAME ".conf")).c_str()
+      );
+      return -1;
+    }
 
     self_iface.cc_module = "yeti";
     self_iface.cc_name = "yeti";
@@ -60,7 +76,17 @@ int Yeti::onLoad() {
 
     DBG("p = %p",profile);
 
-  return 0;
+    if (router->configure(cfg)){
+        ERROR("SqlRouter confgiure failed");
+        return -1;
+    }
+
+    if(router->run()){
+        ERROR("SqlRouter start failed");
+        return -1;
+    }
+
+    return 0;
 }
 
 void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)

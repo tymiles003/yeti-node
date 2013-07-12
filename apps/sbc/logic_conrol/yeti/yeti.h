@@ -10,6 +10,9 @@
 #include "ExtendedCCInterface.h"
 
 #include "SqlCallProfile.h"
+#include "Cdr.h"
+#include "SqlRouter.h"
+#include "CdrWriter.h"
 
 class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterface
 {
@@ -17,6 +20,11 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
 
   SBCCallProfile *profile;
   CCInterface self_iface;
+
+  SqlRouter *router;
+  CdrWriter *writer;
+
+  AmConfigReader cfg;
  public:
   Yeti();
   ~Yeti();

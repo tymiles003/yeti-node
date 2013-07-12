@@ -16,6 +16,7 @@ struct SqlCallProfile
     bool SQLexception;
 
     bool cached;
+    atomic_int ref_cnt;
     struct timeval expire_time;
 
     list<string> dyn_fields;
@@ -37,6 +38,8 @@ struct SqlCallProfile
     string orig_call_id;
     string term_call_id;
     string local_tag;
+
+    SqlCallProfile();
 };
 
 #endif // SQLCALLPROFILE_H

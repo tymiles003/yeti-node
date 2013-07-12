@@ -4,10 +4,21 @@
 #include "SqlCallProfile.h"
 #include "time.h"
 
+enum UpdateAction {
+    Start,
+    Connect,
+    End,
+    DisconnectByDB,
+    DisconnectByTS,
+    DisconnectByDST,
+    DisconnectByORG,
+    Write
+};
+
 struct Cdr {
     AmMutex lock;
     bool writed;
-           //old
+           //old Cdrfields
     string disconnect_reason;
     int disconnect_code;
     int disconnect_initiator;
@@ -28,8 +39,10 @@ struct Cdr {
     list<string> dyn_fields;
         //old CallProfileData
     string outbound_proxy;
-
+    Cdr(const Cdr &cdr);
     Cdr(const SqlCallProfile &profile);
 };
+
+void update_cdr(Cdr &cdr,UpdateAction act);
 
 #endif // CDR_H

@@ -1,5 +1,9 @@
 #include "Cdr.h"
 
+Cdr::Cdr(const Cdr &cdr){
+
+}
+
 Cdr::Cdr(const SqlCallProfile &profile) {
 
 #define copy_field(name) name = profile.name;
@@ -44,3 +48,31 @@ Cdr::Cdr(const SqlCallProfile &profile) {
 
 }
 
+void update_cdr(Cdr &cdr,UpdateAction act){
+    switch(act){
+    case Start: {
+        gettimeofday(&cdr.start_time, NULL);
+        cdr.end_time = cdr.start_time;
+    } break;
+    case Connect:
+        gettimeofday(&cdr.connect_time, NULL);
+    case End:
+        gettimeofday(&cdr.end_time, NULL);
+        break;
+    case DisconnectByDB:
+        cdr.disconnect_initiator=0;
+        break;
+    case DisconnectByTS:
+        cdr.disconnect_initiator=1;
+        break;
+    case DisconnectByDST:
+        cdr.disconnect_initiator=2;
+        break;
+    case DisconnectByORG:
+        cdr.disconnect_initiator=3;
+        break;
+    case Write:
+        cdr.writed = true;
+        break;
+    }
+}
