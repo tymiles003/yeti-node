@@ -140,8 +140,13 @@ void ProfilesCache::check_obsolete(){
     while(e){
       next = e->next;
       if(is_obsolete(e,&now)){
-	free_profiles.push_back(e->data);
-	erase(e,false);
+        //if(e->data->ref_cnt.get()==0){
+        //    DBG("%s: cleanup %p",FUNC_NAME,e->data);
+            free_profiles.push_back(e->data);
+            erase(e,false);
+        //} else {
+        //    DBG("%s: has still used obsolete entry %p",FUNC_NAME,e->data);
+        //}
       }
       e = next;
     }

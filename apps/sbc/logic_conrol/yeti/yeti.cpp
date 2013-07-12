@@ -99,7 +99,7 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
   } else if(method == "getExtendedInterfaceHandler"){
     ExtendedCCInterface *i = (ExtendedCCInterface *)this;
     ret[0] = (AmObject *)i;
-  } else if(method == "start"){ //!stubs to bypass exception
+  } else if(method == "start"){
         SBCCallProfile* call_profile =
             dynamic_cast<SBCCallProfile*>(args[CC_API_PARAMS_CALL_PROFILE].asObject());
         start(args[CC_API_PARAMS_CC_NAMESPACE].asCStr(),
@@ -130,6 +130,13 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
             args[CC_API_PARAMS_TIMESTAMPS][CC_API_TS_END_SEC].asInt(),
             args[CC_API_PARAMS_TIMESTAMPS][CC_API_TS_END_USEC].asInt()
         );
+  } else if(method == "ood_handling_terminated"){
+        oodHandlingTerminated(
+            dynamic_cast<AmSipRequest*>(args[1].asObject()),
+            dynamic_cast<SqlCallProfile*>(args[0].asObject())
+        );
+  } else if(method == "route"){
+      //
   } else if(method == "_list"){
     ret.push("getLogicInterfaceHandler");
   }
@@ -142,11 +149,39 @@ SBCCallProfile& Yeti::getCallProfile( const AmSipRequest& req,
                                         ParamReplacerCtx& ctx,
                                         getProfileRequestType RequestType )
 {
+    SqlCallProfile *profile;
     DBG("%s() called",FUNC_NAME);
-    SBCCallProfile &p = *profile;
+    if(RequestType == OutOfDialogRequest){
+        DBG("Unsupported request method '%s'",req.method.c_str());
+
+        //AmSipDialog::reply_error(req,404,"Not found");
+
+        profile = new SqlCallProfile();
+        profile->refuse_with = "400 Unsupported method";
+
+    } else {
+        profile = router->getprofile(req);
+    }
+    DBG("%s() profile = %p",FUNC_NAME,profile);
+    profile->cc_interfaces.push_back(self_iface);
+    //profile->ref_cnt.inc();
+
+    SqlCallProfile &p = *profile;
+
+    DBG("%s() return = %p",FUNC_NAME,&p);
     return p;
 }
 
+void Yeti::onRefuseRequest(SBCCallProfile *call_profile){
+    SqlCallProfile *profile = dynamic_cast<SqlCallProfile *>(call_profile);
+    DBG("%s(%p)",FUNC_NAME,call_profile);
+    if(profile){
+        DBG("%s(%p) profile->cached = %d",FUNC_NAME,call_profile,profile->cached);
+//        if(profile->ref_cnt.dec_and_test())
+  //          if(!profile->cached)
+                delete profile;
+    }
+}
 
 void Yeti::start(const string& cc_name, const string& ltag,
                SBCCallProfile* call_profile,
@@ -154,20 +189,6 @@ void Yeti::start(const string& cc_name, const string& ltag,
                const AmArg& values, int timer_id, AmArg& res) {
     DBG("%s(%p,%s)",FUNC_NAME,call_profile,ltag.c_str());
     res.push(AmArg());
-
-  //AmArg& res_cmd = res[0];
-
-  // Drop:
-  // res_cmd[SBC_CC_ACTION] = SBC_CC_DROP_ACTION;
-
-  // res_cmd[SBC_CC_ACTION] = SBC_CC_REFUSE_ACTION;
-  // res_cmd[SBC_CC_REFUSE_CODE] = 404;
-  // res_cmd[SBC_CC_REFUSE_REASON] = "No, not here";
-
-  // Set Timer:
-  // DBG("my timer ID will be %i\n", timer_id);
-  // res_cmd[SBC_CC_ACTION] = SBC_CC_SET_CALL_TIMER_ACTION;
-  // res_cmd[SBC_CC_TIMER_TIMEOUT] = 5;
 }
 
 void Yeti::connect(const string& cc_name, const string& ltag,
@@ -181,6 +202,15 @@ void Yeti::end(const string& cc_name, const string& ltag,
              SBCCallProfile* call_profile,
              int end_ts_sec, int end_ts_usec) {
     DBG("%s(%p,%s)",FUNC_NAME,call_profile,ltag.c_str());
+}
+
+void Yeti::oodHandlingTerminated(const AmSipRequest *req,SqlCallProfile *call_profile){
+    DBG("%s(%p,%p)",FUNC_NAME,req,call_profile);
+    DBG("method: %s",req->method.c_str());
+    if(call_profile){
+        //if(call_profile->ref_cnt.dec_and_test())
+            delete call_profile;
+    }
 }
 
 void Yeti::init(SBCCallLeg *call, const map<string, string> &values) {

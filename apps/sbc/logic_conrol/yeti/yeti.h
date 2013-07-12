@@ -36,6 +36,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   SBCCallProfile& getCallProfile( const AmSipRequest& req,
                                           ParamReplacerCtx& ctx,
                                           getProfileRequestType RequestType );
+  void onRefuseRequest(SBCCallProfile *call_profile);
 
         //!CCInterface handlers
   void start(const string& cc_name, const string& ltag, SBCCallProfile* call_profile,
@@ -46,6 +47,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
            int connect_ts_sec, int connect_ts_usec);
   void end(const string& cc_name, const string& ltag, SBCCallProfile* call_profile,
        int end_ts_sec, int end_ts_usec);
+  void oodHandlingTerminated(const AmSipRequest *req,SqlCallProfile *call_profile);
 
         //!ExtendedCCInterface handlers
   void init(SBCCallLeg *call, const map<string, string> &values);

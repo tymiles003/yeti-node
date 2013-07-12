@@ -20,6 +20,8 @@ class SBCLogicInterface
     virtual SBCCallProfile& getCallProfile( const AmSipRequest& req,
                                             ParamReplacerCtx& ctx,
                                             getProfileRequestType RequestType ) = 0;
+
+    virtual void onRefuseRequest(SBCCallProfile *call_profile){}
 };
 
 #endif //_SBC_LOGIC_INTERFACE_H

@@ -274,12 +274,13 @@ AmSession* SBCFactory::onInvite(const AmSipRequest& req, const string& app_name,
 {
   ParamReplacerCtx ctx;
   ctx.app_param = getHeader(req.hdrs, PARAM_HDR, true);
-  const SBCCallProfile& call_profile = logic->getCallProfile(req,ctx,InDialogRequest);
+  SBCCallProfile& call_profile = logic->getCallProfile(req,ctx,InDialogRequest);
 
   if(!call_profile.refuse_with.empty()) {
     if(call_profile.refuse(ctx, req) < 0) {
       throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
     }
+    logic->onRefuseRequest(&call_profile);
     return NULL;
   }
 
@@ -326,7 +327,7 @@ void SBCFactory::onOoDRequest(const AmSipRequest& req)
 
   string profile_rule;
 
-  SBCCallProfile& call_profile =logic->getCallProfile(req,ctx,OutOfDialogRequest);
+  SBCCallProfile& call_profile = logic->getCallProfile(req,ctx,OutOfDialogRequest);
 
   ctx.call_profile = &call_profile;
   call_profile.eval_cc_list(ctx,req);
@@ -349,11 +350,12 @@ void SBCFactory::onOoDRequest(const AmSipRequest& req)
   }
 
   if (!call_profile.refuse_with.empty()) {
-    oodHandlingTerminated(req, cc_modules, call_profile);
+    //oodHandlingTerminated(req, cc_modules, call_profile);
     if (logger) delete logger;
     if(call_profile.refuse(ctx, req) < 0) {
       throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
     }
+    oodHandlingTerminated(req, cc_modules, call_profile);
     return;
   }
   

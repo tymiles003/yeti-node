@@ -252,7 +252,6 @@ SqlCallProfile* SqlRouter::_getprofile(const AmSipRequest &req, pqxx::connection
   string name="SQL";
   bool prepared_query = false;
   string req_hdrs,hdr;
-  ret->profile_file="SQL";
 
 	for(vector<string>::const_iterator it = used_header_fields.begin(); it != used_header_fields.end(); ++it){
 		hdr = getHeader(req.hdrs,*it);
