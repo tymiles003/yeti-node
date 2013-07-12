@@ -156,6 +156,10 @@ SBCFactory::SBCFactory(const string& _app_name)
 
 SBCFactory::~SBCFactory() {
   RegisterCache::dispose();
+  AmDynInvokeFactory* lm_fact = AmPlugIn::instance()->getFactory4Di(
+              cfg.getParameter("load_logic_module")
+  );
+  lm_fact->~AmPluginFactory();
 }
 
 int SBCFactory::onLoad()
