@@ -22,13 +22,17 @@ public:
   int run();
   void stop();
   void call_start(Cdr* cdr);
-  void call_stop(Cdr* cdr);
+//  void call_stop(Cdr* cdr);
+  void align_cdr(Cdr &cdr);
+  void write_cdr(Cdr *cdr);
   void dump_config();
   void clearStats();
   void getStats(AmArg &arg);
   void getConfig(AmArg &arg);
+
   SqlRouter();
   ~SqlRouter();
+
 private:
   int db_configure(AmConfigReader &cfg);
   SqlCallProfile* _getprofile(const AmSipRequest&, pqxx::connection*);

@@ -495,8 +495,8 @@ SqlCallProfile* SqlRouter::_getprofile(const AmSipRequest &req, pqxx::connection
   DBG("sql profile codec_prefs dump: \r\n %s \r\n",ret->codec_prefs.print().c_str());
   DBG("sql profile transcoder dump: \r\n %s \r\n",ret->transcoder.print().c_str());
   
-  ret->time_limit=r[0]["time_limit"].as<int>();
-  ret->local_port=req.local_port;
+//!FIX  ret->time_limit=r[0]["time_limit"].as<int>();
+//!MOVETO: onInitialInvite  ret->local_port=req.local_port;
   
   if(cache_enabled){
     int cache_time = r[0]["cache_time"].as<int>();
@@ -519,11 +519,30 @@ void SqlRouter::call_start(Cdr* cdr)
 
 }
 
-void SqlRouter::call_stop(Cdr* cdr)
+//void SqlRouter::call_stop(Cdr* cdr)
+//{
+//  if(!cdr->writed){
+//    cdr_writer->postcdr(cdr);
+//    cdr->update(Write);
+//  }
+//}
+void SqlRouter::align_cdr(Cdr &cdr){
+    DynFieldsT_iterator it = dyn_fields.begin();
+    for(;it!=dyn_fields.end();++it){
+        cdr.dyn_fields.push_back("0");
+    }
+}
+
+void SqlRouter::write_cdr(Cdr* cdr)
 {
+  DBG("%s(%p)",FUNC_NAME,cdr);
   if(!cdr->writed){
+    DBG("%s(%p) write now",FUNC_NAME,cdr);
+    cdr->update(Write);
+    cdr->inc();
     cdr_writer->postcdr(cdr);
-    update_cdr(*cdr,Write);
+  } else {
+      DBG("%s(%p) trying to write already writed cdr",FUNC_NAME,cdr);
   }
 }
 

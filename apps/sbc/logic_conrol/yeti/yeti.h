@@ -13,6 +13,7 @@
 #include "Cdr.h"
 #include "SqlRouter.h"
 #include "CdrWriter.h"
+#include "SBC.h"
 
 class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterface
 {
@@ -22,7 +23,6 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   CCInterface self_iface;
 
   SqlRouter *router;
-  CdrWriter *writer;
 
   AmConfigReader cfg;
  public:
@@ -34,9 +34,11 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
 
         //!SBCLogicInterface handlers
   SBCCallProfile& getCallProfile( const AmSipRequest& req,
-                                          ParamReplacerCtx& ctx,
-                                          getProfileRequestType RequestType );
-  void onRefuseRequest(SBCCallProfile *call_profile);
+                                          ParamReplacerCtx& ctx );
+
+  SBCCallLeg *getCallLeg( const AmSipRequest& req,
+                          ParamReplacerCtx& ctx,
+                          CallLegCreator *leg_creator );
 
         //!CCInterface handlers
   void start(const string& cc_name, const string& ltag, SBCCallProfile* call_profile,

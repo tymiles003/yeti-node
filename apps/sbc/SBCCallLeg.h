@@ -6,6 +6,9 @@
 #include "sbc_events.h"
 #include "RateLimit.h"
 
+#include "Cdr.h"
+class Cdr;
+
 class PayloadIdMapping
 {
   private:
@@ -38,6 +41,8 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
   int cc_timer_id;
   int ext_cc_timer_id; // for assigning IDs to timers through "extended CC interface"
 
+  //cdr
+  Cdr *cdr;
   // auth
   AmSessionEventHandler* auth;
 
@@ -149,6 +154,9 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
 
   SBCCallProfile &getCallProfile() { return call_profile; }
   CallStatus getCallStatus() { return CallLeg::getCallStatus(); }
+
+  Cdr *getCdr() { return cdr; }
+  void setCdr(Cdr *c) { cdr = c; }
 
   void setRTPMeasurements(const list<atomic_int*>& rtp_meas) { rtp_pegs = rtp_meas; }
   const RateLimit* getRTPRateLimit() { return rtp_relay_rate_limit.get(); }

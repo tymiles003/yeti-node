@@ -279,10 +279,14 @@ struct SBCCallProfile
     reg_caching(false),
     log_rtp(false),
     log_sip(false)
-  { }
+  {
+      DBG("SBCCallProfile() this = %p",this);
+  }
 
   ~SBCCallProfile()
-  { }
+  {
+      DBG("~SBCCallProfile() this = %p",this);
+  }
 
   bool readFromConfiguration(const string& name, const string profile_file_name);
 

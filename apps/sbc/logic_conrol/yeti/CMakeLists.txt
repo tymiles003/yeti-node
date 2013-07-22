@@ -2,14 +2,13 @@ find_package(PostgreSQL REQUIRED)
 
 set (yeti_SRCS
 	yeti.cpp
-        SqlCallProfile.cpp
-        Cdr.cpp
+#       Cdr.cpp
 	CdrList.cpp
 	ProfilesCache.cpp
 	PgConnectionPool.cpp
 	CdrWriter.cpp
 	SqlRouter.cpp
-	SqlCallProfile.cpp
+#	SqlCallProfile.cpp
 	DbConfig.cpp
 )
 

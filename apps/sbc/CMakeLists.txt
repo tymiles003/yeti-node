@@ -18,6 +18,8 @@ SBCEventLog.cpp
 SBCCallLeg.cpp
 CallLeg.cpp
 RateLimit.cpp
+Cdr.cpp
+SqlCallProfile.cpp
 )
 
 SET(sbc_config_files

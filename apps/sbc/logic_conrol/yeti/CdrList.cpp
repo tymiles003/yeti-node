@@ -51,9 +51,9 @@ void CdrList::getCalls(AmArg &calls,int limit){
     e = first;
     while(e&&i--){
       cdr = e->data;
-      cdr->lock.lock();
+      cdr->lock();
 	cdr2arg(cdr,call);
-      cdr->lock.unlock();
+      cdr->unlock();
       calls.push(call);
       e = e->list_next;
     }

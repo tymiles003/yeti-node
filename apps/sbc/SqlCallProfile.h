@@ -10,8 +10,9 @@ using std::string;
 struct SqlCallProfile
         : public SBCCallProfile
 {
-    int time_limit;
-    int local_port;
+    //int time_limit; --> not used. find solution
+
+    //int local_port; --> TODO:cdr
 
     bool SQLexception;
 
@@ -22,25 +23,29 @@ struct SqlCallProfile
     list<string> dyn_fields;
 
     //add accounting fields to profile. much faster then old arch
-    string disconnect_reason;
+/*
+   string disconnect_reason;
     int disconnect_code;
     int disconnect_initiator;
-
+*/
+/*
     struct timeval start_time;
     struct timeval connect_time;
     struct timeval end_time;
 
     struct timeval cdr_die_time;
+*/
 
+/*
     string term_ip,term_local_ip;
     int term_port,term_local_port;
 
     string orig_call_id;
     string term_call_id;
     string local_tag;
+*/
 
     SqlCallProfile();
-    SqlCallProfile(const SqlCallProfile &profile);
     ~SqlCallProfile();
 };
 

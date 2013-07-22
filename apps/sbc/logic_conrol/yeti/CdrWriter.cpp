@@ -113,13 +113,12 @@ void CdrWriter::clearStats(){
 
 void CdrThread::postcdr(Cdr* cdr)
 {
-//    Cdr *newcdr = new Cdr;
-//    *newcdr = cdr;
-    Cdr *newcdr = new Cdr(*cdr);
+    //Cdr *newcdr = new Cdr(*cdr);
     
     queue_mut.lock();
-    queue.push_back(newcdr);
-    queue_run.set(true);
+    //queue.push_back(newcdr);
+    queue.push_back(cdr);
+        queue_run.set(true);
     queue_mut.unlock();
 }
 
@@ -213,7 +212,8 @@ void CdrThread::run()
 	  }
       }
     }
-    delete cdr;
+    if(cdr->dec_and_test()) //check for references
+        delete cdr;
     DBG("CDR deleted from queue");
   }
 }

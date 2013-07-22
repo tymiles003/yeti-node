@@ -6,6 +6,9 @@
 #include "AmSession.h"
 #include "CallLeg.h"
 
+#include "SBC.h"
+struct CallLegCreator;
+
 #include <string.h>
 
 class YetiFactory : public AmDynInvokeFactory
@@ -43,8 +46,8 @@ Yeti* Yeti::instance()
 }
 
 Yeti::Yeti():
-    router(new SqlRouter()),
-    writer(new CdrWriter())
+    router(new SqlRouter())
+//    cdr_writer(new CdrWriter())
 {
     DBG("Yeti()");
 }
@@ -68,7 +71,7 @@ int Yeti::onLoad() {
     self_iface.cc_values.clear();
 
     profile = new SBCCallProfile();
-    string profile_file_name = AmConfig::ModConfigPath + "transparent.sbcprofile.conf";
+    string profile_file_name = AmConfig::ModConfigPath + "oodprofile.yeti.conf";
     profile->readFromConfiguration("transparent",profile_file_name);
     profile->cc_vars.clear();
     profile->cc_interfaces.clear();
@@ -146,41 +149,46 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
 
 
 SBCCallProfile& Yeti::getCallProfile( const AmSipRequest& req,
-                                        ParamReplacerCtx& ctx,
-                                        getProfileRequestType RequestType )
+                                        ParamReplacerCtx& ctx )
 {
-    SqlCallProfile *profile;
     DBG("%s() called",FUNC_NAME);
-    if(RequestType == OutOfDialogRequest){
-        DBG("Unsupported request method '%s'",req.method.c_str());
-
-        //AmSipDialog::reply_error(req,404,"Not found");
-
-        profile = new SqlCallProfile();
-        profile->refuse_with = "400 Unsupported method";
-
-    } else {
-        profile = router->getprofile(req);
-    }
-    DBG("%s() profile = %p",FUNC_NAME,profile);
-    profile->cc_interfaces.push_back(self_iface);
-    //profile->ref_cnt.inc();
-
-    SqlCallProfile &p = *profile;
-
-    DBG("%s() return = %p",FUNC_NAME,&p);
-    return p;
+    return *profile;
 }
 
-void Yeti::onRefuseRequest(SBCCallProfile *call_profile){
-    SqlCallProfile *profile = dynamic_cast<SqlCallProfile *>(call_profile);
-    DBG("%s(%p)",FUNC_NAME,call_profile);
-    if(profile){
-        DBG("%s(%p) profile->cached = %d",FUNC_NAME,call_profile,profile->cached);
-//        if(profile->ref_cnt.dec_and_test())
-  //          if(!profile->cached)
-                delete profile;
+SBCCallLeg *Yeti::getCallLeg( const AmSipRequest& req,
+                        ParamReplacerCtx& ctx,
+                        CallLegCreator *leg_creator ){
+    DBG("%s() called",FUNC_NAME);
+
+    SqlCallProfile *profile = router->getprofile(req);
+
+    SBCCallProfile& call_profile = *profile;
+
+    Cdr *cdr = new Cdr(*profile,req);
+
+    if(!call_profile.refuse_with.empty()) {
+      if(call_profile.refuse(ctx, req) < 0) {
+        throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
+      }
+      cdr->update(Start);
+      cdr->refuse(*profile);
+      cdr->update(DisconnectByDB);
+      router->write_cdr(cdr);   //cdr will be deleted by cdrwriter
+
+      delete profile;
+
+      return NULL;
     }
+
+    profile->cc_interfaces.clear();
+    profile->cc_interfaces.push_back(self_iface);
+
+    SBCCallLeg* b2b_dlg = leg_creator->create(call_profile);
+
+    cdr->inc();
+    b2b_dlg->setCdr(cdr);
+
+    return b2b_dlg;
 }
 
 void Yeti::start(const string& cc_name, const string& ltag,
@@ -207,14 +215,22 @@ void Yeti::end(const string& cc_name, const string& ltag,
 void Yeti::oodHandlingTerminated(const AmSipRequest *req,SqlCallProfile *call_profile){
     DBG("%s(%p,%p)",FUNC_NAME,req,call_profile);
     DBG("method: %s",req->method.c_str());
+
     if(call_profile){
-        //if(call_profile->ref_cnt.dec_and_test())
-            delete call_profile;
+        Cdr *cdr = new Cdr(*call_profile,*req);
+        cdr->update(Start);
+        cdr->refuse(*call_profile);
+        cdr->update(DisconnectByTS);
+        router->align_cdr(*cdr);
+        router->write_cdr(cdr);
     }
 }
 
 void Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+
+    Cdr *cdr = call->getCdr();
+    cdr->update(*call);
 }
 
 void Yeti::onStateChange(SBCCallLeg *call){
@@ -229,19 +245,49 @@ void Yeti::onStateChange(SBCCallLeg *call){
       Disconnecting //< we were connected and now going to be disconnected (waiting for reINVITE reply for example)
     };
     */
+    CallLeg::CallStatus status = call->getCallStatus();
+
+    if(call->isALeg()){
+    } else {
+        if(status == CallLeg::Connected){
+            DBG("%s() connected",FUNC_NAME);
+        }
+    }
 }
 
 void Yeti::onDestroyLeg(SBCCallLeg *call){
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+    DBG("%s()call_profile = %p, cdr = %p",FUNC_NAME,&call->getCallProfile(),call->getCdr());
+    Cdr *cdr = call->getCdr();
+
+    call->getCdr()->update(End);
+    if(call->isALeg()){
+    } else {
+    }
+
+    if(cdr->dec_and_test()){
+        router->write_cdr(cdr);
+    }
 }
 
 CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, const AmSipReply& reply) {
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+    Cdr *cdr = call->getCdr();
+
+    cdr->disconnect_code = reply.code;
+    cdr->disconnect_reason = reply.reason;
+    cdr->update(DisconnectByDST);
+
     return ContinueProcessing;
 }
 
 CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerParams &params) {
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+
+    Cdr *cdr = call->getCdr();
+    cdr->update(Start);
+    cdr->orig_call_id = params.original_invite->callid;
+
     return ContinueProcessing;
 }
 
@@ -252,6 +298,11 @@ CCChainProcessing Yeti::onInDialogRequest(SBCCallLeg *call, const AmSipRequest &
 
 CCChainProcessing Yeti::onInDialogReply(SBCCallLeg *call, const AmSipReply &reply) {
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+    if(!call->isALeg()){
+        //
+        Cdr *cdr = call->getCdr();
+        cdr->term_ip = reply.remote_ip;
+    }
     return ContinueProcessing;
 }
 

@@ -274,18 +274,13 @@ AmSession* SBCFactory::onInvite(const AmSipRequest& req, const string& app_name,
 {
   ParamReplacerCtx ctx;
   ctx.app_param = getHeader(req.hdrs, PARAM_HDR, true);
-  SBCCallProfile& call_profile = logic->getCallProfile(req,ctx,InDialogRequest);
 
-  if(!call_profile.refuse_with.empty()) {
-    if(call_profile.refuse(ctx, req) < 0) {
-      throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
-    }
-    logic->onRefuseRequest(&call_profile);
-    return NULL;
-  }
+  SBCCallLeg* b2b_dlg = logic->getCallLeg(req,ctx,callLegCreator.get());
 
-  SBCCallLeg* b2b_dlg = callLegCreator->create(call_profile);
+  if(!b2b_dlg)
+      return NULL;
 
+  SBCCallProfile& call_profile = b2b_dlg->getCallProfile();
   if (call_profile.auth_aleg_enabled) {
     // adding auth handler
     AmSessionEventHandlerFactory* uac_auth_f =
@@ -327,7 +322,7 @@ void SBCFactory::onOoDRequest(const AmSipRequest& req)
 
   string profile_rule;
 
-  SBCCallProfile& call_profile = logic->getCallProfile(req,ctx,OutOfDialogRequest);
+  SBCCallProfile& call_profile = logic->getCallProfile(req,ctx);
 
   ctx.call_profile = &call_profile;
   call_profile.eval_cc_list(ctx,req);

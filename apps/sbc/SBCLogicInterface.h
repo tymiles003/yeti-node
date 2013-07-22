@@ -4,6 +4,12 @@
 #include "AmSipMsg.h"
 #include "ParamReplacer.h"
 
+#include "SBC.h"
+struct CallLegCreator;
+
+#include "SBCCallLeg.h"
+class SBCCallLeg;
+
 enum getProfileRequestType {
     InDialogRequest,
     OutOfDialogRequest
@@ -18,10 +24,12 @@ class SBCLogicInterface
      * @return reference to already cloned, ready to use CallProfile
      */
     virtual SBCCallProfile& getCallProfile( const AmSipRequest& req,
-                                            ParamReplacerCtx& ctx,
-                                            getProfileRequestType RequestType ) = 0;
+                                            ParamReplacerCtx& ctx ) = 0;
 
-    virtual void onRefuseRequest(SBCCallProfile *call_profile){}
-};
+    virtual SBCCallLeg *getCallLeg( const AmSipRequest& req,
+                                    ParamReplacerCtx& ctx,
+                                    CallLegCreator *leg_creator ) = 0;
+
+    };
 
 #endif //_SBC_LOGIC_INTERFACE_H

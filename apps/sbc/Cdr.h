@@ -2,6 +2,7 @@
 #define CDR_H
 
 #include "SqlCallProfile.h"
+#include "SBCCallLeg.h"
 #include "time.h"
 
 enum UpdateAction {
@@ -15,10 +16,13 @@ enum UpdateAction {
     Write
 };
 
-struct Cdr {
-    AmMutex lock;
+struct Cdr:
+    public AmMutex,
+           atomic_int
+{
+//    AmMutex lock;
     bool writed;
-           //old Cdrfields
+           //!Cdrfields
     string disconnect_reason;
     int disconnect_code;
     int disconnect_initiator;
@@ -32,17 +36,26 @@ struct Cdr {
     string orig_call_id;
     string term_call_id;
     string local_tag;
-        //old CallStartData
+        //!CallStartData
     int time_limit;
     int local_port;
     bool SQLexception;
     list<string> dyn_fields;
-        //old CallProfileData
+        //!CallProfileData
     string outbound_proxy;
-    Cdr(const Cdr &cdr);
-    Cdr(const SqlCallProfile &profile);
+
+    Cdr();
+    Cdr(const SqlCallProfile &profile,const AmSipRequest &req);
+
+    void init();
+    void update(const SqlCallProfile &profile);
+    void update(const AmSipRequest &req);
+    void update(SBCCallLeg &leg);
+    void update(UpdateAction act);
+
+    void refuse(const SqlCallProfile &profile);
 };
 
-void update_cdr(Cdr &cdr,UpdateAction act);
+//void update_cdr(Cdr &cdr,UpdateAction act);
 
 #endif // CDR_H
