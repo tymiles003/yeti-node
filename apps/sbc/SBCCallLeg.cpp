@@ -342,7 +342,7 @@ void SBCCallLeg::applyBProfile()
     } else {
       AmSessionEventHandler* h = uac_auth_f->getHandler(this);
 
-      // we cannot use the generic AmSessionEventHandler hooks,
+      // we cannot use the generic AmSessi(onEvent)Handler hooks,
       // because the hooks don't work in AmB2BSession
       setAuthHandler(h);
       DBG("uac auth enabled for callee session.\n");
@@ -584,6 +584,9 @@ void SBCCallLeg::onSendRequest(AmSipRequest& req, int &flags) {
 
 void SBCCallLeg::onRemoteDisappeared(const AmSipReply& reply)
 {
+  for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
+    if ((*i)->onRemoteDisappeared(this, reply) == StopProcessing) return;
+  }
   CallLeg::onRemoteDisappeared(reply);
   if(a_leg)
     SBCEventLog::instance()->logCallEnd(dlg,"reply",&call_connect_ts);
@@ -591,6 +594,9 @@ void SBCCallLeg::onRemoteDisappeared(const AmSipReply& reply)
 
 void SBCCallLeg::onBye(const AmSipRequest& req)
 {
+  for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
+    if ((*i)->onBye(this, req) == StopProcessing) return;
+  }
   CallLeg::onBye(req);
   if(a_leg)
     SBCEventLog::instance()->logCallEnd(req,getLocalTag(),"bye",&call_connect_ts);
@@ -598,6 +604,9 @@ void SBCCallLeg::onBye(const AmSipRequest& req)
 
 void SBCCallLeg::onOtherBye(const AmSipRequest& req)
 {
+  for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
+    if ((*i)->onOtherBye(this, req) == StopProcessing) return;
+  }
   CallLeg::onOtherBye(req);
   if(a_leg)
     SBCEventLog::instance()->logCallEnd(req,getLocalTag(),"bye",&call_connect_ts);
@@ -922,6 +931,9 @@ bool SBCCallLeg::getCCInterfaces() {
 }
 
 void SBCCallLeg::onCallConnected(const AmSipReply& reply) {
+  for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
+    (*i)->onCallConnected(this, reply);
+  }
   if (a_leg) { // FIXME: really?
     m_state = BB_Connected;
 

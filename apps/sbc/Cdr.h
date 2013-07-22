@@ -9,11 +9,14 @@ enum UpdateAction {
     Start,
     Connect,
     End,
-    DisconnectByDB,
-    DisconnectByTS,
-    DisconnectByDST,
-    DisconnectByORG,
     Write
+};
+
+enum DisconnectInitiator {
+    DisconnectByDB = 0,
+    DisconnectByTS = 1,
+    DisconnectByDST = 2,
+    DisconnectByORG = 3
 };
 
 struct Cdr:
@@ -30,7 +33,6 @@ struct Cdr:
     struct timeval start_time;
     struct timeval connect_time;
     struct timeval end_time;
-    struct timeval cdr_die_time;
     string term_ip,term_local_ip;
     int term_port,term_local_port;
     string orig_call_id;
@@ -50,12 +52,11 @@ struct Cdr:
     void init();
     void update(const SqlCallProfile &profile);
     void update(const AmSipRequest &req);
+    void update(const AmSipReply &reply);
     void update(SBCCallLeg &leg);
     void update(UpdateAction act);
-
+    void update(DisconnectInitiator initiator,string reason, int code);
     void refuse(const SqlCallProfile &profile);
 };
-
-//void update_cdr(Cdr &cdr,UpdateAction act);
 
 #endif // CDR_H

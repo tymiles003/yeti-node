@@ -73,6 +73,11 @@ class ExtendedCCInterface
     virtual CCChainProcessing createHoldRequest(SBCCallLeg *call, AmSdp &sdp) { return ContinueProcessing; }
     virtual CCChainProcessing handleHoldReply(SBCCallLeg *call, bool succeeded) { return ContinueProcessing; }
 
+    virtual CCChainProcessing onRemoteDisappeared(SBCCallLeg *call, const AmSipReply &reply) { return ContinueProcessing; }
+    virtual CCChainProcessing onBye(SBCCallLeg *call, const AmSipRequest &req) { return ContinueProcessing; }
+    virtual CCChainProcessing onOtherBye(SBCCallLeg *call, const AmSipRequest &req) { return ContinueProcessing; }
+    virtual void onCallConnected(SBCCallLeg *call, const AmSipReply& reply){ }
+
 
     // using extended CC modules with simple relay
 

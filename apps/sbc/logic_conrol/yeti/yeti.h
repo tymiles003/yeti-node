@@ -67,6 +67,11 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   CCChainProcessing createHoldRequest(SBCCallLeg *call, AmSdp &sdp);
   CCChainProcessing handleHoldReply(SBCCallLeg *call, bool succeeded);
 
+  CCChainProcessing onRemoteDisappeared(SBCCallLeg *call, const AmSipReply &reply);
+  CCChainProcessing onBye(SBCCallLeg *call, const AmSipRequest &req);
+  CCChainProcessing onOtherBye(SBCCallLeg *call, const AmSipRequest &req);
+  void onCallConnected(SBCCallLeg *call, const AmSipReply& reply);
+
   void init(SBCCallProfile &profile, SimpleRelayDialog *relay, void *&user_data);
   void initUAC(const AmSipRequest &req, void *user_data);
   void initUAS(const AmSipRequest &req, void *user_data);

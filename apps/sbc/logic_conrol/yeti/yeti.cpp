@@ -172,7 +172,6 @@ SBCCallLeg *Yeti::getCallLeg( const AmSipRequest& req,
       }
       cdr->update(Start);
       cdr->refuse(*profile);
-      cdr->update(DisconnectByDB);
       router->write_cdr(cdr);   //cdr will be deleted by cdrwriter
 
       delete profile;
@@ -220,7 +219,6 @@ void Yeti::oodHandlingTerminated(const AmSipRequest *req,SqlCallProfile *call_pr
         Cdr *cdr = new Cdr(*call_profile,*req);
         cdr->update(Start);
         cdr->refuse(*call_profile);
-        cdr->update(DisconnectByTS);
         router->align_cdr(*cdr);
         router->write_cdr(cdr);
     }
@@ -245,26 +243,13 @@ void Yeti::onStateChange(SBCCallLeg *call){
       Disconnecting //< we were connected and now going to be disconnected (waiting for reINVITE reply for example)
     };
     */
-    CallLeg::CallStatus status = call->getCallStatus();
-
-    if(call->isALeg()){
-    } else {
-        if(status == CallLeg::Connected){
-            DBG("%s() connected",FUNC_NAME);
-        }
-    }
 }
 
 void Yeti::onDestroyLeg(SBCCallLeg *call){
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
     DBG("%s()call_profile = %p, cdr = %p",FUNC_NAME,&call->getCallProfile(),call->getCdr());
+
     Cdr *cdr = call->getCdr();
-
-    call->getCdr()->update(End);
-    if(call->isALeg()){
-    } else {
-    }
-
     if(cdr->dec_and_test()){
         router->write_cdr(cdr);
     }
@@ -272,12 +257,11 @@ void Yeti::onDestroyLeg(SBCCallLeg *call){
 
 CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, const AmSipReply& reply) {
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
-    Cdr *cdr = call->getCdr();
-
-    cdr->disconnect_code = reply.code;
-    cdr->disconnect_reason = reply.reason;
-    cdr->update(DisconnectByDST);
-
+    if(call->isALeg()){
+        Cdr *cdr = call->getCdr();
+        cdr->update(End);
+        cdr->update(DisconnectByDST,reply.reason,reply.code);
+    }
     return ContinueProcessing;
 }
 
@@ -286,28 +270,41 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 
     Cdr *cdr = call->getCdr();
     cdr->update(Start);
-    cdr->orig_call_id = params.original_invite->callid;
-
+    cdr->update(*params.original_invite);
     return ContinueProcessing;
 }
 
 CCChainProcessing Yeti::onInDialogRequest(SBCCallLeg *call, const AmSipRequest &req) {
-    DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+    DBG("%s(%p,leg%s) '%s'",FUNC_NAME,call,call->isALeg()?"A":"B",req.method.c_str());
+    Cdr *cdr = call->getCdr();
+    if(call->isALeg()){
+        if(req.method=="CANCEL"){
+            cdr->update(End);
+            cdr->update(DisconnectByORG,"Request terminated (Cancel)",487);
+        }
+    }
     return ContinueProcessing;
 }
 
 CCChainProcessing Yeti::onInDialogReply(SBCCallLeg *call, const AmSipReply &reply) {
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
     if(!call->isALeg()){
-        //
         Cdr *cdr = call->getCdr();
-        cdr->term_ip = reply.remote_ip;
+        cdr->update(reply);
     }
     return ContinueProcessing;
 }
 
 CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+    if(call->isALeg()){
+        AmPluginEvent* plugin_event = dynamic_cast<AmPluginEvent*>(e);
+        if(plugin_event){
+            DBG("%s plugin_event name = %s, event_id = %d",FUNC_NAME,
+                  plugin_event->name.c_str(),
+                  plugin_event->event_id);
+        }
+    }
     return ContinueProcessing;
 }
 
@@ -329,6 +326,44 @@ CCChainProcessing Yeti::createHoldRequest(SBCCallLeg *call, AmSdp &sdp) {
 CCChainProcessing Yeti::handleHoldReply(SBCCallLeg *call, bool succeeded) {
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
     return ContinueProcessing;
+}
+
+CCChainProcessing Yeti::onRemoteDisappeared(SBCCallLeg *call, const AmSipReply &reply){
+    DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+    if(call->isALeg()){
+        Cdr *cdr = call->getCdr();
+        cdr->update(End);
+        cdr->update(DisconnectByTS,reply.reason,reply.code);
+    }
+    return ContinueProcessing;
+}
+
+CCChainProcessing Yeti::onBye(SBCCallLeg *call, const AmSipRequest &req){
+    DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+    if(call->isALeg()){
+        Cdr *cdr = call->getCdr();
+        cdr->update(End);
+        cdr->update(DisconnectByORG,"onBye",200);
+    }
+    return ContinueProcessing;
+}
+
+CCChainProcessing Yeti::onOtherBye(SBCCallLeg *call, const AmSipRequest &req){
+    DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+    if(call->isALeg()){
+        Cdr *cdr = call->getCdr();
+        cdr->update(End);
+        cdr->update(DisconnectByDST,"onOtherBye",200);
+    }
+    return ContinueProcessing;
+}
+
+void Yeti::onCallConnected(SBCCallLeg *call, const AmSipReply& reply){
+    DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+    if(call->isALeg()){
+        Cdr *cdr = call->getCdr();
+        cdr->update(Connect);
+    }
 }
 
 void Yeti::init(SBCCallProfile &profile, SimpleRelayDialog *relay, void *&user_data) {

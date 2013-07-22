@@ -123,7 +123,6 @@ void CdrThread::postcdr(Cdr* cdr)
 }
 
 
-
 CdrThread::CdrThread() : queue_run(false),stopped(false),masterconn(NULL),slaveconn(NULL),gotostop(false)
 {
   clearStats();
