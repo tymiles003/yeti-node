@@ -927,7 +927,7 @@ static int generate_and_parse_new_msg(sip_msg* msg, sip_msg*& p_msg)
     compute_branch(branch_buf,msg->callid->value,msg->cseq->value);
     cstring branch(branch_buf,BRANCH_BUF_LEN);
      
-    string via(msg->local_socket->get_ip());
+    string via(msg->local_socket->get_advertised_ip());
     if(msg->local_socket->get_port() != 5060)
  	via += ":" + int2str(msg->local_socket->get_port());
  
@@ -2250,10 +2250,26 @@ int _trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr)
 			tr->msg->u.request->method_str);
     }
 
-    if(!tr->msg->local_socket->is_reliable()) {
-	// reset counter for timer A & E
-	trans_timer* A_E_timer = tr->get_timer(STIMER_A);
-	tr->reset_timer(A_E_timer->type & 0xFFFF,A_TIMER,bucket->get_id());
+    if(tr->msg->u.request->method == sip_request::INVITE) {
+	tr->state = TS_CALLING;
+	if(!tr->msg->local_socket->is_reliable()) {
+	    tr->reset_timer(STIMER_A,A_TIMER,bucket->get_id());
+	}
+	if(!tr->get_timer(STIMER_B)) {
+	    // Timer B has been cleared by 1xx
+	    tr->reset_timer(STIMER_B,B_TIMER,bucket->get_id());
+	}
+    }
+    else {
+	// no need to reset state here:
+	// transaction layer does not make a difference
+	// between TS_TRYING or TS_PROCEEDING on timeout
+	if(!tr->msg->local_socket->is_reliable()) {
+	    tr->reset_timer(STIMER_E,E_TIMER,bucket->get_id());
+	}
+	// Timer F is not cleared by 1xx,
+	// as provisional replies should not be sent
+	// for non-INVITE transactions
     }
     
     if(!tr->msg->h_dns.eoip())
