@@ -168,7 +168,7 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
     INFO ("showVersion received via xmlrpc2di");
     showVersion(args, ret);
   } else if(method == "_list"){
-    //ret.push(AmArg("getLogicInterfaceHandler"));
+    ret.push(AmArg("showVersion"));
     ret.push(AmArg("getConfig"));
     ret.push(AmArg("getStats"));
     ret.push(AmArg("clearStats"));
