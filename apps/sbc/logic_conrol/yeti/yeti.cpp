@@ -277,6 +277,7 @@ void Yeti::onDestroyLeg(SBCCallLeg *call){
 
     Cdr *cdr = call->getCdr();
     if(cdr->dec_and_test()){
+        cdr_list.erase_lookup_key(&cdr->local_tag);
         router->write_cdr(cdr);
     }
 }
@@ -328,13 +329,24 @@ CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
     if(call->isALeg()){
         AmPluginEvent* plugin_event = dynamic_cast<AmPluginEvent*>(e);
         if(plugin_event){
-            DBG("%s plugin_event name = %s, event_id = %d",FUNC_NAME,
-                  plugin_event->name.c_str(),
-                  plugin_event->event_id);
+            DBG("%s plugin_event. name = %s, event_id = %d",FUNC_NAME,
+                plugin_event->name.c_str(),
+                plugin_event->event_id);
             if(plugin_event->name=="timer_timeout"){
                 int timer_id = plugin_event->data.get(0).asInt();
                 DBG("%s() timer %d timeout, stopping call\n",FUNC_NAME,timer_id);
                 call->getCdr()->update(DisconnectByTS,"Balance timer",200);
+            }
+        }
+
+        SBCControlEvent* sbc_event = dynamic_cast<SBCControlEvent*>(e);
+        if(sbc_event){
+            DBG("%s sbc control event. cmd = %s, event_id = %d",FUNC_NAME,
+                sbc_event->cmd.c_str(),
+                sbc_event->event_id);
+            if(sbc_event->cmd == "teardown"){
+                DBG("%s() teardown\n",FUNC_NAME);
+                call->getCdr()->update(DisconnectByTS,"Teardown",200);
             }
         }
     }
@@ -388,7 +400,9 @@ CCChainProcessing Yeti::onOtherBye(SBCCallLeg *call, const AmSipRequest &req){
 void Yeti::onCallConnected(SBCCallLeg *call, const AmSipReply& reply){
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
     if(call->isALeg()){
-        call->getCdr()->update(Connect);
+        Cdr *cdr = call->getCdr();
+        cdr->update(Connect);
+        cdr_list.insert(&cdr->local_tag,cdr);
     }
 }
     //!Ood handlers
@@ -451,7 +465,6 @@ void Yeti::GetCall(const AmArg& args, AmArg& ret) {
     }
 
     local_tag = args[0].asCStr();
-
     if(cdr_list.getCall(local_tag,call)){
       ret.push(200);
       ret.push(call);
