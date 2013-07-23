@@ -66,6 +66,8 @@ int Yeti::onLoad() {
       return -1;
     }
 
+    calls_show_limit = cfg.getParameterInt("calls_show_limit",100);
+
     self_iface.cc_module = "yeti";
     self_iface.cc_name = "yeti";
     self_iface.cc_values.clear();
@@ -140,8 +142,36 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
         );
   } else if(method == "route"){
       //
+  } else if (method == "dropCall"){
+    INFO ("dropCall received via xmlrpc2di");
+    DropCall(args,ret);
+  } else if (method == "getCall"){
+    INFO ("getCall received via xmlrpc2di");
+    GetCall(args,ret);
+  } else if (method == "getCalls"){
+    INFO ("getCalls received via xmlrpc2di");
+    GetCalls(args,ret);
+  } else if (method == "getCallsCount"){
+    INFO ("getCallsCount received via xmlrpc2di");
+    GetCallsCount(args,ret);
+  } else if (method == "getStats"){
+    INFO ("getStats received via xmlrpc2di");
+    GetStats(args,ret);
+  } else if (method == "clearStats"){
+    INFO ("clearStats received via xmlrpc2di");
+    ClearStats(args,ret);
+  } else if (method == "getConfig"){
+    INFO ("getConfig received via xmlrpc2di");
+    GetConfig(args,ret);
   } else if(method == "_list"){
-    ret.push("getLogicInterfaceHandler");
+    //ret.push(AmArg("getLogicInterfaceHandler"));
+    ret.push(AmArg("getConfig"));
+    ret.push(AmArg("getStats"));
+    ret.push(AmArg("clearStats"));
+    ret.push(AmArg("dropCall"));
+    ret.push(AmArg("getCall"));
+    ret.push(AmArg("getCalls"));
+    ret.push(AmArg("getCallsCount"));
   }
   else
     throw AmDynInvoke::NotImplemented(method);
@@ -186,7 +216,7 @@ SBCCallLeg *Yeti::getCallLeg( const AmSipRequest& req,
 
     return b2b_dlg;
 }
-
+    //!InDialog handlers
 void Yeti::start(const string& cc_name, const string& ltag,
                SBCCallProfile* call_profile,
                int start_ts_sec, int start_ts_usec,
@@ -361,7 +391,7 @@ void Yeti::onCallConnected(SBCCallLeg *call, const AmSipReply& reply){
         call->getCdr()->update(Connect);
     }
 }
-
+    //!Ood handlers
 void Yeti::init(SBCCallProfile &profile, SimpleRelayDialog *relay, void *&user_data) {
     DBG("%s() called",FUNC_NAME);
 }
@@ -396,4 +426,98 @@ void Yeti::onB2BRequest(const AmSipRequest& req, void *user_data) {
 
 void Yeti::onB2BReply(const AmSipReply& reply, void *user_data) {
     DBG("%s() called",FUNC_NAME);
+}
+    //!xmlrpc handlers
+
+void Yeti::GetCallsCount(const AmArg& args, AmArg& ret) {
+  string r;
+  std::stringstream ss;
+
+  ss << cdr_list.get_count();
+  r = ss.str();
+
+  ret.push(200);
+  ret.push(AmArg(r));
+}
+
+void Yeti::GetCall(const AmArg& args, AmArg& ret) {
+    AmArg call;
+    string local_tag;
+
+    if (!args.size()) {
+    ret.push(500);
+    ret.push("Parameters error: expected local tag of requested cdr ");
+    return;
+    }
+
+    local_tag = args[0].asCStr();
+
+    if(cdr_list.getCall(local_tag,call)){
+      ret.push(200);
+      ret.push(call);
+    } else {
+      ret.push(404);
+      ret.push("Have no CDR with such local tag");
+    }
+}
+
+void Yeti::GetCalls(const AmArg& args, AmArg& ret) {
+    AmArg calls;
+
+    cdr_list.getCalls(calls,calls_show_limit);
+
+    ret.push(200);
+    ret.push(calls);
+}
+
+void Yeti::ClearStats(const AmArg& args, AmArg& ret){
+    if(router)
+      router->clearStats();
+    ret.push(200);
+    ret.push("OK");
+}
+
+void Yeti::GetStats(const AmArg& args, AmArg& ret){
+  AmArg stats,router_stats;
+
+  ret.push(200);
+      /* Yeti stats */
+  stats["calls_show_limit"] = (int)calls_show_limit;
+      /* sql_router stats */
+  if(router){
+    router->getStats(router_stats);
+    stats.push("router",router_stats);
+  }
+  ret.push(stats);
+}
+
+void Yeti::GetConfig(const AmArg& args, AmArg& ret) {
+  AmArg a;
+  ret.push(200);
+  if(router){
+    router->getConfig(a);
+    ret.push(a);
+  }
+}
+
+void Yeti::DropCall(const AmArg& args, AmArg& ret){
+  SBCControlEvent* evt;
+  string local_tag;
+
+  if (!args.size()) {
+    ret.push(500);
+    ret.push("Parameters error: expected local tag of active call");
+    return;
+  }
+  local_tag = args[0].asCStr();
+
+  evt = new SBCControlEvent("teardown");
+
+  if (!AmSessionContainer::instance()->postEvent(local_tag, evt)) {
+    ret.push(404);
+    ret.push("Not found");
+  } else {
+    ret.push(202);
+    ret.push("Accepted");
+  }
 }

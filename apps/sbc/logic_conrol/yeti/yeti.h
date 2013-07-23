@@ -12,6 +12,7 @@
 #include "SqlCallProfile.h"
 #include "Cdr.h"
 #include "SqlRouter.h"
+#include "CdrList.h"
 #include "CdrWriter.h"
 #include "SBC.h"
 
@@ -19,18 +20,30 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
 {
   static Yeti* _instance;
 
-  SBCCallProfile *profile;
+  SBCCallProfile *profile;  //profile for OoD requests
   CCInterface self_iface;
-
+  CdrList cdr_list;
   SqlRouter *router;
 
   AmConfigReader cfg;
+  //config values
+  int calls_show_limit;
+
  public:
   Yeti();
   ~Yeti();
   static Yeti* instance();
   void invoke(const string& method, const AmArg& args, AmArg& ret);
   int onLoad();
+
+        //!xmlrpc handlers
+  void DropCall(const AmArg& args, AmArg& ret);
+  void ClearStats(const AmArg& args, AmArg& ret);
+  void GetStats(const AmArg& args, AmArg& ret);
+  void GetConfig(const AmArg& args, AmArg& ret);
+  void GetCall(const AmArg& args, AmArg& ret);
+  void GetCalls(const AmArg& args, AmArg& ret);
+  void GetCallsCount(const AmArg& args, AmArg& ret);
 
         //!SBCLogicInterface handlers
   SBCCallProfile& getCallProfile( const AmSipRequest& req,
@@ -72,6 +85,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   CCChainProcessing onOtherBye(SBCCallLeg *call, const AmSipRequest &req);
   void onCallConnected(SBCCallLeg *call, const AmSipReply& reply);
 
+        //!OoD handlers
   void init(SBCCallProfile &profile, SimpleRelayDialog *relay, void *&user_data);
   void initUAC(const AmSipRequest &req, void *user_data);
   void initUAS(const AmSipRequest &req, void *user_data);
