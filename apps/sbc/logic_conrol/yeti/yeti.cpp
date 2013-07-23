@@ -5,6 +5,7 @@
 #include "AmArg.h"
 #include "AmSession.h"
 #include "CallLeg.h"
+#include "Version.h"
 
 #include "SBC.h"
 struct CallLegCreator;
@@ -163,6 +164,9 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
   } else if (method == "getConfig"){
     INFO ("getConfig received via xmlrpc2di");
     GetConfig(args,ret);
+  } else if (method == "showVersion"){
+    INFO ("showVersion received via xmlrpc2di");
+    showVersion(args, ret);
   } else if(method == "_list"){
     //ret.push(AmArg("getLogicInterfaceHandler"));
     ret.push(AmArg("getConfig"));
@@ -533,4 +537,14 @@ void Yeti::DropCall(const AmArg& args, AmArg& ret){
     ret.push(202);
     ret.push("Accepted");
   }
+}
+
+void Yeti::showVersion(const AmArg& args, AmArg& ret) {
+    AmArg p;
+
+    ret.push(200);
+    p["build"] = YETI_VERSION;
+    p["compiled_at"] = YETI_BUILD_DATE;
+    p["compiled_by"] = YETI_BUILD_USER;
+    ret.push(p);
 }
