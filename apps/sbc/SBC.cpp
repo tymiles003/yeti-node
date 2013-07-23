@@ -159,7 +159,8 @@ SBCFactory::~SBCFactory() {
   AmDynInvokeFactory* lm_fact = AmPlugIn::instance()->getFactory4Di(
               cfg.getParameter("load_logic_module")
   );
-  lm_fact->~AmPluginFactory();
+  if(lm_fact)
+      lm_fact->~AmPluginFactory();
 }
 
 int SBCFactory::onLoad()
