@@ -77,14 +77,18 @@ void CdrList::cdr2arg(const Cdr *cdr,AmArg& arg){
   add_timeval_field_to_ret(start_time);
   add_timeval_field_to_ret(connect_time);
 
-  add_field_to_ret(term_ip);
-  add_field_to_ret(term_local_ip);
-  add_field_to_ret(term_port);
-  add_field_to_ret(term_local_port);
+  add_field_to_ret(legB_remote_port);
+  add_field_to_ret(legB_local_port);
+  add_field_to_ret(legA_remote_port);
+  add_field_to_ret(legA_local_port);
+  add_field_to_ret(legB_remote_ip);
+  add_field_to_ret(legB_local_ip);
+  add_field_to_ret(legA_remote_ip);
+  add_field_to_ret(legA_local_ip);
+
   add_field_to_ret(orig_call_id);
   add_field_to_ret(term_call_id);
   add_field_to_ret(local_tag);
   
   add_field_to_ret(time_limit);
-  add_field_to_ret(local_port);
 }

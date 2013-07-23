@@ -98,8 +98,8 @@ int SqlRouter::db_configure(AmConfigReader& cfg){
     }
     sql_query.append(");");
     cdr_prepared_queries["writecdr"] = pair<string,int>(sql_query,n);
-      
-    ret = 0;    
+
+    ret = 0;
     
   } catch(const pqxx::pqxx_exception &e){
     ERROR("SqlRouter::db_configure: pqxx_exception: %s ",e.base().what());
@@ -349,12 +349,6 @@ SqlCallProfile* SqlRouter::_getprofile(const AmSipRequest &req, pqxx::connection
   //ret.force_symmetric_rtp_value
   ret->from=r[0]["from"].c_str();
 
-  /*
-  ret->headerfilter=String2FilterType(r[0]["headerfilter"].c_str());
-  if (Undefined == ret->headerfilter) {
-    ret->headerfilter=Transparent;
-  }
-  */
   FilterEntry header_filter;
   header_filter.filter_type=String2FilterType(r[0]["headerfilter"].c_str());
   if (Undefined == header_filter.filter_type) {
@@ -385,7 +379,6 @@ SqlCallProfile* SqlRouter::_getprofile(const AmSipRequest &req, pqxx::connection
       ret->next_hop=r[0]["next_hop"].c_str();
     }
 
-//!FIX:  ret->next_hop_for_replies=r[0]["next_hop_for_replies"].c_str();
   ret->next_hop_1st_req=r[0]["next_hop_1st_req"].as<bool>();
   ret->outbound_interface=r[0]["outbound_interface"].c_str();
   //ret.outbound_interface_value
@@ -495,8 +488,7 @@ SqlCallProfile* SqlRouter::_getprofile(const AmSipRequest &req, pqxx::connection
   DBG("sql profile codec_prefs dump: \r\n %s \r\n",ret->codec_prefs.print().c_str());
   DBG("sql profile transcoder dump: \r\n %s \r\n",ret->transcoder.print().c_str());
   
-//!FIX  ret->time_limit=r[0]["time_limit"].as<int>();
-//!MOVETO: onInitialInvite  ret->local_port=req.local_port;
+  ret->time_limit=r[0]["time_limit"].as<int>();
   
   if(cache_enabled){
     int cache_time = r[0]["cache_time"].as<int>();
@@ -514,18 +506,6 @@ SqlCallProfile* SqlRouter::_getprofile(const AmSipRequest &req, pqxx::connection
 }
 
 
-void SqlRouter::call_start(Cdr* cdr)
-{
-
-}
-
-//void SqlRouter::call_stop(Cdr* cdr)
-//{
-//  if(!cdr->writed){
-//    cdr_writer->postcdr(cdr);
-//    cdr->update(Write);
-//  }
-//}
 void SqlRouter::align_cdr(Cdr &cdr){
     DynFieldsT_iterator it = dyn_fields.begin();
     for(;it!=dyn_fields.end();++it){

@@ -292,10 +292,20 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr)
       pqxx::prepare::invocation invoc = tnx.prepared("writecdr");
       /* invocate static fields */
     invoc(cdr->time_limit);
+    invoc(cdr->legA_local_ip);
+    invoc(cdr->legA_local_port);
+    invoc(cdr->legA_remote_ip);
+    invoc(cdr->legA_remote_port);
+    invoc(cdr->legB_local_ip);
+    invoc(cdr->legB_local_port);
+    invoc(cdr->legB_remote_ip);
+    invoc(cdr->legB_remote_port);
+/*
 	invoc(cdr->term_ip);
 	invoc(cdr->term_port);
 	invoc(cdr->term_local_ip);
     invoc(cdr->local_port);
+*/
 	invoc(cdr->start_time.tv_sec);
 	invoc(cdr->connect_time.tv_sec);
 	invoc(cdr->end_time.tv_sec);
@@ -316,11 +326,15 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr)
     } else {
       WARN("CdrThread: Dynamic fields not used without prepared queries for perfomance reasons");
       r=tnx.exec("SELECT switch.writecdr("
-        +tnx.quote(cdr->time_limit)+","
-	+tnx.quote(cdr->term_ip)+","
-	+tnx.quote(cdr->term_port)+","
-	+tnx.quote(cdr->term_local_ip)+","
-    +tnx.quote(cdr->local_port)+","
+    +tnx.quote(cdr->time_limit)+","
+    +tnx.quote(cdr->legA_local_ip)+","
+    +tnx.quote(cdr->legA_local_port)+","
+    +tnx.quote(cdr->legA_remote_ip)+","
+    +tnx.quote(cdr->legA_remote_port)+","
+    +tnx.quote(cdr->legB_local_ip)+","
+    +tnx.quote(cdr->legB_local_port)+","
+    +tnx.quote(cdr->legB_remote_ip)+","
+    +tnx.quote(cdr->legB_remote_port)+","
 	+tnx.quote(cdr->start_time.tv_sec)+","
 	+tnx.quote(cdr->connect_time.tv_sec)+","
 	+tnx.quote(cdr->end_time.tv_sec)+","

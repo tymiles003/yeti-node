@@ -161,21 +161,18 @@ SBCCallLeg *Yeti::getCallLeg( const AmSipRequest& req,
     DBG("%s() called",FUNC_NAME);
 
     SqlCallProfile *profile = router->getprofile(req);
-
     SBCCallProfile& call_profile = *profile;
-
-    Cdr *cdr = new Cdr(*profile,req);
+    Cdr *cdr = new Cdr(*profile);
 
     if(!call_profile.refuse_with.empty()) {
       if(call_profile.refuse(ctx, req) < 0) {
         throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
       }
       cdr->update(Start);
+      cdr->update(req);
       cdr->refuse(*profile);
-      router->write_cdr(cdr);   //cdr will be deleted by cdrwriter
-
+      router->write_cdr(cdr);
       delete profile;
-
       return NULL;
     }
 
@@ -216,7 +213,8 @@ void Yeti::oodHandlingTerminated(const AmSipRequest *req,SqlCallProfile *call_pr
     DBG("method: %s",req->method.c_str());
 
     if(call_profile){
-        Cdr *cdr = new Cdr(*call_profile,*req);
+        Cdr *cdr = new Cdr(*call_profile);
+        cdr->update(*req);
         cdr->update(Start);
         cdr->refuse(*call_profile);
         router->align_cdr(*cdr);
@@ -226,9 +224,7 @@ void Yeti::oodHandlingTerminated(const AmSipRequest *req,SqlCallProfile *call_pr
 
 void Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
-
-    Cdr *cdr = call->getCdr();
-    cdr->update(*call);
+    call->getCdr()->update(*call);
 }
 
 void Yeti::onStateChange(SBCCallLeg *call){
@@ -258,9 +254,7 @@ void Yeti::onDestroyLeg(SBCCallLeg *call){
 CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, const AmSipReply& reply) {
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
     if(call->isALeg()){
-        Cdr *cdr = call->getCdr();
-        cdr->update(End);
-        cdr->update(DisconnectByDST,reply.reason,reply.code);
+        call->getCdr()->update(DisconnectByDST,reply.reason,reply.code);
     }
     return ContinueProcessing;
 }
@@ -271,16 +265,21 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
     Cdr *cdr = call->getCdr();
     cdr->update(Start);
     cdr->update(*params.original_invite);
+
+    if(cdr->time_limit){
+        DBG("%s() save timer %d with timeout %d",FUNC_NAME,
+              SBC_TIMER_ID_CALL_TIMERS_START,
+              cdr->time_limit);
+        call->saveCallTimer(SBC_TIMER_ID_CALL_TIMERS_START,cdr->time_limit);
+    }
     return ContinueProcessing;
 }
 
 CCChainProcessing Yeti::onInDialogRequest(SBCCallLeg *call, const AmSipRequest &req) {
     DBG("%s(%p,leg%s) '%s'",FUNC_NAME,call,call->isALeg()?"A":"B",req.method.c_str());
-    Cdr *cdr = call->getCdr();
     if(call->isALeg()){
         if(req.method=="CANCEL"){
-            cdr->update(End);
-            cdr->update(DisconnectByORG,"Request terminated (Cancel)",487);
+            call->getCdr()->update(DisconnectByORG,"Request terminated (Cancel)",487);
         }
     }
     return ContinueProcessing;
@@ -289,8 +288,7 @@ CCChainProcessing Yeti::onInDialogRequest(SBCCallLeg *call, const AmSipRequest &
 CCChainProcessing Yeti::onInDialogReply(SBCCallLeg *call, const AmSipReply &reply) {
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
     if(!call->isALeg()){
-        Cdr *cdr = call->getCdr();
-        cdr->update(reply);
+        call->getCdr()->update(reply);
     }
     return ContinueProcessing;
 }
@@ -303,6 +301,11 @@ CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
             DBG("%s plugin_event name = %s, event_id = %d",FUNC_NAME,
                   plugin_event->name.c_str(),
                   plugin_event->event_id);
+            if(plugin_event->name=="timer_timeout"){
+                int timer_id = plugin_event->data.get(0).asInt();
+                DBG("%s() timer %d timeout, stopping call\n",FUNC_NAME,timer_id);
+                call->getCdr()->update(DisconnectByTS,"Balance timer",200);
+            }
         }
     }
     return ContinueProcessing;
@@ -331,9 +334,7 @@ CCChainProcessing Yeti::handleHoldReply(SBCCallLeg *call, bool succeeded) {
 CCChainProcessing Yeti::onRemoteDisappeared(SBCCallLeg *call, const AmSipReply &reply){
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
     if(call->isALeg()){
-        Cdr *cdr = call->getCdr();
-        cdr->update(End);
-        cdr->update(DisconnectByTS,reply.reason,reply.code);
+        call->getCdr()->update(DisconnectByTS,reply.reason,reply.code);
     }
     return ContinueProcessing;
 }
@@ -341,9 +342,7 @@ CCChainProcessing Yeti::onRemoteDisappeared(SBCCallLeg *call, const AmSipReply &
 CCChainProcessing Yeti::onBye(SBCCallLeg *call, const AmSipRequest &req){
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
     if(call->isALeg()){
-        Cdr *cdr = call->getCdr();
-        cdr->update(End);
-        cdr->update(DisconnectByORG,"onBye",200);
+        call->getCdr()->update(DisconnectByORG,"onBye",200);
     }
     return ContinueProcessing;
 }
@@ -351,9 +350,7 @@ CCChainProcessing Yeti::onBye(SBCCallLeg *call, const AmSipRequest &req){
 CCChainProcessing Yeti::onOtherBye(SBCCallLeg *call, const AmSipRequest &req){
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
     if(call->isALeg()){
-        Cdr *cdr = call->getCdr();
-        cdr->update(End);
-        cdr->update(DisconnectByDST,"onOtherBye",200);
+        call->getCdr()->update(DisconnectByDST,"onOtherBye",200);
     }
     return ContinueProcessing;
 }
@@ -361,8 +358,7 @@ CCChainProcessing Yeti::onOtherBye(SBCCallLeg *call, const AmSipRequest &req){
 void Yeti::onCallConnected(SBCCallLeg *call, const AmSipReply& reply){
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
     if(call->isALeg()){
-        Cdr *cdr = call->getCdr();
-        cdr->update(Connect);
+        call->getCdr()->update(Connect);
     }
 }
 

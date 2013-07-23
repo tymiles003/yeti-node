@@ -21,8 +21,6 @@ public:
   int configure(AmConfigReader &cfg);
   int run();
   void stop();
-  void call_start(Cdr* cdr);
-//  void call_stop(Cdr* cdr);
   void align_cdr(Cdr &cdr);
   void write_cdr(Cdr *cdr);
   void dump_config();
