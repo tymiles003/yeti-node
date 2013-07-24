@@ -218,6 +218,7 @@ SBCCallLeg *Yeti::getCallLeg( const AmSipRequest& req,
     cdr->inc();
     b2b_dlg->setCdr(cdr);
 
+    delete profile;
     return b2b_dlg;
 }
     //!InDialog handlers
@@ -313,7 +314,7 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 CCChainProcessing Yeti::onInDialogRequest(SBCCallLeg *call, const AmSipRequest &req) {
     DBG("%s(%p,leg%s) '%s'",FUNC_NAME,call,call->isALeg()?"A":"B",req.method.c_str());
     if(call->isALeg()){
-        if(req.method=="CANCEL"){
+        if(req.method==SIP_METH_CANCEL){
             call->getCdr()->update(DisconnectByORG,"Request terminated (Cancel)",487);
         }
     }

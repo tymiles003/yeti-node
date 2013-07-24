@@ -94,7 +94,7 @@ void Cdr::update(DisconnectInitiator initiator,string reason, int code){
     unlock();
 }
 
-void Cdr::refuse(const SqlCallProfile &profile){
+void Cdr::refuse(const SBCCallProfile &profile){
     if(writed) return;
     lock();
     unsigned int refuse_with_code;

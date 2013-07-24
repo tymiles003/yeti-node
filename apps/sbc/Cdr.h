@@ -56,7 +56,7 @@ struct Cdr: public
     void update(SBCCallLeg &leg);
     void update(UpdateAction act);
     void update(DisconnectInitiator initiator,string reason, int code);
-    void refuse(const SqlCallProfile &profile);
+    void refuse(const SBCCallProfile &profile);
 };
 
 #endif // CDR_H
