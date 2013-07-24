@@ -32,9 +32,18 @@ public:
   ~SqlRouter();
 
 private:
+  //stats
+  int cache_hits,db_hits,hits;
+  double gt_min,gt_max;
+  double gps_max,gps_avg;
+  time_t mi_start;
+  time_t mi;
+  unsigned int gpi;
+
   int db_configure(AmConfigReader &cfg);
   SqlCallProfile* _getprofile(const AmSipRequest&, pqxx::connection*);
-  
+  void update_counters(struct timeval &start_time);
+
   PgConnectionPool *master_pool;
   PgConnectionPool *slave_pool;
   CdrWriter *cdr_writer;

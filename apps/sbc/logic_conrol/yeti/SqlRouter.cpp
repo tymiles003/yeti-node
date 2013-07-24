@@ -19,9 +19,10 @@ SqlRouter::SqlRouter():
   master_pool(NULL),
   slave_pool(NULL),
   cdr_writer(NULL),
-  cache(NULL)
+  cache(NULL),
+  mi(5)
 {
-  //
+  clearStats();
 }
 
 SqlRouter::~SqlRouter()
@@ -192,6 +193,36 @@ int SqlRouter::configure(AmConfigReader &cfg){
   return 0;
 };
 
+void SqlRouter::update_counters(struct timeval &start_time){
+    struct timeval now_time,diff_time;
+    time_t now;
+    int intervals;
+    double diff,gps;
+
+    gettimeofday(&now_time,NULL);
+    //per second
+    now = now_time.tv_sec;
+    diff = difftime(now,mi_start);
+    intervals = diff/mi;
+    if(intervals < 0){
+        mi_start = now;
+        gps = gpi/(double)mi;
+        gps_avg = gps;
+        if(gps > gps_max)
+            gps_max = gps;
+        gpi = 1;
+    } else {
+       gpi++;
+    }
+    // took
+    timersub(&now_time,&start_time,&diff_time);
+    diff = diff_time.tv_sec+diff_time.tv_usec/(double)1e6;
+    if(diff > gt_max)
+        gt_max = diff;
+    if(!gt_min || (diff < gt_min))
+        gt_min = diff;
+}
+
 SqlCallProfile* SqlRouter::getprofile (const AmSipRequest &req)
 {
   DBG("Lookup profile for request: \n %s",req.print().c_str());
@@ -200,8 +231,14 @@ SqlCallProfile* SqlRouter::getprofile (const AmSipRequest &req)
   PgConnectionPool *pool = master_pool;
   bool getprofile_fail = true;
   string req_hdrs,hdr;
-  
+  struct timeval start_time;
+
+  hits++;
+  gettimeofday(&start_time,NULL);
+
   if(cache_enabled&&(ret = cache->get_profile(&req))!=NULL){
+    cache_hits++;
+    update_counters(start_time);
     return ret;
   }
   
@@ -238,6 +275,8 @@ SqlCallProfile* SqlRouter::getprofile (const AmSipRequest &req)
     ret->SQLexception=true;
     ret->cached = false;
   } else {
+    update_counters(start_time);
+    db_hits++;
     if(cache_enabled&&timerisset(&ret->expire_time))
       cache->insert_profile(&req,ret);
   }
@@ -539,6 +578,17 @@ void SqlRouter::clearStats(){
     master_pool->clearStats();
   if(slave_pool)
     slave_pool->clearStats();
+
+  time(&mi_start);
+  hits = 0;
+  db_hits = 0;
+  cache_hits = 0;
+  gpi = 0;
+  gt_min = 0;
+  gt_max = 0;
+  gps_max = 0;
+  gps_avg = 0;
+
 }
 
 void SqlRouter::getConfig(AmArg &arg){
@@ -552,7 +602,16 @@ void SqlRouter::getConfig(AmArg &arg){
 void SqlRouter::getStats(AmArg &arg){
   AmArg underlying_stats;
       /* SqlRouter stats */
-  arg["failover_to_slave"] = failover_to_slave;
+  arg["gt_min"] = gt_min;
+  arg["gt_max"] = gt_max;
+  arg["gps_max"] = gps_max;
+  arg["gps_avg"] = gps_avg;
+
+  arg["hits"] = hits;
+  arg["db_hits"] = db_hits;
+  if(cache_enabled){
+    arg["cache_hits"] = cache_hits;
+  }
       /* SqlRouter ProfilesCache stats */
   if(cache_enabled){
     underlying_stats["entries"] = (int)cache->get_count();
