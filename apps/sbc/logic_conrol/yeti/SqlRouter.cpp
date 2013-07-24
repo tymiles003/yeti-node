@@ -204,7 +204,7 @@ void SqlRouter::update_counters(struct timeval &start_time){
     now = now_time.tv_sec;
     diff = difftime(now,mi_start);
     intervals = diff/mi;
-    if(intervals < 0){
+    if(intervals > 0){
         mi_start = now;
         gps = gpi/(double)mi;
         gps_avg = gps;
