@@ -511,6 +511,15 @@ void Yeti::GetStats(const AmArg& args, AmArg& ret){
   AmSessionContainer::instance()->getStats(underlying_stats);
   stats.push("AmSessionContainer",underlying_stats);
 
+  underlying_stats.clear();
+  underlying_stats["SessionNum"] = (int)AmSession::getSessionNum();
+  underlying_stats["MaxSessionNum"] = (int)AmSession::getMaxSessionNum();
+  underlying_stats["AvgSessionNum"] = (int)AmSession::getAvgSessionNum();
+  underlying_stats["MaxCPS"] = (int)AmSession::getMaxCPS();
+  underlying_stats["AvgCPS"] = (int)AmSession::getAvgCPS();
+
+  stats.push("AmSession",underlying_stats);
+
   ret.push(stats);
 }
 
