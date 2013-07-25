@@ -165,6 +165,7 @@ class AmSessionContainer : public AmThread
   /** enable unclean shutdown (will not broadcastShutdown event) */
   void enableUncleanShutdown();
 
+  void getStats(AmArg &ret);
   _MONITORING_DEFINE_INTERFACE;
 
 };

@@ -215,7 +215,7 @@ SBCCallLeg *Yeti::getCallLeg( const AmSipRequest& req,
 
     SBCCallLeg* b2b_dlg = leg_creator->create(call_profile);
 
-    cdr->inc();
+	cdr->inc();
     b2b_dlg->setCdr(cdr);
 
     delete profile;
@@ -496,16 +496,21 @@ void Yeti::ClearStats(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::GetStats(const AmArg& args, AmArg& ret){
-  AmArg stats,router_stats;
+  AmArg stats,underlying_stats;
 
   ret.push(200);
       /* Yeti stats */
   stats["calls_show_limit"] = (int)calls_show_limit;
       /* sql_router stats */
   if(router){
-    router->getStats(router_stats);
-    stats.push("router",router_stats);
+	router->getStats(underlying_stats);
+	stats.push("router",underlying_stats);
   }
+
+  underlying_stats.clear();
+  AmSessionContainer::instance()->getStats(underlying_stats);
+  stats.push("AmSessionContainer",underlying_stats);
+
   ret.push(stats);
 }
 

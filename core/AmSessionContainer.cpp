@@ -488,3 +488,10 @@ AmSessionContainer::addSession(const string& local_tag,
 void AmSessionContainer::enableUncleanShutdown() {
   enable_unclean_shutdown = true;
 }
+
+void AmSessionContainer::getStats(AmArg &ret){
+  ds_mut.lock();
+	ret["dead_sessions_count = "] = (int)d_sessions.size();
+	ret["unclean_shutdown_enabled"] =  enable_unclean_shutdown;
+  ds_mut.unlock();
+}
