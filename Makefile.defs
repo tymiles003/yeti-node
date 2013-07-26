@@ -46,7 +46,7 @@ CPPFLAGS += -D_DEBUG \
 #      if compiled without thread pool support, every
 #      session will have its own thread.
 #
-#USE_THREADPOOL = yes
+USE_THREADPOOL = yes
 
 # compile with spandsp DTMF detection? see soft-switch.org
 #   this needs a fairly new version of spandsp - tested with 0.0.4pre11
@@ -151,6 +151,8 @@ CXX = g++
 CC = gcc
 LD = $(CC)
 
+#CXXFLAGS += -Wall -Wno-reorder -Wno-unused -fPIC -g -fno-inline $(EXTRA_CXXFLAGS)
+#CFLAGS   += -Wall -fPIC -g -fno-inline $(EXTRA_CFLAGS)
 CXXFLAGS += -Wall -Wno-reorder -Wno-unused -fPIC -g $(EXTRA_CXXFLAGS)
 CFLAGS   += -Wall -fPIC -g $(EXTRA_CFLAGS)
 
