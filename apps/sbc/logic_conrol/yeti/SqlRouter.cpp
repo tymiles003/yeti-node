@@ -253,11 +253,14 @@ SqlCallProfile* SqlRouter::getprofile (const AmSipRequest &req)
 	DBG("Cant get active connection on %s",pool->pool_name.c_str());
       }
     } catch(pqxx::broken_connection &e){
-	pool->returnConnection(conn,PgConnectionPool::CONN_COMM_ERR);
-	DBG("SQL exception on %s SQLThread: pqxx::broken_connection.",pool->pool_name.c_str());
+		pool->returnConnection(conn,PgConnectionPool::CONN_COMM_ERR);
+		DBG("SQL exception on %s SQLThread: pqxx::broken_connection.",pool->pool_name.c_str());
+	} catch(pqxx::conversion_error &e){
+		pool->returnConnection(conn,PgConnectionPool::CONN_DB_EXCEPTION);
+		DBG("SQL exception on %s SQLThread: conversion error: %s.",pool->pool_name.c_str(),e.what());
     } catch(pqxx::pqxx_exception &e){
-	pool->returnConnection(conn,PgConnectionPool::CONN_DB_EXCEPTION);
-	DBG("SQL exception on %s SQLThread: %s.",pool->pool_name.c_str(),e.base().what());
+		pool->returnConnection(conn,PgConnectionPool::CONN_DB_EXCEPTION);
+		DBG("SQL exception on %s SQLThread: %s.",pool->pool_name.c_str(),e.base().what());
     }
     
     if(getprofile_fail&&pool == master_pool&&1==failover_to_slave) {
@@ -523,14 +526,18 @@ SqlCallProfile* SqlRouter::_getprofile(const AmSipRequest &req, pqxx::connection
   ret->transcoder.audio_codecs_norelay_str=r[0]["prefer_transcoding_for_codecs"].c_str();
   ret->transcoder.audio_codecs_norelay_aleg_str=r[0]["prefer_transcoding_for_codecs_aleg"].c_str();
 
+  ret->log_sip = r[0]["log_sip"].as<bool>();
+  ret->log_sip = r[0]["log_rtp"].as<bool>();
+  ret->msg_logger_path = r[0]["msg_logger_path"].c_str();
+
   DBG("sql profile dump: \r\n %s \r\n",ret->print().c_str());
   DBG("sql profile codec_prefs dump: \r\n %s \r\n",ret->codec_prefs.print().c_str());
   DBG("sql profile transcoder dump: \r\n %s \r\n",ret->transcoder.print().c_str());
-  
+
   ret->time_limit=r[0]["time_limit"].as<int>();
-  
+
   if(cache_enabled){
-    int cache_time = r[0]["cache_time"].as<int>();
+	int cache_time = r[0]["cache_time"].as<int>(0);
     if(cache_time > 0){
       DBG("SqlRouter: entry lifetime is %d seconds",cache_time);
       gettimeofday(&ret->expire_time,NULL);
@@ -539,6 +546,7 @@ SqlCallProfile* SqlRouter::_getprofile(const AmSipRequest &req, pqxx::connection
       timerclear(&ret->expire_time);
     }
   }
+
   ret->cached = false;
   
   return ret;

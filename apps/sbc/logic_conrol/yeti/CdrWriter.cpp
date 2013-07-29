@@ -3,6 +3,27 @@
 #include "AmThread.h"
 #include <pqxx/pqxx>
 
+static const char *static_fields_names[] = {
+	"time_limit",
+	"legA_local_ip",
+	"legA_local_port",
+	"legA_remote_ip",
+	"legA_remote_port",
+	"legB_local_ip",
+	"legB_local_port",
+	"legB_remote_ip",
+	"legB_remote_port",
+	"start_time.tv_sec",
+	"connect_time.tv_sec",
+	"end_time.tv_sec",
+	"disconnect_code",
+	"disconnect_reason",
+	"disconnect_initiator",
+	"orig_call_id",
+	"term_call_id",
+	"local_tag"
+};
+
 CdrWriter::CdrWriter()
 {
 
@@ -16,6 +37,17 @@ CdrWriter::~CdrWriter()
 int CdrWriter::configure(CdrWriterCfg& cfg)
 {
   config=cfg;
+  DynFieldsT_iterator dit;
+  /*show all fields*/
+  int i;
+  for(i = 0;i<WRITECDR_STATIC_FIELDS_COUNT;i++){
+	  DBG("%d: %s",i,static_fields_names[i]);
+  }
+  dit = config.dyn_fields.begin();
+  for(;dit!=config.dyn_fields.end();++dit){
+	  i++;
+	  DBG("%d: %s",i,dit->first.c_str());
+  }
   return 0;
 }
 
@@ -220,6 +252,7 @@ void CdrThread::run()
 void CdrThread::prepare_queries(pqxx::connection *c){
   PreparedQueriesT_iterator it = config.prepared_queries.begin();
   DynFieldsT_iterator dit;
+
   for(;it!=config.prepared_queries.end();++it){
     pqxx::prepare::declaration d = c->prepare(it->first,it->second.first);
     //static fields
@@ -300,12 +333,6 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr)
     invoc(cdr->legB_local_port);
     invoc(cdr->legB_remote_ip);
     invoc(cdr->legB_remote_port);
-/*
-	invoc(cdr->term_ip);
-	invoc(cdr->term_port);
-	invoc(cdr->term_local_ip);
-    invoc(cdr->local_port);
-*/
 	invoc(cdr->start_time.tv_sec);
 	invoc(cdr->connect_time.tv_sec);
 	invoc(cdr->end_time.tv_sec);
