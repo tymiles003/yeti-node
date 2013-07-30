@@ -527,7 +527,7 @@ SqlCallProfile* SqlRouter::_getprofile(const AmSipRequest &req, pqxx::connection
   ret->transcoder.audio_codecs_norelay_aleg_str=r[0]["prefer_transcoding_for_codecs_aleg"].c_str();
 
   ret->log_sip = r[0]["log_sip"].as<bool>();
-  ret->log_sip = r[0]["log_rtp"].as<bool>();
+  ret->log_rtp = r[0]["log_rtp"].as<bool>();
   ret->msg_logger_path = r[0]["msg_logger_path"].c_str();
 
   DBG("sql profile dump: \r\n %s \r\n",ret->print().c_str());
