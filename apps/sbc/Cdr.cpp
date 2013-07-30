@@ -21,20 +21,27 @@ void Cdr::init(){
     legA_remote_ip = "";
     legA_local_ip = "";
 
+	msg_logger_path = "";
+
     time_limit = 0;
 }
 
-void Cdr::update(const SqlCallProfile &profile){
-    if(writed) return;
+void Cdr::update_sql(const SqlCallProfile &profile){
     SQLexception = profile.SQLexception;
     outbound_proxy = profile.outbound_proxy;
     dyn_fields = profile.dyn_fields;
     time_limit = profile.time_limit;
 }
 
+void Cdr::update_sbc(const SBCCallProfile &profile){
+	msg_logger_path = profile.msg_logger_path;
+	log_rtp = profile.log_rtp;
+	log_sip = profile.log_sip;
+}
+
 void Cdr::update(const AmSipRequest &req){
-    if(writed) return;
-    legA_remote_ip = req.remote_ip;
+	if(writed) return;
+	legA_remote_ip = req.remote_ip;
     legA_remote_port = req.remote_port;
     legA_local_ip = req.local_ip;
     legA_local_port = req.local_port;
@@ -114,6 +121,10 @@ void Cdr::refuse(const SBCCallProfile &profile){
     unlock();
 }
 
+void Cdr::replace(ParamReplacerCtx &ctx,const AmSipRequest &req){
+	msg_logger_path = ctx.replaceParameters(msg_logger_path,"msg_logger_path",req);
+}
+
 Cdr::Cdr(){
     init();
 }
@@ -121,5 +132,5 @@ Cdr::Cdr(){
 Cdr::Cdr(const SqlCallProfile &profile)
 {
     init();
-    update(profile);
+	update_sql(profile);
 }

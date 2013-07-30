@@ -21,7 +21,10 @@ static const char *static_fields_names[] = {
 	"disconnect_initiator",
 	"orig_call_id",
 	"term_call_id",
-	"local_tag"
+	"local_tag",
+	"msg_logger_path",
+	"log_rtp",
+	"log_sip"
 };
 
 CdrWriter::CdrWriter()
@@ -342,6 +345,10 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr)
 	invoc(cdr->orig_call_id);
 	invoc(cdr->term_call_id);
 	invoc(cdr->local_tag);
+	invoc(cdr->msg_logger_path);
+	invoc(cdr->log_rtp);
+	invoc(cdr->log_sip);
+
       /* invocate dynamic fields  */
 // 	DBG("dyn_fields.size() = %ld",cdr->start_data.dyn_fields.size());
     list<string>::iterator it = cdr->dyn_fields.begin();
@@ -370,7 +377,10 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr)
 	+tnx.quote(cdr->disconnect_initiator)+","
 	+tnx.quote(cdr->orig_call_id)+","
 	+tnx.quote(cdr->term_call_id)+","
-	+tnx.quote(cdr->local_tag)+")"
+	+tnx.quote(cdr->local_tag)+","
+	+tnx.quote(cdr->msg_logger_path)+","
+	+tnx.quote(cdr->log_rtp)+","
+	+tnx.quote(cdr->log_sip)+")"
       );
     }
     if (r.size()!=0&&0==r[0][0].as<int>()){

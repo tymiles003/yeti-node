@@ -25,6 +25,10 @@ struct Cdr: public
 {
     bool writed;
 
+	string msg_logger_path;
+	bool log_rtp;
+	bool log_sip;
+
     string disconnect_reason;
     int disconnect_code;
     int disconnect_initiator;
@@ -46,16 +50,18 @@ struct Cdr: public
     list<string> dyn_fields;
     string outbound_proxy;
 
-    Cdr();
+	Cdr();
     Cdr(const SqlCallProfile &profile);
 
     void init();
-    void update(const SqlCallProfile &profile);
+	void update_sql(const SqlCallProfile &profile);
+	void update_sbc(const SBCCallProfile &profile);
     void update(const AmSipRequest &req);
     void update(const AmSipReply &reply);
     void update(SBCCallLeg &leg);
     void update(UpdateAction act);
     void update(DisconnectInitiator initiator,string reason, int code);
+	void replace(ParamReplacerCtx &ctx,const AmSipRequest &req);
     void refuse(const SBCCallProfile &profile);
 };
 

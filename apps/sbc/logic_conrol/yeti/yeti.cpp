@@ -78,7 +78,7 @@ int Yeti::onLoad() {
     profile->readFromConfiguration("transparent",profile_file_name);
     profile->cc_vars.clear();
     profile->cc_interfaces.clear();
-    profile->cc_interfaces.push_back(self_iface);   //add reference to ourself
+	//profile->cc_interfaces.push_back(self_iface);   //add reference to ourself
 
     DBG("p = %p",profile);
 
@@ -196,7 +196,7 @@ SBCCallLeg *Yeti::getCallLeg( const AmSipRequest& req,
 
     SqlCallProfile *profile = router->getprofile(req);
     SBCCallProfile& call_profile = *profile;
-    Cdr *cdr = new Cdr(*profile);
+	Cdr *cdr = new Cdr(*profile);
 
     if(!call_profile.refuse_with.empty()) {
       if(call_profile.refuse(ctx, req) < 0) {
@@ -204,8 +204,8 @@ SBCCallLeg *Yeti::getCallLeg( const AmSipRequest& req,
       }
       cdr->update(Start);
       cdr->update(req);
-      cdr->refuse(*profile);
-      router->write_cdr(cdr);
+	  cdr->refuse(*profile);
+	  router->write_cdr(cdr);
       delete profile;
       return NULL;
     }
@@ -297,10 +297,17 @@ CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, const AmSipReply& reply)
 
 CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerParams &params) {
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+	SBCCallProfile &profile = call->getCallProfile();
 
     Cdr *cdr = call->getCdr();
+	const AmSipRequest &req = *params.original_invite;
+
     cdr->update(Start);
-    cdr->update(*params.original_invite);
+	cdr->update_sbc(call->getCallProfile());
+	cdr->update(req);
+
+	ParamReplacerCtx ctx(&profile);
+	cdr->replace(ctx,req);
 
     if(cdr->time_limit){
         DBG("%s() save timer %d with timeout %d",FUNC_NAME,
