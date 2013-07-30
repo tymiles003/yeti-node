@@ -323,6 +323,17 @@ void SBCFactory::onOoDRequest(const AmSipRequest& req)
 
   string profile_rule;
 
+	if(req.method==SIP_METH_OPTIONS){
+		//hack for response for LB node ping
+		DBG("%s() reply 200 OK for %s to %s:%d %s (hardcoded)",FUNC_NAME,
+			req.method.c_str(),
+			req.remote_ip.c_str(),
+			req.remote_port,
+			req.callid.c_str());
+		AmSipDialog::reply_error(req,200,"OK");
+		return;
+	}
+
   SBCCallProfile& call_profile = logic->getCallProfile(req,ctx);
 
   ctx.call_profile = &call_profile;
