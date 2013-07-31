@@ -1,0 +1,41 @@
+From bbf244ac879f60dc9fd698e9d1893e518e573624 Mon Sep 17 00:00:00 2001
+From: Raphael Coeffic <rco@iptel.org>
+Date: Fri, 26 Jul 2013 00:53:38 +0200
+Subject: [PATCH] b/f: sbc: use a copy of the request for relaySip()
+
+when a request has been replied, it is removed from recv_req, which also means that the request is invalid after reply(). using a copy of the request stored in recv_req should solve this issue.
+---
+ apps/sbc/CallLeg.cpp |    9 +++------
+ 1 files changed, 3 insertions(+), 6 deletions(-)
+
+diff --git a/apps/sbc/CallLeg.cpp b/apps/sbc/CallLeg.cpp
+index dcee9a9..c71a8e4 100644
+--- a/apps/sbc/CallLeg.cpp
++++ b/apps/sbc/CallLeg.cpp
+@@ -238,20 +238,17 @@ int CallLeg::relaySipReply(AmSipReply &reply)
+   }
+ 
+   int res;
++  AmSipRequest req(t_req->second);
+ 
+   if ((reply.code >= 300) && (reply.code <= 305) && !reply.contact.empty()) {
+     // relay with Contact in 300 - 305 redirect messages
+     AmSipReply n_reply(reply);
+     n_reply.hdrs += SIP_HDR_COLSP(SIP_HDR_CONTACT) + reply.contact + CRLF;
+ 
+-    res = relaySip(t_req->second, n_reply);
++    res = relaySip(req, n_reply);
+   }
+-  else res = relaySip(t_req->second, reply) < 0; // relay response directly
++  else res = relaySip(req, reply); // relay response directly
+ 
+-  // if (reply.code >= 200){
+-  //   DBG("recvd_req.erase(<%u,%s>)\n", t_req->first, t_req->second.method.c_str());
+-  //   recvd_req.erase(t_req);
+-  // }
+   return res;
+ }
+ 
+-- 
+1.7.7.5 (Apple Git-26)
+
