@@ -7,8 +7,6 @@
 #include <string.h>
 #include <syslog.h>
 #include <exception>
-#include <boost/concept_check.hpp>
-#include <boost/lexical_cast.hpp>
 #include "SBCCallProfile.h"
 
 #include "PgConnectionPool.h"
@@ -95,7 +93,7 @@ int SqlRouter::db_configure(AmConfigReader& cfg){
     sql_query = "SELECT switch.writecdr($1";
     n = WRITECDR_STATIC_FIELDS_COUNT+dyn_fields.size();
     for(int i = 2;i<=n;i++){
-      sql_query.append(",$"+boost::lexical_cast<string>(i));
+	  sql_query.append(",$"+int2str(i));
     }
     sql_query.append(");");
     cdr_prepared_queries["writecdr"] = pair<string,int>(sql_query,n);
