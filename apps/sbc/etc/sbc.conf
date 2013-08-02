@@ -1,9 +1,10 @@
-
+#load_logic_module=lm_localfs
+load_logic_module=yeti
 # profiles - comma-separated list of call profiles to load
 #
 # <name>.sbcprofile.conf is loaded from module config 
 # path (the path where this file resides)
-profiles=transparent,auth_b2b,sst_b2b
+#profiles=transparent,auth_b2b,sst_b2b
 
 # active call profile - comma separated list, first non-empty is used
 #
@@ -15,7 +16,7 @@ profiles=transparent,auth_b2b,sst_b2b
 #
 # o any replacement pattern
 #
-active_profile=transparent
+#active_profile=transparent
 
 # regex_maps - comma-separated list of regex maps to load at startup, for $M()
 # 
@@ -29,6 +30,7 @@ active_profile=transparent
 #                   analogous to load_plugins in sems.conf
 #
 # e.g. load_cc_plugins=cc_pcalls;cc_ctl
+#load_cc_plugins=yeti
 #load_cc_plugins=cc_pcalls;cc_ctl
 
 ## RFC4028 Session Timer
