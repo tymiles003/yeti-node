@@ -145,7 +145,7 @@ rtp_high_port=60000
 # 
 # - sets the path to the plug-ins' binaries
 # - may be absolute or relative to CWD
-plugin_path=/usr/local/lib/sems/plug-in/
+plugin_path=${SEMS_EXEC_PREFIX}/${SEMS_LIBDIR}/sems/plug-in/
 
 # optional parameter: load_plugins=<modules list>
 # 
@@ -194,7 +194,7 @@ application = sbc
 #
 # - in this path configuration files of the applications 
 #   (e.g. announcement.conf) are searched
-plugin_config_path=/usr/local/etc/sems/etc/
+plugin_config_path=${SEMS_CFG_PREFIX}/etc/sems/etc/
 
 # optional parameter: exclude_payloads=<payload list>
 #
