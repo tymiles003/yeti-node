@@ -154,7 +154,7 @@ plugin_path=/usr/local/lib/sems/plug-in/
 #
 # example for announcement with only g711 and ilbc codecs  
 # load_plugins=wav;ilbc;announcement
-load_plugins=wav;ilbc;speex;gsm;adpcm;l16;jsonrpc;stats;session_timer;monitoring;xmlrpc2di;uac_auth
+load_plugins=wav;ilbc;speex;gsm;adpcm;l16;sbc;stats;session_timer;monitoring;xmlrpc2di;uac_auth
 # optional parameter: exclude_plugins=<modules list>
 #
 # semicolon-separated list of modules to exclude from loading
