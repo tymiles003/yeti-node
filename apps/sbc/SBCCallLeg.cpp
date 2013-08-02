@@ -171,6 +171,7 @@ SBCCallLeg::SBCCallLeg(const SBCCallProfile& call_profile, AmSipDialog* p_dlg,
   // or do we really want to start with OA when handling initial INVITE?
   dlg->setOAEnabled(false);
 
+  memset(&call_start_ts, 0, sizeof(struct timeval));
   memset(&call_connect_ts, 0, sizeof(struct timeval));
   memset(&call_end_ts, 0, sizeof(struct timeval));
 
@@ -178,7 +179,8 @@ SBCCallLeg::SBCCallLeg(const SBCCallProfile& call_profile, AmSipDialog* p_dlg,
      call_profile.rtprelay_bw_limit_peak > 0) {
 
     RateLimit* limit = new RateLimit(call_profile.rtprelay_bw_limit_rate,
-				     call_profile.rtprelay_bw_limit_peak, 1);
+				     call_profile.rtprelay_bw_limit_peak,
+				     1000);
     rtp_relay_rate_limit.reset(limit);
   }
 }
@@ -236,6 +238,9 @@ SBCCallLeg::SBCCallLeg(AmSipDialog* p_dlg, AmSipSubscription* p_subs)
     cc_started(false),
     logger(NULL)
 {
+  memset(&call_start_ts, 0, sizeof(struct timeval));
+  memset(&call_connect_ts, 0, sizeof(struct timeval));
+  memset(&call_end_ts, 0, sizeof(struct timeval));
 }
 
 void SBCCallLeg::onStart()
@@ -651,7 +656,7 @@ void SBCCallLeg::onControlCmd(string& cmd, AmArg& params) {
     if (a_leg) {
       // was for caller:
       DBG("teardown requested from control cmd\n");
-      stopCall();
+      stopCall("ctrl-cmd");
       SBCEventLog::instance()->logCallEnd(dlg,"ctrl-cmd",&call_connect_ts);
       // FIXME: don't we want to relay the controll event as well?
     }
@@ -680,7 +685,7 @@ void SBCCallLeg::process(AmEvent* ev) {
       if (timer_id >= SBC_TIMER_ID_CALL_TIMERS_START &&
           timer_id <= SBC_TIMER_ID_CALL_TIMERS_END) {
         DBG("timer %d timeout, stopping call\n", timer_id);
-        stopCall();
+        stopCall("timer");
 	SBCEventLog::instance()->logCallEnd(dlg,"timeout",&call_connect_ts);
         ev->processed = true;
       }
@@ -1196,14 +1201,14 @@ void SBCCallLeg::CCConnect(const AmSipReply& reply) {
 	    "module '%s' named '%s', parameters '%s'\n",
 	    cc_if.cc_module.c_str(), cc_if.cc_name.c_str(),
 	    AmArg::print(di_args).c_str());
-      stopCall();
+      stopCall(StatusChangeCause::InternalError);
       return;
     } catch (const AmArg::TypeMismatchException& e) {
       ERROR("TypeMismatchException executing call control interface connect "
 	    "module '%s' named '%s', parameters '%s'\n",
 	    cc_if.cc_module.c_str(), cc_if.cc_name.c_str(),
 	    AmArg::print(di_args).c_str());
-      stopCall();
+      stopCall(StatusChangeCause::InternalError);
       return;
     }
 
@@ -1253,10 +1258,10 @@ void SBCCallLeg::CCEnd(const CCInterfaceListIteratorT& end_interface) {
   }
 }
 
-void SBCCallLeg::onCallStatusChange()
+void SBCCallLeg::onCallStatusChange(const StatusChangeCause &cause)
 {
   for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
-    (*i)->onStateChange(this);
+    (*i)->onStateChange(this, cause);
   }
 }
 

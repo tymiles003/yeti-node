@@ -191,6 +191,33 @@ class CallLeg: public AmB2BSession
       CallCanceled //< call canceled
     };
 
+    /** reason for changing call status */
+    struct StatusChangeCause
+    {
+      enum Reason {
+        SipReply,
+        SipRequest,
+        Canceled,
+        NoAck,
+        NoPrack,
+        RtpTimeout,
+        SessionTimeout,
+        InternalError,
+        Other
+      } reason;
+
+      union {
+        const AmSipReply *reply;
+        const AmSipRequest *request;
+        const char *desc;
+      } param;
+      StatusChangeCause(const AmSipReply *r): reason(SipReply) { param.reply = r; }
+      StatusChangeCause(const AmSipRequest *r): reason(SipRequest) { param.request = r; }
+      StatusChangeCause(): reason(Other) { param.desc = NULL; }
+      StatusChangeCause(const char *desc): reason(Other) { param.desc = desc; }
+      StatusChangeCause(const Reason r): reason(r) { param.reply = NULL; }
+    };
+
   private:
 
     CallStatus call_status; //< status of the call (replaces callee's status)
@@ -252,14 +279,14 @@ class CallLeg: public AmB2BSession
     /** remove given leg from the list of other legs */
     void removeOtherLeg(const string &id);
 
-    void updateCallStatus(CallStatus new_status);
+    void updateCallStatus(CallStatus new_status, const StatusChangeCause &cause = StatusChangeCause());
 
     //////////////////////////////////////////////////////////////////////
     // callbacks (intended to be redefined in successors but should not be
     // called by them directly)
 
     /* handler called when call status changes */
-    virtual void onCallStatusChange() { }
+    virtual void onCallStatusChange(const StatusChangeCause &cause) { }
 
     /** handler called when the second leg is connected (FIXME: this is a hack,
      * use this method in SBCCallLeg only) */
@@ -306,6 +333,13 @@ class CallLeg: public AmB2BSession
     virtual void onCancel(const AmSipRequest& req);
     virtual void onBye(const AmSipRequest& req);
     virtual void onRemoteDisappeared(const AmSipReply& reply);
+    virtual void onNoAck(unsigned int cseq);
+    virtual void onNoPrack(const AmSipRequest &req, const AmSipReply &rpl);
+    virtual void onRtpTimeout();
+    virtual void onSessionTimeout();
+
+    // @see AmB2BSession
+    virtual void onOtherBye(const AmSipRequest& req);
 
     virtual void onSipRequest(const AmSipRequest& req);
     virtual void onSipReply(const AmSipRequest& req, const AmSipReply& reply, AmSipDialog::Status old_dlg_status);
@@ -330,7 +364,7 @@ class CallLeg: public AmB2BSession
 
     /** Terminate the whole B2B call (if there is no other leg only this one is
      * stopped). */
-    virtual void stopCall();
+    virtual void stopCall(const StatusChangeCause &cause);
 
 
     /** Put remote party on hold (may change RTP relay mode!). Note that this
