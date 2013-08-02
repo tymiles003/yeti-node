@@ -3,6 +3,7 @@
 
 #include "SqlCallProfile.h"
 #include "SBCCallLeg.h"
+#include "Resource.h"
 #include "time.h"
 
 enum UpdateAction {
@@ -24,6 +25,8 @@ struct Cdr: public
     atomic_int
 {
     bool writed;
+
+	ResourceList rl;
 
 	string msg_logger_path;
 	bool log_rtp;
@@ -63,6 +66,7 @@ struct Cdr: public
     void update(DisconnectInitiator initiator,string reason, int code);
 	void replace(ParamReplacerCtx &ctx,const AmSipRequest &req);
     void refuse(const SBCCallProfile &profile);
+	void refuse(int code, string reason);
 };
 
 #endif // CDR_H

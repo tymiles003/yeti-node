@@ -31,6 +31,15 @@ void Cdr::update_sql(const SqlCallProfile &profile){
     outbound_proxy = profile.outbound_proxy;
     dyn_fields = profile.dyn_fields;
     time_limit = profile.time_limit;
+	try {
+		rl = resource_parse(profile.resources);
+		ResourceList::const_iterator i = rl.begin();
+		for(;i!=rl.end();++i){
+			DBG("%p: resource: <%s>",this,resource_print(*i).c_str());
+		}
+	} catch(ResourceParseException &e){
+		DBG("resources parse error:  %s <ctx = '%s'>",e.what.c_str(),e.ctx.c_str());
+	}
 }
 
 void Cdr::update_sbc(const SBCCallProfile &profile){
@@ -119,6 +128,14 @@ void Cdr::refuse(const SBCCallProfile &profile){
         disconnect_code = refuse_with_code;
     }
     unlock();
+}
+
+void Cdr::refuse(int code, string reason){
+	if(writed) return;
+	lock();
+	disconnect_code = code;
+	disconnect_reason = reason;
+	unlock();
 }
 
 void Cdr::replace(ParamReplacerCtx &ctx,const AmSipRequest &req){

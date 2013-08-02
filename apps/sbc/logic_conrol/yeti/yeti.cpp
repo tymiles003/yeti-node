@@ -57,6 +57,7 @@ Yeti::Yeti():
 Yeti::~Yeti() {
     DBG("~Yeti()");
     router->stop();
+	rctl.stop();
 }
 
 int Yeti::onLoad() {
@@ -81,6 +82,11 @@ int Yeti::onLoad() {
 	//profile->cc_interfaces.push_back(self_iface);   //add reference to ourself
 
     DBG("p = %p",profile);
+	if(rctl.configure(cfg)){
+		ERROR("ResourceControl confgiure failed");
+		return -1;
+	}
+	rctl.start();
 
     if (router->configure(cfg)){
         ERROR("SqlRouter confgiure failed");
@@ -283,6 +289,7 @@ void Yeti::onDestroyLeg(SBCCallLeg *call){
     Cdr *cdr = call->getCdr();
     if(cdr->dec_and_test()){
         cdr_list.erase_lookup_key(&cdr->local_tag);
+		rctl.put(cdr->rl);
         router->write_cdr(cdr);
     }
 }
@@ -297,19 +304,34 @@ CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, const AmSipReply& reply)
 
 CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerParams &params) {
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
-	SBCCallProfile &profile = call->getCallProfile();
 
+	SBCCallProfile &profile = call->getCallProfile();
     Cdr *cdr = call->getCdr();
 	const AmSipRequest &req = *params.original_invite;
 
-    cdr->update(Start);
-	cdr->update_sbc(call->getCallProfile());
+	cdr->update(Start);
+	cdr->update_sbc(profile);
 	cdr->update(req);
 
 	ParamReplacerCtx ctx(&profile);
 	cdr->replace(ctx,req);
 
-    if(cdr->time_limit){
+	string refuse_reason;
+	int refuse_code;
+	ResourceCtlResponse rctl_ret =
+		rctl.get(cdr->rl,refuse_code,refuse_reason);
+	switch(rctl_ret){
+		case RES_CTL_OK:
+			//nothing to do
+			break;
+		case RES_CTL_REJECT:
+		case RES_CTL_ERROR:
+			cdr->update(DisconnectByTS,refuse_reason,refuse_code);
+			throw AmSession::Exception(refuse_code,refuse_reason);
+			break;
+	}
+
+	if(cdr->time_limit){
         DBG("%s() save timer %d with timeout %d",FUNC_NAME,
               SBC_TIMER_ID_CALL_TIMERS_START,
               cdr->time_limit);
@@ -414,7 +436,7 @@ void Yeti::onCallConnected(SBCCallLeg *call, const AmSipReply& reply){
     if(call->isALeg()){
         Cdr *cdr = call->getCdr();
         cdr->update(Connect);
-        cdr_list.insert(&cdr->local_tag,cdr);
+		cdr_list.insert(&cdr->local_tag,cdr);
     }
 }
     //!Ood handlers

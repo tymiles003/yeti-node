@@ -1,4 +1,5 @@
-find_package(PostgreSQL REQUIRED)
+find_package(PQXX REQUIRED)
+find_package(HiRedis REQUIRED)
 
 set (yeti_SRCS
 	yeti.cpp
@@ -8,6 +9,8 @@ set (yeti_SRCS
 	CdrWriter.cpp
 	SqlRouter.cpp
 	DbConfig.cpp
+        ResourceCache.cpp
+        ResourceControl.cpp
 )
 
 SET(yeti_config_files
@@ -18,8 +21,9 @@ INSTALL(PROGRAMS yetictl DESTINATION ${SEMS_EXEC_PREFIX}/sbin)
 
 
 INCLUDE_DIRECTORIES(../..)	#relative path to SBC headers
+INCLUDE_DIRECTORIES(${HIREDIS_INCLUDE_DIR} ${PQXX_INCLUDE_DIRECTORIES})
 
-SET(sems_module_libs -lpqxx)
+SET(sems_module_libs ${HIREDIS_LIBRARIES} ${PQXX_LIBRARIES})
 SET(sems_module_name yeti)
 
 IF(EXISTS ${CMAKE_SOURCE_DIR}/.git)

@@ -15,6 +15,7 @@ struct SqlCallProfile
     bool cached;
     struct timeval expire_time;
     list<string> dyn_fields;
+	string resources;
 
     SqlCallProfile();
     ~SqlCallProfile();

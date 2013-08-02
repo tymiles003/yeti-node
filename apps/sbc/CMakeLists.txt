@@ -20,6 +20,7 @@ CallLeg.cpp
 RateLimit.cpp
 Cdr.cpp
 SqlCallProfile.cpp
+Resource.cpp
 )
 
 SET(sbc_config_files

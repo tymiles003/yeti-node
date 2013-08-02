@@ -535,6 +535,7 @@ SqlCallProfile* SqlRouter::_getprofile(const AmSipRequest &req, pqxx::connection
   DBG("sql profile transcoder dump: \r\n %s \r\n",ret->transcoder.print().c_str());
 
   ret->time_limit=r[0]["time_limit"].as<int>();
+  ret->resources = r[0]["resources"].c_str();
 
   if(cache_enabled){
 	int cache_time = r[0]["cache_time"].as<int>(0);

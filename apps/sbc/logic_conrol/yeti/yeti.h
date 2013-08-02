@@ -15,6 +15,7 @@
 #include "CdrList.h"
 #include "CdrWriter.h"
 #include "SBC.h"
+#include "ResourceControl.h"
 
 class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterface
 {
@@ -23,6 +24,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   SBCCallProfile *profile;  //profile for OoD requests
   CCInterface self_iface;
   CdrList cdr_list;
+  ResourceControl rctl;
   SqlRouter *router;
 
   AmConfigReader cfg;
