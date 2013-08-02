@@ -14,11 +14,11 @@ set (yeti_SRCS
 )
 
 SET(yeti_config_files
-	etc/yeti.cfg.dist
+	yeti.dist
+	oodprofile.yeti.dist
 )
-INSTALL(FILES etc/yeti.conf.dist etc/oodprofile.yeti.conf DESTINATION ${SEMS_CFG_PREFIX}/etc/sems/etc)
-INSTALL(PROGRAMS yetictl DESTINATION ${SEMS_EXEC_PREFIX}/sbin)
 
+INSTALL(PROGRAMS yetictl DESTINATION ${SEMS_EXEC_PREFIX}/sbin)
 
 INCLUDE_DIRECTORIES(../..)	#relative path to SBC headers
 INCLUDE_DIRECTORIES(${HIREDIS_INCLUDE_DIR} ${PQXX_INCLUDE_DIRECTORIES})
