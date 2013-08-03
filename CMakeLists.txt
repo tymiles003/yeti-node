@@ -329,9 +329,9 @@ IF(EXISTS /etc/debian_version) # simple check for debian
 	)
 
 	SET(CPACK_DEBIAN_PACKAGE_DEPENDS_LIST
-		"libssl1.0.0 (>= 1.0.1)"
-		"libhiredis0.10 (>= 0.10.1)"
-		"libpqxx-3.1 (>= 3.1)"
+	#	"libssl1.0.0 (>= 1.0.1)"
+	#	"libhiredis0.10 (>= 0.10.1)"
+	#	"libpqxx-3.1 (>= 3.1)"
 	)
 	STRING(REPLACE ";" ", " CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS_LIST}")
 
