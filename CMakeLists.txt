@@ -307,8 +307,7 @@ IF(EXISTS /etc/debian_version) # simple check for debian
 	SET(CPACK_PACKAGE_NAME ${DEB_NAME})
 	SET(CPACK_DEBIAN_PACKAGE_NAME ${DEB_NAME})
 
-	SET(CPACK_DEBIAN_PACKAGE_MAINTAINER  "Furmur Michael")
-	SET(CPACK_PACKAGE_CONTACT "void@onat.edu.ua")
+	SET(CPACK_DEBIAN_PACKAGE_MAINTAINER  "Furmur Michael <void@onat.edu.ua>")
 	SET(CPACK_DEBIAN_PACKAGE_DESCRIPTION "fancy softswitch based on sems")
 	SET(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "${DEB_ARCH}")
 	SET(CPACK_DEBIAN_PACKAGE_SECTION "net")
@@ -325,10 +324,15 @@ IF(EXISTS /etc/debian_version) # simple check for debian
 	SET(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
 		${DEB_CONTROL_DIR}/postinst
 		${DEB_CONTROL_DIR}/postrm
+		${DEB_CONTROL_DIR}/prerm
 		${DEB_CONTROL_DIR}/templates
 	)
 
+	SET(CPACK_DEBIAN_PACKAGE_CONFLICTS ${DEB_NAME})
+
 	SET(CPACK_DEBIAN_PACKAGE_DEPENDS_LIST
+		"python"
+		"redis-server"
 	#	"libssl1.0.0 (>= 1.0.1)"
 	#	"libhiredis0.10 (>= 0.10.1)"
 	#	"libpqxx-3.1 (>= 3.1)"

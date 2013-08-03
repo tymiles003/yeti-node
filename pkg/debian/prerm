@@ -1,0 +1,10 @@
+#!/bin/bash
+
+if [ -x "/etc/init.d/sems" ]; then
+  if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
+    invoke-rc.d sems stop 3>/dev/null || exit 0
+  else
+    /etc/init.d/sems stop 3>/dev/null || exit 0
+  fi
+fi
+

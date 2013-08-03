@@ -18,7 +18,14 @@ SET(yeti_config_files
 	oodprofile.yeti.dist
 )
 
-INSTALL(PROGRAMS yetictl DESTINATION ${SEMS_EXEC_PREFIX}/sbin)
+INSTALL(PROGRAMS
+	tools/yetictl
+	tools/yeti-version
+	tools/yeti-stats
+	tools/yeti-callscount
+	tools/yeti-showconfig
+	DESTINATION ${SEMS_EXEC_PREFIX}/sbin
+)
 
 INCLUDE_DIRECTORIES(../..)	#relative path to SBC headers
 INCLUDE_DIRECTORIES(${HIREDIS_INCLUDE_DIR} ${PQXX_INCLUDE_DIRECTORIES})
