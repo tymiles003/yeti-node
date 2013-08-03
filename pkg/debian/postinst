@@ -178,15 +178,15 @@ echo ""
 echo "Setting sems to start automatically"
 /usr/sbin/update-rc.d sems defaults || true
 
+echo "don't forget to copy yeti dist config files if needed"
 
-if [ -x "/etc/init.d/sems" ]; then
-  if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
-    invoke-rc.d sems restart 3>/dev/null || exit 0
-  else
-    /etc/init.d/sems restart 3>/dev/null || exit 0
-  fi
-fi
+#if [ -x "/etc/init.d/sems" ]; then
+#  if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
+#    invoke-rc.d sems restart 3>/dev/null || exit 0
+#  else
+#    /etc/init.d/sems restart 3>/dev/null || exit 0
+#  fi
+#fi
                                                                 
-
 exit 0
 
