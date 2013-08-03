@@ -15,7 +15,7 @@ if test -f /etc/default/sems ; then
 fi
 
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
-DAEMON=/usr/sbin/sems
+DAEMON=/usr/local/sbin/sems
 NAME=sems
 DESC=sems
 
