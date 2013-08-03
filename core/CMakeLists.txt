@@ -60,5 +60,5 @@ SET(doc_files
 	../doc/Tuning.txt
 )
 
-SEMS_INSTALL_DOCS("${doc_files}" "${doc_dirs}")
+#SEMS_INSTALL_DOCS("${doc_files}" "${doc_dirs}")
 SEMS_INSTALL_AUDIO("" "${audio_files}")
