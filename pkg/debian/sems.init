@@ -51,7 +51,7 @@ if ! test -f $DAEMON ; then
   exit 0
 fi
 
-LD_LIBRARY_PATH=/usr/lib/sems
+LD_LIBRARY_PATH=/usr/local/lib/sems
 export LD_LIBRARY_PATH
 
 set -e

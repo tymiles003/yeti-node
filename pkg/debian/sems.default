@@ -7,7 +7,7 @@
 
 # SEMS configuration file
 #DEBCONF-CFG_FILE-START
-SEMS_CFG_FILE="/etc/sems/sems.conf"
+SEMS_CFG_FILE="/usr/local/etc/sems/sems.conf"
 #DEBCONF-CFG_FILE-END
 
 # WARN:  if SEMS_USER/SEMS_GROUP is set, dumping core
