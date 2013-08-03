@@ -8,7 +8,6 @@
 #include <list>
 #include <vector>
 #include <pqxx/pqxx>
-#include <boost/iterator/iterator_concepts.hpp>
 #include "DbConfig.h"
 #include <sys/time.h>
 #include <unistd.h>
