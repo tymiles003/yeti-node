@@ -20,7 +20,9 @@ ResourceList resource_parse(const std::string rs){
 			str2int(vc[2],r.limit) &&
 			str2int(vc[3],r.takes))
 		{
-			rl.push_back(r);
+			if(r.limit!=0){	//skip unlimited resources
+				rl.push_back(r);
+			}
 		} else {
 			DBG("%s() str2int conversion error",FUNC_NAME);
 			throw ResourceParseException("invalid format: str2int conversion",(*ri));

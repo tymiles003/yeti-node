@@ -96,6 +96,7 @@ ResourceCtlResponse ResourceControl::get(ResourceList &rl,
 	ResourceList::iterator rli;
 
 	if(rl.empty()){
+		DBG("empty resources list. do nothing");
 		return RES_CTL_OK;
 	}
 
