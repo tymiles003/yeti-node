@@ -1,0 +1,14 @@
+/var/log/sems/*.log {
+	rotate 5
+	weekly
+	missingok
+	notifempty
+#	create 640 sems adm
+	delaycompress
+	compress
+	olddir /var/log/sems/old
+	sharedscripts
+	postrotate
+		invoke-rc.d rsyslog rotate > /dev/null
+	endscript
+}

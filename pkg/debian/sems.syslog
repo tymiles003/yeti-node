@@ -1,0 +1,4 @@
+if $programname == 'sems' then {
+	*.=debug,=err	-/var/log/sems/sems-debug.log
+	*.info		/var/log/sems/sems-main.log
+}
