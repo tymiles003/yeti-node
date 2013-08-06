@@ -83,6 +83,22 @@ case "$1" in
 	# start-stop-daemon --stop --signal 1 --quiet --pidfile \
 	#	$SEMS_PIDFILE --exec $DAEMON
   #;;
+  graceful-stop|gstop)
+	echo -n "Stopping  gracefully $DESC: $NAME"
+	start-stop-daemon --oknodo --stop --signal 2 --quiet --pidfile $SEMS_PIDFILE \
+		--exec $DAEMON
+	log_end_msg $?
+	;;
+  graceful-restart|grestart)
+	echo "Restarting gracefully $DESC: $NAME"
+	start-stop-daemon --oknodo --stop --signal 2 --quiet --pidfile $SEMS_PIDFILE \
+		--exec $DAEMON
+	sleep 5
+		start-stop-daemon --start --quiet --pidfile \
+		$SEMS_PIDFILE --exec $DAEMON  -- $PARAMS
+	echo "."
+	;;
+
   restart|force-reload)
 	#
 	#	If the "reload" option is implemented, move the "force-reload"
@@ -112,7 +128,7 @@ case "$1" in
   *)
 	N=/etc/init.d/$NAME
 	# echo "Usage: $N {start|stop|restart|reload|force-reload}" >&2
-	echo "Usage: $N {start|stop|restart|force-reload|status}" >&2
+	echo "Usage: $N {start|stop|graceful-stop|gstop|restart|graceful-restart|grestart|force-reload|status}" >&2
 	exit 1
 	;;
 esac
