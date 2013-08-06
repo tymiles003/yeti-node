@@ -36,7 +36,7 @@ This process created the file `CMakeCache.txt' and the directory `CMakeFiles'.
 Please delete them.")
 ENDIF(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR AND NOT MSVC_IDE)
 
-OPTION(SEMS_USE_SPANDSP       "Build with spandsp" OFF)
+OPTION(SEMS_USE_SPANDSP       "Build with spandsp" ON)
 OPTION(SEMS_USE_LIBSAMPLERATE "Build with libsamplerate" OFF)
 OPTION(SEMS_USE_ZRTP          "Build with ZRTP" OFF)
 OPTION(SEMS_USE_MP3           "Build with Lame MP3" OFF)
