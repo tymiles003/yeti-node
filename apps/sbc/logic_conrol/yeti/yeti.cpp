@@ -360,6 +360,7 @@ CCChainProcessing Yeti::onInDialogReply(SBCCallLeg *call, const AmSipReply &repl
 
 CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+
     if(call->isALeg()){
         AmPluginEvent* plugin_event = dynamic_cast<AmPluginEvent*>(e);
         if(plugin_event){
@@ -383,7 +384,18 @@ CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
                 call->getCdr()->update(DisconnectByTS,"Teardown",200);
             }
         }
-    }
+
+		if (e->event_id == E_SYSTEM) {
+			AmSystemEvent* sys_ev = dynamic_cast<AmSystemEvent*>(e);
+			if(sys_ev){
+				DBG("Session received system Event");
+				if (sys_ev->sys_event == AmSystemEvent::ServerShutdown) {
+					DBG("ServerShutdown event");
+					call->getCdr()->update(DisconnectByTS,"ServerShutdown",200);
+				}
+			}
+		}
+	}
     return ContinueProcessing;
 }
 
