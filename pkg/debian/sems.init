@@ -60,13 +60,13 @@ set -e
 
 case "$1" in
   start)
-	echo "Starting $DESC: $NAME"
+	log_daemon_msg "Starting $DESC: $NAME"
 	start-stop-daemon --start --quiet --oknodo --pidfile $SEMS_PIDFILE \
 		--exec $DAEMON -- $PARAMS
 	log_end_msg $?
 	;;
   stop)
-	echo -n "Stopping $DESC: $NAME"
+	log_daemon_msg "Stopping $DESC: $NAME"
 	start-stop-daemon --oknodo --stop --quiet --pidfile $SEMS_PIDFILE \
 		--exec $DAEMON
 	log_end_msg $?
@@ -84,43 +84,19 @@ case "$1" in
 	#	$SEMS_PIDFILE --exec $DAEMON
   #;;
   graceful-stop|gstop)
-	echo -n "Stopping  gracefully $DESC: $NAME"
+	log_daemon_msg "Stopping  gracefully $DESC: $NAME"
 	start-stop-daemon --oknodo --stop --signal 2 --quiet --pidfile $SEMS_PIDFILE \
 		--exec $DAEMON
 	log_end_msg $?
 	;;
   graceful-restart|grestart)
-	echo "Restarting gracefully $DESC: $NAME"
-	start-stop-daemon --oknodo --stop --signal 2 --quiet --pidfile $SEMS_PIDFILE \
-		--exec $DAEMON
-	sleep 5
-		start-stop-daemon --start --quiet --pidfile \
-		$SEMS_PIDFILE --exec $DAEMON  -- $PARAMS
-	echo "."
+	$0 graceful-stop
+	$0 start
 	;;
-
   restart|force-reload)
-	#
-	#	If the "reload" option is implemented, move the "force-reload"
-	#	option to the "reload" entry above. If not, "force-reload" is
-	#	just the same as "restart".
-	#
-	# Check if configuration is valid before restarting the server
-        #(($DAEMON $CFGPARAMS -c 2>&1) | grep "config file ok, exiting") > /dev/null
-	#if [ $? -ne 0 ]; then
-        #    ($DAEMON $CFGPARAMS -c 2>&1)
-	#    echo -e "\nThere are errors in the configuration file. Please fix them first"
-	#    echo -e "\n$out\n"
-	#    exit 0
-	#fi
-	
-	echo "Restarting $DESC: $NAME"
-	start-stop-daemon --oknodo --stop --quiet --pidfile \
-		$SEMS_PIDFILE --exec $DAEMON
+	$0 stop
 	sleep 5
-	start-stop-daemon --start --quiet --pidfile \
-		$SEMS_PIDFILE --exec $DAEMON  -- $PARAMS
-	echo "."
+	$0 start	
 	;;
   status)
        status_of_proc "$DAEMON" "$NAME" && exit 0 || exit $?
