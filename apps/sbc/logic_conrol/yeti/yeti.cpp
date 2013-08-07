@@ -337,6 +337,9 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
               cdr->time_limit);
         call->saveCallTimer(SBC_TIMER_ID_CALL_TIMERS_START,cdr->time_limit);
     }
+
+	cdr_list.insert(&cdr->local_tag,cdr);
+
     return ContinueProcessing;
 }
 
@@ -448,7 +451,6 @@ void Yeti::onCallConnected(SBCCallLeg *call, const AmSipReply& reply){
     if(call->isALeg()){
         Cdr *cdr = call->getCdr();
         cdr->update(Connect);
-		cdr_list.insert(&cdr->local_tag,cdr);
     }
 }
     //!Ood handlers
