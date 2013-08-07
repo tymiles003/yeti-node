@@ -34,6 +34,8 @@ public:
   void getStats(AmArg &arg);
   void getConfig(AmArg &arg);
 
+  const DynFieldsT &getDynFields() const { return dyn_fields; }
+
   SqlRouter();
   ~SqlRouter();
 

@@ -30,19 +30,19 @@ Cdr *CdrList::get_by_local_tag(string local_tag){
   return at_data(&local_tag,false);
 }
 
-int CdrList::getCall(const string local_tag,AmArg &call){
+int CdrList::getCall(const string local_tag,AmArg &call,const SqlRouter *router){
   Cdr *cdr;
   int ret = 0;
   lock();
   if((cdr = get_by_local_tag(local_tag))){
-    cdr2arg(cdr,call);
+	cdr2arg(cdr,router,call);
     ret = 1;
   }
   unlock();
   return ret;
 }
 
-void CdrList::getCalls(AmArg &calls,int limit){
+void CdrList::getCalls(AmArg &calls,int limit,const SqlRouter *router){
   AmArg call;
   entry *e;
   Cdr *cdr;
@@ -52,7 +52,7 @@ void CdrList::getCalls(AmArg &calls,int limit){
     while(e&&i--){
       cdr = e->data;
       cdr->lock();
-	cdr2arg(cdr,call);
+	cdr2arg(cdr,router,call);
       cdr->unlock();
       calls.push(call);
       e = e->list_next;
@@ -60,7 +60,7 @@ void CdrList::getCalls(AmArg &calls,int limit){
   unlock();
 }
 
-void CdrList::cdr2arg(const Cdr *cdr,AmArg& arg){
+void CdrList::cdr2arg(const Cdr *cdr,const SqlRouter *router, AmArg& arg){
   #define add_field_to_ret(val)\
     arg[#val] = cdr->val;
   #define add_timeval_field_to_ret(val)\
@@ -91,4 +91,13 @@ void CdrList::cdr2arg(const Cdr *cdr,AmArg& arg){
   add_field_to_ret(local_tag);
   
   add_field_to_ret(time_limit);
+
+  const DynFieldsT &router_dyn_fields = router->getDynFields();
+  DynFieldsT::const_iterator it = router_dyn_fields.begin();
+  list<string>::const_iterator fit = cdr->dyn_fields.begin();
+  for(;it!=router_dyn_fields.end();++it){
+	string field_name = it->first;
+	arg[field_name] = *fit;
+	fit++;
+  }
 }

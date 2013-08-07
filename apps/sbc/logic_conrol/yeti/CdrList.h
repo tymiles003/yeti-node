@@ -3,7 +3,7 @@
 
 #include <AmThread.h>
 #include "Cdr.h"
-
+#include "SqlRouter.h"
 #include "MurmurHash.h"
 
 class CdrList: public MurmurHash<string,string,Cdr> {
@@ -12,8 +12,8 @@ class CdrList: public MurmurHash<string,string,Cdr> {
 	~CdrList();
 	
     Cdr *get_by_local_tag(string local_tag);
-	void getCalls(AmArg &calls,int limit);
-	int getCall(const string local_tag,AmArg &call);
+	void getCalls(AmArg &calls,int limit,const SqlRouter *router);
+	int getCall(const string local_tag,AmArg &call,const SqlRouter *router);
 	
     protected:
       	uint64_t hash_lookup_key(const string *key);
@@ -22,7 +22,7 @@ class CdrList: public MurmurHash<string,string,Cdr> {
 	void free_key(string *key);
 	
     private:
-    void cdr2arg(const Cdr *cdr,AmArg& arg);
+	void cdr2arg(const Cdr *cdr,const SqlRouter *router,AmArg& arg);
 };
 
 #endif
