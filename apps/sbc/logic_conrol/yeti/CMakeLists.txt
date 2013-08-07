@@ -9,6 +9,7 @@ set (yeti_SRCS
 	CdrWriter.cpp
 	SqlRouter.cpp
 	DbConfig.cpp
+        RedisConnPool.cpp
         ResourceCache.cpp
         ResourceControl.cpp
 )

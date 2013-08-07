@@ -38,9 +38,13 @@ profiles_cache_buckets = 100000
 
 write_redis_host = 127.0.0.1
 write_redis_port = 6379
+write_redis_size = 2
+write_redis_timeout = 5000000
 
 read_redis_host = 127.0.0.1
 read_redis_port = 6379
+read_redis_size = 2
+read_redis_timeout = 5000000
 
 reject_on_cache_error = 0
 
