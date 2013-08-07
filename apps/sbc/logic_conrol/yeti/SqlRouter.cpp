@@ -8,7 +8,8 @@
 #include <syslog.h>
 #include <exception>
 #include "SBCCallProfile.h"
-
+#include "sip/parse_nameaddr.h"
+#include "sip/parse_uri.h"
 #include "PgConnectionPool.h"
 #include "SqlRouter.h"
 #include "DbTypes.h"
@@ -86,8 +87,8 @@ int SqlRouter::db_configure(AmConfigReader& cfg){
     
     DBG("dyn_fields.size() = %ld",dyn_fields.size());
     prepared_queries.clear();
-    sql_query = "SELECT * FROM switch.getprofile_f($1,$2,$3,$4,$5,$6,$7,$8,$9);";
-    prepared_queries["getprofile"] = pair<string,int>(sql_query,9);
+	sql_query = "SELECT * FROM switch.getprofile_f($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15);";
+	prepared_queries["getprofile"] = pair<string,int>(sql_query,15);
     
     cdr_prepared_queries.clear();
     sql_query = "SELECT switch.writecdr($1";
@@ -242,15 +243,29 @@ SqlCallProfile* SqlRouter::getprofile (const AmSipRequest &req)
   
   while (getprofile_fail&&pool) {
     try {
-      conn = pool->getActiveConnection();
-      if(conn!=NULL){
-	ret=_getprofile(req,conn);
-	pool->returnConnection(conn);
-	getprofile_fail = false;
-      } else {
-	DBG("Cant get active connection on %s",pool->pool_name.c_str());
-      }
-    } catch(pqxx::broken_connection &e){
+		conn = pool->getActiveConnection();
+		if(conn!=NULL){
+			ret=_getprofile(req,conn);
+			pool->returnConnection(conn);
+			getprofile_fail = false;
+		} else {
+			DBG("Cant get active connection on %s",pool->pool_name.c_str());
+		}
+	} catch(GetProfileException &e){
+		DBG("GetProfile exception on %s SQLThread: fatal = %d what = '%s'",
+			pool->pool_name.c_str(),
+			e.fatal,
+			e.what.c_str());
+		if(e.fatal){
+			pool->returnConnection(conn,PgConnectionPool::CONN_COMM_ERR);
+		} else {
+			pool->returnConnection(conn);
+			getprofile_fail = false;
+			ret->SQLexception=true;
+			ret->refuse_with = e.what;
+			ret->cached = false;
+		}
+	} catch(pqxx::broken_connection &e){
 		pool->returnConnection(conn,PgConnectionPool::CONN_COMM_ERR);
 		DBG("SQL exception on %s SQLThread: pqxx::broken_connection.",pool->pool_name.c_str());
 	} catch(pqxx::conversion_error &e){
@@ -303,40 +318,56 @@ SqlCallProfile* SqlRouter::_getprofile(const AmSipRequest &req, pqxx::connection
 		}
 	}
 	DBG("req_hdrs: '%s' ",req_hdrs.data());
-	
+
+//	DBG("req dump : \n%s",req.print().c_str());
+
+	const char *sptr;
+	sip_nameaddr na;
+	sip_uri from_uri,to_uri,contact_uri;
+	//believe that already successfull being parsed before with underlying layers
+
+	sptr = req.from.c_str();
+	if(	parse_nameaddr(&na,&sptr,req.from.length()) < 0 ||
+		parse_uri(&from_uri,na.addr.s,na.addr.len) < 0){
+		throw GetProfileException("500 Invalid can't parse 'from'",true);
+	}
+	sptr = req.to.c_str();
+	if(	parse_nameaddr(&na,&sptr,req.to.length()) < 0 ||
+		parse_uri(&to_uri,na.addr.s,na.addr.len) < 0){
+		throw GetProfileException("500 Invalid can't parse 'to'",true);
+	}
+	sptr = req.contact.c_str();
+	if(	parse_nameaddr(&na,&sptr,req.contact.length()) < 0 ||
+		parse_uri(&contact_uri,na.addr.s,na.addr.len) < 0){
+		throw GetProfileException("500 Invalid can't parse 'contact'",true);
+	}
+
   if(tnx.prepared("getprofile").exists()){
     prepared_query = true;
     pqxx::prepare::invocation invoc = tnx.prepared("getprofile");
       /* invoc static fields */
-      invoc(req.remote_ip);
-      invoc(req.remote_port);
-      invoc(req.local_ip);
-      invoc(req.local_port);
-      invoc(req.from_uri);
-      invoc(req.to);
-      invoc(req.contact);
-      invoc(req.user);
-      invoc(req_hdrs);
+	invoc(req.remote_ip);
+	invoc(req.remote_port);
+	invoc(req.local_ip);
+	invoc(req.local_port);
+	invoc(c2stlstr(from_uri.user));
+	invoc(c2stlstr(from_uri.host));
+	invoc(from_uri.port);
+	invoc(c2stlstr(to_uri.user));
+	invoc(c2stlstr(to_uri.host));
+	invoc(to_uri.port);
+	invoc(c2stlstr(contact_uri.user));
+	invoc(c2stlstr(contact_uri.host));
+	invoc(contact_uri.port);
+	invoc(req.user);
+	invoc(req_hdrs);
       r = invoc.exec();
   } else {
-    r = tnx.exec("SELECT * FROM switch.getprofile_f("
-    +tnx.quote(req.remote_ip)+","
-    +tnx.quote(req.remote_port)+","
-    +tnx.quote(req.local_ip)+","
-    +tnx.quote(req.local_port)+","
-    +tnx.quote(req.from_uri)+","
-    +tnx.quote(req.to)+","
-    +tnx.quote(req.contact)+","
-    //+tnx.quote(req.user)+");");
-    +tnx.quote(req.user)+","
-    +tnx.quote(req_hdrs)+");");
+	throw GetProfileException("no such prepared query",true);
   }
   
   if (r.size()==0){
-    DBG("Empty response from DB. Drop Request");
-    ret->refuse_with="500 Empty response from DB";
-    ret->SQLexception=true;
-    return ret;
+	throw GetProfileException("500 Empty response from DB",false);
   }
   ret->SQLexception=false;
   if(prepared_query){

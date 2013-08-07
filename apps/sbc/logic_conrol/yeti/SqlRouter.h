@@ -15,6 +15,12 @@ using std::string;
 using std::list;
 using std::vector;
 
+struct GetProfileException {
+	bool fatal;			//if true we should reload pg connection
+	string what;
+	GetProfileException(string w, bool h): what(w), fatal(h) {}
+};
+
 class SqlRouter {
 public:
   SqlCallProfile *getprofile(const AmSipRequest&);
