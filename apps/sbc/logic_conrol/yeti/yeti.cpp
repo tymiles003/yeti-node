@@ -513,7 +513,7 @@ void Yeti::GetCall(const AmArg& args, AmArg& ret) {
     }
 
     local_tag = args[0].asCStr();
-    if(cdr_list.getCall(local_tag,call)){
+	if(cdr_list.getCall(local_tag,call,router)){
       ret.push(200);
       ret.push(call);
     } else {
@@ -525,7 +525,7 @@ void Yeti::GetCall(const AmArg& args, AmArg& ret) {
 void Yeti::GetCalls(const AmArg& args, AmArg& ret) {
     AmArg calls;
 
-    cdr_list.getCalls(calls,calls_show_limit);
+	cdr_list.getCalls(calls,calls_show_limit,router);
 
     ret.push(200);
     ret.push(calls);
