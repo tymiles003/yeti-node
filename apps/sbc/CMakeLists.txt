@@ -1,3 +1,4 @@
+find_package(PQXX REQUIRED)
 
 ADD_SUBDIRECTORY(logic_conrol/yeti)
 
@@ -48,6 +49,9 @@ tools/sems-sbc-get-regex-map-names
 tools/sems-sbc-set-regex-map
 	DESTINATION ${SEMS_EXEC_PREFIX}/sbin
 	)
+
+INCLUDE_DIRECTORIES(${PQXX_INCLUDE_DIRECTORIES})
+SET(sems_module_libs ${PQXX_LIBRARIES})
 
 SET(sems_module_name sbc)
 INCLUDE(${CMAKE_SOURCE_DIR}/cmake/module.rules.txt)

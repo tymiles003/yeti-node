@@ -301,12 +301,10 @@ SqlCallProfile* SqlRouter::getprofile (const AmSipRequest &req)
 
 SqlCallProfile* SqlRouter::_getprofile(const AmSipRequest &req, pqxx::connection* conn)
 {
-  pqxx::result r;
-  pqxx::nontransaction tnx(*conn);
-  SqlCallProfile* ret=new SqlCallProfile;
-  string name="SQL";
-  bool prepared_query = false;
-  string req_hdrs,hdr;
+	pqxx::result r;
+	pqxx::nontransaction tnx(*conn);
+	SqlCallProfile* ret=new SqlCallProfile;
+	string req_hdrs,hdr;
 
 	for(vector<string>::const_iterator it = used_header_fields.begin(); it != used_header_fields.end(); ++it){
 		hdr = getHeader(req.hdrs,*it);
@@ -317,9 +315,7 @@ SqlCallProfile* SqlRouter::_getprofile(const AmSipRequest &req, pqxx::connection
 			req_hdrs.append(used_header_fields_separator);
 		}
 	}
-	DBG("req_hdrs: '%s' ",req_hdrs.data());
-
-//	DBG("req dump : \n%s",req.print().c_str());
+	DBG("req_hdrs: '%s' ",req_hdrs.c_str());
 
 	const char *sptr;
 	sip_nameaddr na;
@@ -342,244 +338,57 @@ SqlCallProfile* SqlRouter::_getprofile(const AmSipRequest &req, pqxx::connection
 		throw GetProfileException("500 Invalid can't parse 'contact'",true);
 	}
 
-  if(tnx.prepared("getprofile").exists()){
-    prepared_query = true;
-    pqxx::prepare::invocation invoc = tnx.prepared("getprofile");
-      /* invoc static fields */
-	invoc(req.remote_ip);
-	invoc(req.remote_port);
-	invoc(req.local_ip);
-	invoc(req.local_port);
-	invoc(c2stlstr(from_uri.user));
-	invoc(c2stlstr(from_uri.host));
-	invoc(from_uri.port);
-	invoc(c2stlstr(to_uri.user));
-	invoc(c2stlstr(to_uri.host));
-	invoc(to_uri.port);
-	invoc(c2stlstr(contact_uri.user));
-	invoc(c2stlstr(contact_uri.host));
-	invoc(contact_uri.port);
-	invoc(req.user);
-	invoc(req_hdrs);
-      r = invoc.exec();
-  } else {
-	throw GetProfileException("no such prepared query",true);
-  }
-  
-  if (r.size()==0){
-	throw GetProfileException("500 Empty response from DB",false);
-  }
-  ret->SQLexception=false;
-  if(prepared_query){
-    /* fill dynamic fields list */
-    DynFieldsT_iterator it = dyn_fields.begin();
-    for(;it!=dyn_fields.end();++it){
-      ret->dyn_fields.push_back(r[0][it->first].c_str());
-    }
-  } else {
-    WARN("SqlRouter: Dynamic fields not used without prepared queries for perfomance reasons");
-  }
-  
-  ret->append_headers=r[0]["append_headers"].c_str();
-    
-  ret->auth_enabled=r[0]["auth_enabled"].as<bool>();
-  ret->auth_credentials.pwd=r[0]["auth_credentials_pwd"].c_str();
-  ret->auth_credentials.user=r[0]["auth_credentials_user"].c_str();
-  
-  ret->auth_aleg_enabled=r[0]["auth_aleg_enabled"].as<bool>();
-  ret->auth_aleg_credentials.pwd=r[0]["auth_aleg_credentials_pwd"].c_str();
-  ret->auth_aleg_credentials.user=r[0]["auth_aleg_credentials_user"].c_str();
+	if(tnx.prepared("getprofile").exists()){
+		pqxx::prepare::invocation invoc = tnx.prepared("getprofile");
 
-  ret->callid=r[0]["callid"].c_str();
-  
-  ret->codec_prefs.bleg_payload_order_str=r[0]["codec_prefs_bleg_payload_order"].c_str();
-  ret->codec_prefs.bleg_prefer_existing_payloads_str=r[0]["codec_prefs_bleg_prefer_existing_payloads"].c_str();
-  
-  ret->codec_prefs.aleg_payload_order_str=r[0]["codec_prefs_aleg_payload_order"].c_str();
-  ret->codec_prefs.aleg_prefer_existing_payloads_str=r[0]["codec_prefs_aleg_prefer_existing_payloads"].c_str();
-  
-//!FIX:  ret->contact=r[0]["contact"].c_str();
-  ret->force_outbound_proxy=r[0]["force_outbound_proxy"].as<bool>();
-  
-  ret->rtprelay_enabled=r[0]["rtprelay_enabled"].as<bool>();
-  ret->rtprelay_interface=r[0]["rtprelay_interface"].c_str();
-  
-  ret->aleg_rtprelay_interface=r[0]["aleg_rtprelay_interface"].c_str();
+		invoc(req.remote_ip);
+		invoc(req.remote_port);
+		invoc(req.local_ip);
+		invoc(req.local_port);
+		invoc(c2stlstr(from_uri.user));
+		invoc(c2stlstr(from_uri.host));
+		invoc(from_uri.port);
+		invoc(c2stlstr(to_uri.user));
+		invoc(c2stlstr(to_uri.host));
+		invoc(to_uri.port);
+		invoc(c2stlstr(contact_uri.user));
+		invoc(c2stlstr(contact_uri.host));
+		invoc(contact_uri.port);
+		invoc(req.user);
+		invoc(req_hdrs);
 
-  ret->rtprelay_transparent_seqno=r[0]["rtprelay_transparent_seqno"].as<bool>();
-  ret->rtprelay_transparent_ssrc=r[0]["rtprelay_transparent_ssrc"].as<bool>();
-  
-  if (true==r[0]["force_symmetric_rtp"].as<bool>()) {
-      ret->force_symmetric_rtp="yes";
-  }
-   else{
-      ret->force_symmetric_rtp="no";
-  } 
-  ret->msgflags_symmetric_rtp=r[0]["msgflags_symmetric_rtp"].as<bool>();
+		r = invoc.exec();
+	} else {
+		throw GetProfileException("no such prepared query",true);
+	}
 
-  //ret.force_symmetric_rtp_value
-  ret->from=r[0]["from"].c_str();
+	if (r.size()==0){
+		throw GetProfileException("500 Empty response from DB",false);
+	}
 
-  FilterEntry header_filter;
-  header_filter.filter_type=String2FilterType(r[0]["headerfilter"].c_str());
-  if (Undefined == header_filter.filter_type) {
-    header_filter.filter_type=Transparent;
-  }
-  vector<string> elems = explode(r[0]["headerfilter_list"].c_str(), ",");
-  for (vector<string>::iterator it=elems.begin(); it != elems.end(); it++) {
-    transform(it->begin(), it->end(), it->begin(), ::tolower);
-    header_filter.filter_list.insert(*it);
-  }
-  ret->headerfilter.push_back(header_filter);
-  
-  FilterEntry msg_filter;
-  msg_filter.filter_type=String2FilterType(r[0]["messagefilter"].c_str());
-  if ( Undefined==msg_filter.filter_type){
-    msg_filter.filter_type=Transparent;
-  }
-  elems = explode(r[0]["messagefilter_list"].c_str(), ",");
-  for (vector<string>::iterator it=elems.begin(); it != elems.end(); it++)
-  msg_filter.filter_list.insert(*it);
-  ret->messagefilter.push_back(msg_filter);
-  
-  //ret->next_hop=r[0]["next_hop"];
-    if(r[0]["next_hop"].is_null()){
-      DBG("NULL");
-     // ret->next_hop.clear();
-    } else {
-      ret->next_hop=r[0]["next_hop"].c_str();
-    }
+	ret->SQLexception=false;
+	/* fill dynamic fields list */
+	DynFieldsT_iterator it = dyn_fields.begin();
+	for(;it!=dyn_fields.end();++it){
+		ret->dyn_fields.push_back(r[0][it->first].c_str());
+	}
 
-  ret->next_hop_1st_req=r[0]["next_hop_1st_req"].as<bool>();
-  ret->outbound_interface=r[0]["outbound_interface"].c_str();
-  //ret.outbound_interface_value
-  ret->outbound_proxy=r[0]["outbound_proxy"].c_str();
-  ret->refuse_with=r[0]["refuse_with"].c_str();
-  
+	const pqxx::result::tuple &t = r[0];
 
-  ret->ruri=r[0]["ruri"].c_str();
-  //ret->ruri_host=r[0]["ruri_host"].c_str();
+	ret->readFromTuple(t);
 
-  FilterEntry sdpfilter;
-  sdpfilter.filter_type=String2FilterType(r[0]["sdpfilter"].c_str());
-  if ( Undefined!=sdpfilter.filter_type){
-        vector<string> c_elems = explode(r[0]["sdpfilter_list"].c_str(), ",");
-        for (vector<string>::iterator it=c_elems.begin(); it != c_elems.end(); it++) {
-           string c = *it;
-            std::transform(c.begin(), c.end(), c.begin(), ::tolower);
-            sdpfilter.filter_list.insert(c);
-        }
-        ret->sdpfilter.push_back(sdpfilter);
-  }
+	if(cache_enabled){
+		int cache_time = t["cache_time"].as<int>(0);
+		if(cache_time > 0){
+			DBG("SqlRouter: entry lifetime is %d seconds",cache_time);
+			gettimeofday(&ret->expire_time,NULL);
+			ret->expire_time.tv_sec+=cache_time;
+		} else {
+			timerclear(&ret->expire_time);
+		}
+	}
 
-  ret->anonymize_sdp = r[0]["anonymize_sdp"].as<bool>();
-
-  FilterEntry sdpalinesfilter;
-  sdpalinesfilter.filter_type=String2FilterType(r[0]["sdpalinesfilter"].c_str());
-  if (Transparent!=sdpalinesfilter.filter_type&&Undefined!=sdpalinesfilter.filter_type){
-    vector<string> c_elems = explode(r[0]["sdpalinesfilter_list"].c_str(), ",");
-    for (vector<string>::iterator it=c_elems.begin(); it != c_elems.end(); it++) {
-      string c = *it;
-      std::transform(c.begin(), c.end(), c.begin(), ::tolower);
-      sdpalinesfilter.filter_list.insert(c);
-    }
-    ret->sdpalinesfilter.push_back(sdpalinesfilter);
-  }
-
-  ret->sst_enabled=r[0]["sst_enabled"].as<bool>()?"true":"false";
-  ret->sst_aleg_enabled=r[0]["sst_aleg_enabled"].c_str();
-  
-  #define CP_SST_CFGVAR(cfgprefix, cfgkey, dstcfg)			\
-    if (cfg.hasParameter(cfgprefix cfgkey)) {				\
-      dstcfg.setParameter(cfgkey, cfg.getParameter(cfgprefix cfgkey));	\
-    } else if (cfg.hasParameter(cfgkey)) {				\
-      dstcfg.setParameter(cfgkey, cfg.getParameter(cfgkey));		\
-    } else if (SBCFactory::cfg.hasParameter(cfgkey)) {			\
-      dstcfg.setParameter(cfgkey, SBCFactory::cfg.getParameter(cfgkey)); \
-    }
-  
-  if (ret->sst_enabled=="yes") {
-    ret->sst_b_cfg.setParameter("session_expires",r[0]["sst_session_expires"].c_str());
-    ret->sst_b_cfg.setParameter("minimum_timer",r[0]["sst_minimum_timer"].c_str());
-    ret->sst_b_cfg.setParameter("maximum_timer",r[0]["sst_maximum_timer"].c_str());
-    ret->sst_b_cfg.setParameter("session_refresh_method",r[0]["sst_session_refresh_method"].c_str());
-    ret->sst_b_cfg.setParameter("accept_501_reply",r[0]["sst_accept_501_reply"].c_str());
-  }
-  if (ret->sst_aleg_enabled=="yes"){
-    ret->sst_a_cfg.setParameter("session_expires",r[0]["sst_aleg_session_expires"].c_str());
-    ret->sst_a_cfg.setParameter("minimum_timer",r[0]["sst_aleg_minimum_timer"].c_str());
-    ret->sst_a_cfg.setParameter("maximum_timer",r[0]["sst_aleg_maximum_timer"].c_str());
-    ret->sst_a_cfg.setParameter("session_refresh_method",r[0]["sst_aleg_session_refresh_method"].c_str());
-    ret->sst_a_cfg.setParameter("accept_501_reply",r[0]["sst_aleg_accept_501_reply"].c_str());
-    
-  }
-  
-  #undef CP_SST_CFGVAR
-  ret->to=r[0]["to"].c_str();
-
-  vector<string> reply_translations_v = explode(r[0]["reply_translations"].c_str(), "|");
-  for (vector<string>::iterator it = reply_translations_v.begin(); it != reply_translations_v.end(); it++) {
-    // expected: "603=>488 Not acceptable here"
-    vector<string> trans_components = explode(*it, "=>");
-    if (trans_components.size() != 2) {
-      ERROR("%s: entry '%s' in reply_translations could not be understood.\n",name.c_str(), it->c_str());
-      ERROR("expected 'from_code=>to_code reason'\n");
-    //  return false;
-    }
-    unsigned int from_code, to_code;
-    if (str2i(trans_components[0], from_code)) {
-      ERROR("%s: code '%s' in reply_translations not understood.\n", name.c_str(), trans_components[0].c_str());
-    //  return false;
-    }
-    unsigned int s_pos = 0;
-    string to_reply = trans_components[1];
-    while (s_pos < to_reply.length() && to_reply[s_pos] != ' ')
-      s_pos++;
-    if (str2i(to_reply.substr(0, s_pos), to_code)) {
-      ERROR("%s: code '%s' in reply_translations not understood.\n", name.c_str(), to_reply.substr(0, s_pos).c_str());
- //     return false;
-    }
-    if (s_pos < to_reply.length())
-      s_pos++;
-    // DBG("got translation %u => %u %s\n",
-    // 	from_code, to_code, to_reply.substr(s_pos).c_str());
-    ret->reply_translations[from_code] = make_pair(to_code, to_reply.substr(s_pos));
-  }
-  
-  
-  ret->transcoder.audio_codecs_str=r[0]["transcoder_codecs"].c_str();
-  ret->transcoder.callee_codec_capabilities_str=r[0]["callee_codecapps"].c_str();
-  ret->transcoder.transcoder_mode_str=r[0]["transcoder_mode"].c_str();
-  ret->transcoder.dtmf_mode_str=r[0]["dtmf_mode"].c_str();
-  ret->transcoder.lowfi_codecs_str=r[0]["lowfi_codecs"].c_str();
-  ret->transcoder.audio_codecs_norelay_str=r[0]["prefer_transcoding_for_codecs"].c_str();
-  ret->transcoder.audio_codecs_norelay_aleg_str=r[0]["prefer_transcoding_for_codecs_aleg"].c_str();
-
-  ret->log_sip = r[0]["log_sip"].as<bool>();
-  ret->log_rtp = r[0]["log_rtp"].as<bool>();
-  ret->msg_logger_path = r[0]["msg_logger_path"].c_str();
-
-  DBG("sql profile dump: \r\n %s \r\n",ret->print().c_str());
-  DBG("sql profile codec_prefs dump: \r\n %s \r\n",ret->codec_prefs.print().c_str());
-  DBG("sql profile transcoder dump: \r\n %s \r\n",ret->transcoder.print().c_str());
-
-  ret->time_limit=r[0]["time_limit"].as<int>();
-  ret->resources = r[0]["resources"].c_str();
-
-  if(cache_enabled){
-	int cache_time = r[0]["cache_time"].as<int>(0);
-    if(cache_time > 0){
-      DBG("SqlRouter: entry lifetime is %d seconds",cache_time);
-      gettimeofday(&ret->expire_time,NULL);
-      ret->expire_time.tv_sec+=cache_time;
-    } else {
-      timerclear(&ret->expire_time);
-    }
-  }
-
-  ret->cached = false;
-  
-  return ret;
+	return ret;
 }
 
 
