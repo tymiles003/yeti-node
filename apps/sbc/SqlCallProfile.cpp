@@ -145,8 +145,8 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 	refuse_with = t["refuse_with"].c_str();
 
 	rtprelay_enabled = t["enable_rtprelay"].as<bool>(false);
-	aleg_force_symmetric_rtp = t["rtprelay_force_symmetric_rtp"].as<bool>(false)?"yes":"no";
-	force_symmetric_rtp = aleg_force_symmetric_rtp;
+	force_symmetric_rtp = t["rtprelay_force_symmetric_rtp"].as<bool>(false)?"yes":"no";
+	aleg_force_symmetric_rtp = t["aleg_rtprelay_force_symmetric_rtp"].as<bool>(false)?"yes":"no";
 	msgflags_symmetric_rtp = t["rtprelay_msgflags_symmetric_rtp"].as<bool>(false);
 
 	rtprelay_interface = t["rtprelay_interface"].c_str();
