@@ -24,7 +24,7 @@ SEMS_GROUP="sems"
 #DEBCONF-GROUP-END
 
 # ser pidfile
-SEMS_PIDFILE="/var/run/sems/sems.pid"
+SEMS_PIDFILE="/var/run/sems.pid"
 
 # set if you want to create core files
 #DEBCONF-CREATE_CORE-START
