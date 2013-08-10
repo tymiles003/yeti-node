@@ -76,7 +76,10 @@ int Yeti::onLoad() {
 
     profile = new SBCCallProfile();
     string profile_file_name = AmConfig::ModConfigPath + "oodprofile.yeti.conf";
-    profile->readFromConfiguration("transparent",profile_file_name);
+    if(!profile->readFromConfiguration("transparent",profile_file_name)){
+        ERROR("can't read profile for OoD requests '%s'",profile_file_name.c_str());
+	return -1;
+    }
     profile->cc_vars.clear();
     profile->cc_interfaces.clear();
 	//profile->cc_interfaces.push_back(self_iface);   //add reference to ourself
