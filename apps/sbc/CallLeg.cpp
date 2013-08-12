@@ -812,10 +812,16 @@ void CallLeg::onSipRequest(const AmSipRequest& req)
   if (getCallStatus() == Disconnected) {
     TRACE("handling request %s in disconnected state", req.method.c_str());
     // this is not correct but what is?
+	if (req.method == SIP_METH_BYE) {
+		TRACE("BYE in Disconnected state. just ignore it");
+		return;
+	}
     AmSession::onSipRequest(req);
+	/*
     if (req.method == SIP_METH_BYE) {
       stopCall(&req); // is this needed?
     }
+	*/
   }
   else AmB2BSession::onSipRequest(req);
 }
