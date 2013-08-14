@@ -41,9 +41,9 @@ struct Cdr: public
     struct timeval end_time;
 
     string legB_remote_ip, legB_local_ip;
-    short legB_remote_port, legB_local_port;
+    unsigned short legB_remote_port, legB_local_port;
     string legA_remote_ip, legA_local_ip;
-    short legA_remote_port, legA_local_port;
+    unsigned short legA_remote_port, legA_local_port;
 
     string orig_call_id;
     string term_call_id;
