@@ -246,8 +246,8 @@ void CdrThread::run()
 	  }
       }
     }
-    if(cdr->dec_and_test()) //check for references
-        delete cdr;
+	//if(cdr->dec_and_test()) //check for references
+		delete cdr;
     DBG("CDR deleted from queue");
   }
 }

@@ -17,6 +17,12 @@
 #include "SBC.h"
 #include "ResourceControl.h"
 
+struct CallCtx: public
+	atomic_int
+{
+	Cdr *cdr;
+};
+
 class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterface
 {
   static Yeti* _instance;
@@ -30,8 +36,9 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   AmConfigReader cfg;
   //config values
   int calls_show_limit;
-
-  Cdr *getCdr(SBCCallLeg *call) { return reinterpret_cast<Cdr *>(call->getLogicData()); }
+  CallCtx *getCtx(SBCCallLeg *call){ return reinterpret_cast<CallCtx *>(call->getLogicData()); }
+  Cdr *getCdr(CallCtx *ctx) { return ctx->cdr; }
+  Cdr *getCdr(SBCCallLeg *call) { return getCdr(getCtx(call)); }
  public:
   Yeti();
   ~Yeti();

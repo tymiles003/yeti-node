@@ -225,8 +225,9 @@ SBCCallLeg *Yeti::getCallLeg( const AmSipRequest& req,
 
     SBCCallLeg* b2b_dlg = leg_creator->create(call_profile);
 
-//	cdr->inc();
-	b2b_dlg->setLogicData(reinterpret_cast<void *>(cdr));
+	CallCtx *call_ctx = new CallCtx;
+	call_ctx->cdr = cdr;
+	b2b_dlg->setLogicData(reinterpret_cast<void *>(call_ctx));
 
     delete profile;
     return b2b_dlg;
@@ -269,9 +270,9 @@ void Yeti::oodHandlingTerminated(const AmSipRequest *req,SqlCallProfile *call_pr
 
 void Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
 	DBG("%s(%p,leg%s) LogicData = %p",FUNC_NAME,call,call->isALeg()?"A":"B",call->getLogicData());
-	Cdr *cdr = getCdr(call);
-	cdr->inc();
-	cdr->update(*call);
+	CallCtx *call_ctx = reinterpret_cast<CallCtx *>(call->getLogicData());
+	call_ctx->inc();
+	call_ctx->cdr->update(*call);
 }
 
 void Yeti::onStateChange(SBCCallLeg *call){
@@ -292,15 +293,16 @@ void Yeti::onDestroyLeg(SBCCallLeg *call){
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	DBG("%s() call_profile = %p, cdr = %p",FUNC_NAME,&call->getCallProfile(),getCdr(call));
 
-	Cdr *cdr = getCdr(call);
-    if(cdr->dec_and_test()){
-        cdr_list.erase_lookup_key(&cdr->local_tag);
+	CallCtx *ctx = getCtx(call);
+	Cdr *cdr = getCdr(ctx);
+	if(ctx->dec_and_test()){
+		cdr_list.erase_lookup_key(&cdr->local_tag);
 		DBG("%s() release resources",FUNC_NAME);
 		rctl.put(cdr->rl);
 		DBG("%s() cdr write now",FUNC_NAME);
-        router->write_cdr(cdr);
+		router->write_cdr(cdr);
 	} else {
-		DBG("%s() cdr still used",FUNC_NAME);
+		DBG("%s() call context still used",FUNC_NAME);
 	}
 }
 

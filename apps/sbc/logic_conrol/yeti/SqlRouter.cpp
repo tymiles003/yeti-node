@@ -405,7 +405,7 @@ void SqlRouter::write_cdr(Cdr* cdr)
   if(!cdr->writed){
     DBG("%s(%p) write now",FUNC_NAME,cdr);
     cdr->update(Write);
-    cdr->inc();
+	//cdr->inc();
     cdr_writer->postcdr(cdr);
   } else {
       DBG("%s(%p) trying to write already writed cdr",FUNC_NAME,cdr);

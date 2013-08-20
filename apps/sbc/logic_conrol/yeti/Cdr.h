@@ -21,8 +21,8 @@ enum DisconnectInitiator {
 };
 
 struct Cdr: public
-    AmMutex,
-    atomic_int
+	AmMutex/*,
+	atomic_int*/
 {
     bool writed;
 
