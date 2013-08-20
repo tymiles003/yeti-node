@@ -162,7 +162,7 @@ SBCCallLeg::SBCCallLeg(const SBCCallProfile& call_profile, AmSipDialog* p_dlg,
     ext_cc_timer_id(SBC_TIMER_ID_CALL_TIMERS_END + 1),
     cc_started(false),
     logger(NULL),
-    cdr(NULL)
+	LogicData(NULL)
 {
   set_sip_relay_only(false);
   dlg->setRel100State(Am100rel::REL100_IGNORED);
@@ -193,9 +193,8 @@ SBCCallLeg::SBCCallLeg(SBCCallLeg* caller, AmSipDialog* p_dlg,
     CallLeg(caller,p_dlg,p_subs),
     cc_started(false),
     logger(NULL),
-    cdr(caller->getCdr())
+	LogicData(caller->getLogicData())
 {
-  cdr->inc();
   // FIXME: do we want to inherit cc_vars from caller?
   // Can be pretty dangerous when caller stored pointer to object - we should
   // not probably operate on it! But on other hand it could be handy for

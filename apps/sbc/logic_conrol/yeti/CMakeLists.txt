@@ -12,6 +12,9 @@ set (yeti_SRCS
         RedisConnPool.cpp
         ResourceCache.cpp
         ResourceControl.cpp
+	Cdr.cpp
+	SqlCallProfile.cpp
+	Resource.cpp
 )
 
 SET(yeti_config_files

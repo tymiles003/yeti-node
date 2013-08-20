@@ -31,6 +31,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   //config values
   int calls_show_limit;
 
+  Cdr *getCdr(SBCCallLeg *call) { return reinterpret_cast<Cdr *>(call->getLogicData()); }
  public:
   Yeti();
   ~Yeti();
