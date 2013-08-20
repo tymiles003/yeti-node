@@ -22,6 +22,8 @@ void Cdr::init(){
     legA_local_ip = "";
 
 	msg_logger_path = "";
+	log_rtp = false;
+	log_sip = false;
 
     time_limit = 0;
 }

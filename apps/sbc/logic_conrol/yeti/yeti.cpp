@@ -213,6 +213,7 @@ SBCCallLeg *Yeti::getCallLeg( const AmSipRequest& req,
       }
       cdr->update(Start);
       cdr->update(req);
+	  cdr->update_sbc(*profile);
 	  cdr->refuse(*profile);
 	  router->write_cdr(cdr);
       delete profile;

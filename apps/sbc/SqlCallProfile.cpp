@@ -153,7 +153,7 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 	aleg_rtprelay_interface = t["aleg_rtprelay_interface"].c_str();
 
 	rtprelay_transparent_seqno = t["rtprelay_transparent_seqno"].as<bool>(false);
-	rtprelay_transparent_ssrc = t["rtprelay_transparent_ssrc"].as<bool>(true);
+	rtprelay_transparent_ssrc = t["rtprelay_transparent_ssrc"].as<bool>(false);
 
 	outbound_interface = t["outbound_interface"].c_str();
 	aleg_outbound_interface = t["aleg_outbound_interface"].c_str();
@@ -172,7 +172,7 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 
 	msg_logger_path = t["msg_logger_path"].c_str();
 	log_rtp = t["log_rtp"].as<bool>(false);
-	log_sip = t["log_sip"].as<bool>(true);
+	log_sip = t["log_sip"].as<bool>(false);
 
 	reg_caching = t["enable_reg_caching"].as<bool>(false);
 	min_reg_expires = t["min_reg_expires"].as<int>(0);
