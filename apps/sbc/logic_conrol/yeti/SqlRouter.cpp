@@ -222,30 +222,31 @@ void SqlRouter::update_counters(struct timeval &start_time){
         gt_min = diff;
 }
 
-SqlCallProfile* SqlRouter::getprofile (const AmSipRequest &req)
+void SqlRouter::getprofiles(const AmSipRequest &req,CallCtx &ctx)
 {
   DBG("Lookup profile for request: \n %s",req.print().c_str());
-  SqlCallProfile* ret = NULL;
   PgConnection *conn = NULL;
   PgConnectionPool *pool = master_pool;
+  ProfilesCacheEntry *entry = NULL;
   bool getprofile_fail = true;
+  string refuse_with = "500 SQL error";
   string req_hdrs,hdr;
   struct timeval start_time;
-
   hits++;
   gettimeofday(&start_time,NULL);
 
-  if(cache_enabled&&(ret = cache->get_profile(&req))!=NULL){
+  if(cache_enabled&&cache->get_profiles(&req,ctx.profiles)){
+	DBG("%s() got from cache. %ld profiles in set",FUNC_NAME,ctx.profiles.size());
     cache_hits++;
     update_counters(start_time);
-    return ret;
+	return;
   }
   
   while (getprofile_fail&&pool) {
     try {
 		conn = pool->getActiveConnection();
 		if(conn!=NULL){
-			ret=_getprofile(req,conn);
+			entry = _getprofiles(req,conn);
 			pool->returnConnection(conn);
 			getprofile_fail = false;
 		} else {
@@ -256,14 +257,12 @@ SqlCallProfile* SqlRouter::getprofile (const AmSipRequest &req)
 			pool->pool_name.c_str(),
 			e.fatal,
 			e.what.c_str());
+
 		if(e.fatal){
 			pool->returnConnection(conn,PgConnectionPool::CONN_COMM_ERR);
 		} else {
 			pool->returnConnection(conn);
-			getprofile_fail = false;
-			ret->SQLexception=true;
-			ret->refuse_with = e.what;
-			ret->cached = false;
+			refuse_with = e.what;
 		}
 	} catch(pqxx::broken_connection &e){
 		pool->returnConnection(conn,PgConnectionPool::CONN_COMM_ERR);
@@ -286,25 +285,28 @@ SqlCallProfile* SqlRouter::getprofile (const AmSipRequest &req)
 
   if(getprofile_fail){
     ERROR("SQL cant get profile. Drop request");
-    ret=new SqlCallProfile;
-    ret->refuse_with="500 SQL error";
-    ret->SQLexception=true;
-    ret->cached = false;
+	SqlCallProfile *profile = new SqlCallProfile();
+	profile->refuse_with=refuse_with;
+	profile->SQLexception=true;
+	ctx.profiles.push_back(profile);
   } else {
     update_counters(start_time);
     db_hits++;
-    if(cache_enabled&&timerisset(&ret->expire_time))
-      cache->insert_profile(&req,ret);
+	ctx.profiles = entry->profiles;
+	if(cache_enabled&&timerisset(&entry->expire_time))
+		cache->insert_profile(&req,entry);
   }
-  return ret;
+  return;
 }
 
-SqlCallProfile* SqlRouter::_getprofile(const AmSipRequest &req, pqxx::connection* conn)
+ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req,
+										pqxx::connection* conn)
 {
 	pqxx::result r;
 	pqxx::nontransaction tnx(*conn);
-	SqlCallProfile* ret=new SqlCallProfile;
 	string req_hdrs,hdr;
+
+	ProfilesCacheEntry *entry = NULL;
 
 	for(vector<string>::const_iterator it = used_header_fields.begin(); it != used_header_fields.end(); ++it){
 		hdr = getHeader(req.hdrs,*it);
@@ -362,33 +364,45 @@ SqlCallProfile* SqlRouter::_getprofile(const AmSipRequest &req, pqxx::connection
 		throw GetProfileException("no such prepared query",true);
 	}
 
+	DBG("%s() database returned %ld profiles",FUNC_NAME,r.size());
+
 	if (r.size()==0){
 		throw GetProfileException("500 Empty response from DB",false);
 	}
 
-	ret->SQLexception=false;
-	/* fill dynamic fields list */
-	DynFieldsT_iterator it = dyn_fields.begin();
-	for(;it!=dyn_fields.end();++it){
-		ret->dyn_fields.push_back(r[0][it->first].c_str());
-	}
-
-	const pqxx::result::tuple &t = r[0];
-
-	ret->readFromTuple(t);
+	entry = new ProfilesCacheEntry();
 
 	if(cache_enabled){
-		int cache_time = t["cache_time"].as<int>(0);
+		//get first callprofile cache_time as cache_time for entire profiles set
+		int cache_time = r[0]["cache_time"].as<int>(0);
+		DBG("%s() cache_time = %d",FUNC_NAME,cache_time);
 		if(cache_time > 0){
 			DBG("SqlRouter: entry lifetime is %d seconds",cache_time);
-			gettimeofday(&ret->expire_time,NULL);
-			ret->expire_time.tv_sec+=cache_time;
+			gettimeofday(&entry->expire_time,NULL);
+			entry->expire_time.tv_sec+=cache_time;
 		} else {
-			timerclear(&ret->expire_time);
+			timerclear(&entry->expire_time);
 		}
 	}
 
-	return ret;
+	pqxx::result::const_iterator rit = r.begin();
+	for(;rit != r.end();++rit){
+		const pqxx::result::tuple &t = (*rit);
+		SqlCallProfile* profile = new SqlCallProfile();
+		//read profile
+		profile->readFromTuple(t);
+		//fill dyn fields
+		DynFieldsT_iterator it = dyn_fields.begin();
+		for(;it!=dyn_fields.end();++it){
+			profile->dyn_fields.push_back(t[it->first].c_str());
+		}
+		//evaluate it
+		profile->evaluate();
+		//push to ret
+		entry->profiles.push_back(profile);
+	}
+
+	return entry;
 }
 
 

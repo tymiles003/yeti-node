@@ -19,16 +19,47 @@ struct ProfilesCacheKey {
 	map<string,string> header_fields;
 };
 
+struct ProfilesCacheEntry {
+	struct timeval expire_time;
+	list<SqlCallProfile *> profiles;
+
+	ProfilesCacheEntry(){
+		DBG("%s() this = %p",FUNC_NAME,this);
+	}
+	~ProfilesCacheEntry(){
+		DBG("%s() this = %p",FUNC_NAME,this);
+		list<SqlCallProfile *>::iterator it = profiles.begin();
+		for(;it != profiles.end();++it){
+			delete (*it);
+		}
+	}
+	ProfilesCacheEntry *copy(){	//clone with all internal structures
+		DBG("%s() this = %p",FUNC_NAME,this);
+
+		ProfilesCacheEntry *e = new ProfilesCacheEntry();
+
+		e->expire_time = expire_time;
+
+		list<SqlCallProfile *>::iterator it = profiles.begin();
+		for(;it != profiles.end();++it){
+			SqlCallProfile *profile = new SqlCallProfile();
+			*profile =  *(*it);
+			e->profiles.push_back(profile);
+		}
+		return e;
+	}
+};
+
 class ProfilesCache:
-public MurmurHash<ProfilesCacheKey,AmSipRequest,SqlCallProfile>,
+public MurmurHash<ProfilesCacheKey,AmSipRequest,ProfilesCacheEntry>,
 public DirectAppTimer
 {
 public:
   ProfilesCache(vector<string> used_header_fields, unsigned long buckets = 65000,double timeout = 5);
   ~ProfilesCache();
 
-  SqlCallProfile *get_profile(const AmSipRequest *req);
-  void insert_profile(const AmSipRequest *req,SqlCallProfile *profile);
+  bool get_profiles(const AmSipRequest *req,list<SqlCallProfile *> &profiles);
+  void insert_profile(const AmSipRequest *req,ProfilesCacheEntry *entry);
   
   void fire(){
     on_clean();

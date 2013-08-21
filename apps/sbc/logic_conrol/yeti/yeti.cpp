@@ -202,12 +202,20 @@ SBCCallLeg *Yeti::getCallLeg( const AmSipRequest& req,
                         ParamReplacerCtx& ctx,
                         CallLegCreator *leg_creator ){
     DBG("%s() called",FUNC_NAME);
+	CallCtx *call_ctx = new CallCtx;
+	router->getprofiles(req,*call_ctx);
 
-    SqlCallProfile *profile = router->getprofile(req);
-    SBCCallProfile& call_profile = *profile;
-	Cdr *cdr = new Cdr(*profile);
+	SqlCallProfile *profile = call_ctx->getFirstProfile();
+	if(NULL == profile){
+		delete call_ctx;
+		throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
+	}
 
-    if(!call_profile.refuse_with.empty()) {
+	Cdr *cdr = getCdr(call_ctx);
+
+	SBCCallProfile& call_profile = *profile;
+
+	if(!call_profile.refuse_with.empty()) {
       if(call_profile.refuse(ctx, req) < 0) {
         throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
       }
@@ -216,7 +224,7 @@ SBCCallLeg *Yeti::getCallLeg( const AmSipRequest& req,
 	  cdr->update_sbc(*profile);
 	  cdr->refuse(*profile);
 	  router->write_cdr(cdr);
-      delete profile;
+	  delete call_ctx;
       return NULL;
     }
 
@@ -225,11 +233,8 @@ SBCCallLeg *Yeti::getCallLeg( const AmSipRequest& req,
 
     SBCCallLeg* b2b_dlg = leg_creator->create(call_profile);
 
-	CallCtx *call_ctx = new CallCtx;
-	call_ctx->cdr = cdr;
 	b2b_dlg->setLogicData(reinterpret_cast<void *>(call_ctx));
 
-    delete profile;
     return b2b_dlg;
 }
     //!InDialog handlers
@@ -270,13 +275,13 @@ void Yeti::oodHandlingTerminated(const AmSipRequest *req,SqlCallProfile *call_pr
 
 void Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
 	DBG("%s(%p,leg%s) LogicData = %p",FUNC_NAME,call,call->isALeg()?"A":"B",call->getLogicData());
-	CallCtx *call_ctx = reinterpret_cast<CallCtx *>(call->getLogicData());
-	call_ctx->inc();
-	call_ctx->cdr->update(*call);
+	CallCtx *ctx = getCtx(call);
+	ctx->inc();
+	ctx->cdr->update(*call);
 }
 
 void Yeti::onStateChange(SBCCallLeg *call){
-    DBG("%s(%p,leg%s,state = %d)",FUNC_NAME,call,call->isALeg()?"A":"B",call->getCallStatus());
+	DBG("%s(%p,leg%s,state = %d)",FUNC_NAME,call,call->isALeg()?"A":"B",call->getCallStatus());
     /*
     from CallLeg.h
     enum CallStatus {
@@ -290,20 +295,24 @@ void Yeti::onStateChange(SBCCallLeg *call){
 }
 
 void Yeti::onDestroyLeg(SBCCallLeg *call){
-    DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
-	DBG("%s() call_profile = %p, cdr = %p",FUNC_NAME,&call->getCallProfile(),getCdr(call));
-
+	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	CallCtx *ctx = getCtx(call);
-	Cdr *cdr = getCdr(ctx);
 	if(ctx->dec_and_test()){
-		cdr_list.erase_lookup_key(&cdr->local_tag);
-		DBG("%s() release resources",FUNC_NAME);
-		rctl.put(cdr->rl);
-		DBG("%s() cdr write now",FUNC_NAME);
-		router->write_cdr(cdr);
-	} else {
-		DBG("%s() call context still used",FUNC_NAME);
+		onLastLegDestroy(ctx,call);
+		delete ctx;
 	}
+}
+
+void Yeti::onLastLegDestroy(CallCtx *ctx,SBCCallLeg *call){
+	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+	Cdr *cdr = getCdr(ctx);
+	// remove from active calls
+	cdr_list.erase_lookup_key(&cdr->local_tag);
+	//release resources
+	if(NULL!=ctx->getCurrentProfile())
+		rctl.put(ctx->getCurrentResourceList());
+	//write cdr (Cdr class will be deleted by CdrWriter)
+	router->write_cdr(cdr);
 }
 
 CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, const AmSipReply& reply) {
@@ -317,21 +326,83 @@ CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, const AmSipReply& reply)
 CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerParams &params) {
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 
-	SBCCallProfile &profile = call->getCallProfile();
-	Cdr *cdr = getCdr(call);
+	SqlCallProfile *profile = NULL;
 	const AmSipRequest &req = *params.original_invite;
 
+	CallCtx *ctx = getCtx(call);
+	Cdr *cdr = getCdr(ctx);
+	ResourceCtlResponse rctl_ret;
+	string refuse_reason;
+	int refuse_code;
+	int attempt = 0;
+
 	cdr->update(Start);
-	cdr->update_sbc(profile);
 	cdr->update(req);
 
-	ParamReplacerCtx ctx(&profile);
-	cdr->replace(ctx,req);
+	do {
+		DBG("%s() check resources for profile. attempt %d",FUNC_NAME,attempt);
+		rctl_ret = rctl.get(ctx->getCurrentResourceList(),refuse_code,refuse_reason);
 
+		if(rctl_ret == RES_CTL_OK){
+			DBG("%s() check resources succ",FUNC_NAME);
+			profile = ctx->getCurrentProfile();
+
+			cdr->update_sbc(*profile);
+
+			ParamReplacerCtx rctx(profile);
+			cdr->replace(rctx,req);
+
+			break;
+		} else if(	rctl_ret ==  RES_CTL_REJECT ||
+					rctl_ret ==  RES_CTL_ERROR){
+			DBG("%s() check resources failed with code: %d, reply: <%d '%s'>",FUNC_NAME,
+				rctl_ret,refuse_code,refuse_reason.c_str());
+			break;
+		} else if(	rctl_ret == RES_CTL_NEXT){
+			DBG("%s() check resources failed with code: %d, reply: <%d '%s'>",FUNC_NAME,
+				rctl_ret,refuse_code,refuse_reason.c_str());
+
+			profile = ctx->getNextProfile(true);
+
+			if(NULL==profile){
+				DBG("%s() there are no profiles more",FUNC_NAME);
+				cdr->update(DisconnectByTS,refuse_reason,refuse_code);
+				throw AmSession::Exception(503,"no more profiles");
+			}
+
+			DBG("%s() choosed next profile",FUNC_NAME);
+
+			if(!profile->refuse_with.empty()) {
+				DBG("%s() profile contains nonempty refuse_with ",FUNC_NAME);
+				ParamReplacerCtx rctx(profile);
+				cdr->update_sbc(*profile);
+				cdr->replace(rctx,req);
+				//if(profile->refuse(rctx, req) < 0) {
+				//	throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
+				//}
+				cdr->refuse(*profile);
+				throw AmSession::Exception(cdr->disconnect_code,cdr->disconnect_reason);
+			}
+		}
+		attempt++;
+	} while(rctl_ret != RES_CTL_OK);
+
+	if(rctl_ret != RES_CTL_OK){
+		cdr->update(DisconnectByTS,refuse_reason,refuse_code);
+		throw AmSession::Exception(refuse_code,refuse_reason);
+	} else {
+		if(attempt != 0){
+			//profile changed
+			//we must update profile for leg
+			DBG("%s() update call profile for leg",FUNC_NAME);
+			call->getCallProfile() = *profile;
+		}
+	}
+/*
 	string refuse_reason;
 	int refuse_code;
 	ResourceCtlResponse rctl_ret =
-		rctl.get(cdr->rl,refuse_code,refuse_reason);
+		rctl.get(ctx->getCurrentResourceList(),refuse_code,refuse_reason);
 	switch(rctl_ret){
 		case RES_CTL_OK:
 			//nothing to do
@@ -342,7 +413,7 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 			throw AmSession::Exception(refuse_code,refuse_reason);
 			break;
 	}
-
+*/
 	if(cdr->time_limit){
         DBG("%s() save timer %d with timeout %d",FUNC_NAME,
               SBC_TIMER_ID_CALL_TIMERS_START,

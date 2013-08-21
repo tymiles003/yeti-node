@@ -787,6 +787,25 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
     }
   }
 
+  string ruri, to, from;
+  AmSipRequest uac_req(req);
+  AmUriParser uac_ruri;
+  uac_ruri.uri = uac_req.r_uri;
+  if(!uac_ruri.parse_uri()) {
+	DBG("Error parsing R-URI '%s'\n",uac_ruri.uri.c_str());
+	throw AmSession::Exception(400,"Failed to parse R-URI");
+  }
+
+  // Request for B leg
+  AmSipRequest invite_req(req);
+
+  initCCExtModules();
+  // call extend call controls
+  InitialInviteHandlerParams params(to, ruri, from, &req, &invite_req);
+  for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
+	(*i)->onInitialInvite(this, params);
+  }
+
   call_profile.sst_aleg_enabled = 
     ctx.replaceParameters(call_profile.sst_aleg_enabled,
 			  "enable_aleg_session_timer", req);
@@ -810,17 +829,6 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
   if (!call_profile.evaluate(ctx, req)) {
     ERROR("call profile evaluation failed\n");
     throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
-  }
-
-  initCCExtModules();
-
-  string ruri, to, from;
-  AmSipRequest uac_req(req);
-  AmUriParser uac_ruri;
-  uac_ruri.uri = uac_req.r_uri;
-  if(!uac_ruri.parse_uri()) {
-    DBG("Error parsing R-URI '%s'\n",uac_ruri.uri.c_str());
-    throw AmSession::Exception(400,"Failed to parse R-URI");
   }
 
   if(call_profile.contact_hiding) { 
@@ -855,7 +863,6 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
 
   // prepare request to relay to the B leg(s)
 
-  AmSipRequest invite_req(req);
   est_invite_cseq = req.cseq;
 
   removeHeader(invite_req.hdrs,PARAM_HDR);
@@ -891,12 +898,6 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
   // we have to use original request (not the altered one) because for example
   // codecs filtered out might be used in direction to caller
   CallLeg::onInvite(req);
-
-  // call extend call controls
-  InitialInviteHandlerParams params(to, ruri, from, &req, &invite_req);
-  for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
-    (*i)->onInitialInvite(this, params);
-  }
 
   if (getCallStatus() == Disconnected) {
     // no CC module connected a callee yet

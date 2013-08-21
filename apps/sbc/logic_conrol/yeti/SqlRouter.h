@@ -10,6 +10,7 @@
 #include "ProfilesCache.h"
 #include "DbTypes.h"
 #include "Cdr.h"
+#include "CallCtx.h"
 
 using std::string;
 using std::list;
@@ -23,7 +24,7 @@ struct GetProfileException {
 
 class SqlRouter {
 public:
-  SqlCallProfile *getprofile(const AmSipRequest&);
+  void getprofiles(const AmSipRequest&,CallCtx &ctx);
   int configure(AmConfigReader &cfg);
   int run();
   void stop();
@@ -49,7 +50,8 @@ private:
   unsigned int gpi;
 
   int db_configure(AmConfigReader &cfg);
-  SqlCallProfile* _getprofile(const AmSipRequest&, pqxx::connection*);
+  ProfilesCacheEntry* _getprofiles(const AmSipRequest&,
+							   pqxx::connection*);
   void update_counters(struct timeval &start_time);
 
   PgConnectionPool *master_pool;

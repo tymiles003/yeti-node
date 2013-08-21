@@ -180,10 +180,14 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 
 	time_limit=t["time_limit"].as<int>(0);
 	resources = t["resources"].c_str();
-	cached = false;
 
 	INFO("Yeti: loaded SQL profile\n");
+	infoPrint();
 
+	return true;
+}
+
+void SqlCallProfile::infoPrint(){
 	if (!refuse_with.empty()) {
 		INFO("SBC:      refusing calls with '%s'\n", refuse_with.c_str());
 	} else {
@@ -313,10 +317,13 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 	INFO("SBC:      time_limit: %i\n", time_limit);
 	INFO("SBC:      resources: %s\n", resources.c_str());
 
+	list<string>::const_iterator dit = dyn_fields.begin();
+	for(int k = 0;dit!=dyn_fields.end();++dit){
+		INFO("SBC:      dynamic_field[%d]: %s\n",k++,dit->c_str());
+	}
+
 	codec_prefs.infoPrint();
 	transcoder.infoPrint();
-
-	return true;
 }
 
 bool SqlCallProfile::readFilter(const pqxx::result::tuple &t, const char* cfg_key_filter, const char* cfg_key_list,
@@ -378,4 +385,24 @@ bool SqlCallProfile::column_exist(const pqxx::result::tuple &t,string column_nam
 		DBG("%s column: %s",FUNC_NAME,column_name.c_str());
 	}
 	return false;
+}
+
+bool SqlCallProfile::evaluate(){
+	DBG("%s()",FUNC_NAME);
+	try {
+		rl = resource_parse(resources);
+		ResourceList::const_iterator i = rl.begin();
+		for(;i!=rl.end();++i){
+			DBG("%p: resource: <%s>",this,resource_print(*i).c_str());
+		}
+	} catch(ResourceParseException &e){
+		DBG("resources parse error:  %s <ctx = '%s'>",e.what.c_str(),e.ctx.c_str());
+	}
+	return true;
+}
+
+SqlCallProfile *SqlCallProfile::copy(){
+	SqlCallProfile *profile = new SqlCallProfile();
+	*profile = *this;
+	return profile;
 }

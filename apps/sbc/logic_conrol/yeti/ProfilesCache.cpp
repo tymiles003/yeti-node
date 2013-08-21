@@ -1,7 +1,7 @@
 #include "ProfilesCache.h"
 
 ProfilesCache::ProfilesCache(vector<string>	 used_header_fields, unsigned long buckets,double timeout):
-  MurmurHash<ProfilesCacheKey,AmSipRequest,SqlCallProfile>(buckets),
+  MurmurHash<ProfilesCacheKey,AmSipRequest,ProfilesCacheEntry>(buckets),
   timeout(timeout),
   used_header_fields(used_header_fields) {
   DBG("ProfilesCache()");
@@ -91,9 +91,9 @@ void ProfilesCache::free_key(ProfilesCacheKey *key){
   delete key;
 }
 
-SqlCallProfile *ProfilesCache::get_profile(const AmSipRequest *req){
-  SqlCallProfile *profile = NULL;
+bool ProfilesCache::get_profiles(const AmSipRequest *req,list<SqlCallProfile *> &profiles){
   struct timeval now;
+  bool ret = false;
   entry *e;
   lock();
     e = at(req,false);
@@ -105,25 +105,29 @@ SqlCallProfile *ProfilesCache::get_profile(const AmSipRequest *req){
 	  delete e->data;
 	  erase(e,false);
 	} else {
-      profile = new SqlCallProfile(*e->data);
+		ProfilesCacheEntry *entry = e->data;
+		list<SqlCallProfile *>::iterator pit = entry->profiles.begin();
+		for(;pit!=entry->profiles.end();++pit){
+			profiles.push_back((*pit)->copy());
+		}
+		ret = true;
 	}
     } else {
       DBG("ProflesCache: No appropriate profile in cache");
     }
   unlock();
-  return profile;
+  return ret;
 }
 
-void ProfilesCache::insert_profile(const AmSipRequest *req,SqlCallProfile *profile){
-  SqlCallProfile *p = new SqlCallProfile(*profile);
+void ProfilesCache::insert_profile(const AmSipRequest *req,ProfilesCacheEntry *entry){
+  ProfilesCacheEntry *e = entry->copy();
   lock();
   DBG("ProflesCache: add profile to cache");
-  if(insert(req,p,false,true)){ //(false, true) eq (external locked,check unique)
-    profile->cached = true;
-    DBG("ProflesCache: profile added");
+  if(insert(req,e,false,true)){ //(false, true) eq (external locked,check unique)
+	DBG("ProflesCache: profiles added");
   } else {
-    delete p;
-    DBG("ProfilesCache: profile already in cache.");
+	DBG("ProfilesCache: profiles already in cache. delete cloned entry");
+	delete e;
   }
   unlock();
 }
@@ -131,30 +135,25 @@ void ProfilesCache::insert_profile(const AmSipRequest *req,SqlCallProfile *profi
 void ProfilesCache::check_obsolete(){
   entry *e,*next;
   struct timeval now;
-  list<SqlCallProfile *> free_profiles;
-  SqlCallProfile *profile;
-  free_profiles.clear();
+  ProfilesCacheEntry *cache_entry;
+  list<ProfilesCacheEntry *> free_entries;
+
   lock();
     gettimeofday(&now,NULL);
     e = first;
     while(e){
       next = e->next;
       if(is_obsolete(e,&now)){
-        //if(e->data->ref_cnt.get()==0){
-        //    DBG("%s: cleanup %p",FUNC_NAME,e->data);
-            free_profiles.push_back(e->data);
+			free_entries.push_back(e->data);
             erase(e,false);
-        //} else {
-        //    DBG("%s: has still used obsolete entry %p",FUNC_NAME,e->data);
-        //}
       }
       e = next;
     }
   unlock();
-  while(!free_profiles.empty()){
-    profile = free_profiles.front();
-    delete profile;
-    free_profiles.pop_front();
+  while(!free_entries.empty()){
+	cache_entry = free_entries.front();
+	delete cache_entry;
+	free_entries.pop_front();
   }
 }
 

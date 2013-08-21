@@ -1,10 +1,10 @@
 #ifndef CDR_H
 #define CDR_H
+#include "time.h"
 
 #include "SqlCallProfile.h"
 #include "SBCCallLeg.h"
 #include "Resource.h"
-#include "time.h"
 
 enum UpdateAction {
     Start,
@@ -21,12 +21,10 @@ enum DisconnectInitiator {
 };
 
 struct Cdr: public
-	AmMutex/*,
-	atomic_int*/
+	AmMutex
 {
     bool writed;
-
-	ResourceList rl;
+	int attempt_num;
 
 	string msg_logger_path;
 	bool log_rtp;
@@ -54,6 +52,7 @@ struct Cdr: public
     string outbound_proxy;
 
 	Cdr();
+	Cdr(const Cdr& cdr);
     Cdr(const SqlCallProfile &profile);
 
     void init();

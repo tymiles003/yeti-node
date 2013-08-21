@@ -5,6 +5,8 @@
 #include <pqxx/result>
 #include <string>
 
+#include "Resource.h"
+
 using std::string;
 
 struct SqlCallProfile
@@ -12,10 +14,9 @@ struct SqlCallProfile
 {
 	int time_limit;
 	bool SQLexception;
-	bool cached;
-	struct timeval expire_time;
 	list<string> dyn_fields;
 	string resources;
+	ResourceList rl;
 
 	SqlCallProfile();
 	~SqlCallProfile();
@@ -26,7 +27,10 @@ struct SqlCallProfile
 	bool readCodecPrefs(const pqxx::result::tuple &t);
 	bool readTranscoder(const pqxx::result::tuple &t);
 	bool column_exist(const pqxx::result::tuple &t,string column_name);
+	bool evaluate();
 
+	void infoPrint();
+	SqlCallProfile *copy();
 };
 
 #endif // SQLCALLPROFILE_H

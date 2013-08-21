@@ -16,12 +16,7 @@
 #include "CdrWriter.h"
 #include "SBC.h"
 #include "ResourceControl.h"
-
-struct CallCtx: public
-	atomic_int
-{
-	Cdr *cdr;
-};
+#include "CallCtx.h"
 
 class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterface
 {
@@ -39,6 +34,8 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   CallCtx *getCtx(SBCCallLeg *call){ return reinterpret_cast<CallCtx *>(call->getLogicData()); }
   Cdr *getCdr(CallCtx *ctx) { return ctx->cdr; }
   Cdr *getCdr(SBCCallLeg *call) { return getCdr(getCtx(call)); }
+
+  void onLastLegDestroy(CallCtx *ctx,SBCCallLeg *call);
  public:
   Yeti();
   ~Yeti();

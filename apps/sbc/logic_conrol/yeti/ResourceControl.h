@@ -4,30 +4,41 @@
 #include "AmConfigReader.h"
 #include "ResourceCache.h"
 #include <map>
+#include "log.h"
 
 using namespace std;
+
+#define ResourceAction_Reject 1
+#define ResourceAction_NextRoute 2
+#define ResourceAction_Accept 3
 
 struct ResourceConfig {
 	int id;
 	string name;
 	int reject_code;
 	string reject_reason;
-	bool reject_on_overload;
-	bool next_route_on_overload;
+	enum ActionType {
+		Reject = 0,
+		NextRoute,
+		Accept
+	} action;
+	string str_action;
 
-	ResourceConfig(int i,string n, int c, string r,bool reject,bool next_route):
+	ResourceConfig(int i,string n, int c, string r,int a):
 		id(i),
 		name(n),
 		reject_code(c),
-		reject_reason(r),
-		reject_on_overload(reject),
-		next_route_on_overload(next_route){}
+		reject_reason(r)
+	{
+		set_action(a);
+	}
+	void set_action(int a);
 	string print() const;
 };
 
 enum ResourceCtlResponse {
 	RES_CTL_OK,
-//	RES_CTL_NEXT,
+	RES_CTL_NEXT,
 	RES_CTL_REJECT,
 	RES_CTL_ERROR
 };

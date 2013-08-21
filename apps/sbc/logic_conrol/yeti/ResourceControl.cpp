@@ -3,16 +3,34 @@
 #include "DbConfig.h"
 #include <pqxx/pqxx>
 
+void ResourceConfig::set_action(int a){
+	switch(a){
+	case ResourceAction_Reject:
+		action = Reject;
+		str_action = "Reject";
+		break;
+	case ResourceAction_NextRoute:
+		action = NextRoute;
+		str_action = "NextRoute";
+		break;
+	case ResourceAction_Accept:
+		action = Accept;
+		str_action = "Accept";
+		break;
+	default:
+		DBG("invalid action type. use Reject instead");
+		action = Reject;
+	}
+}
+
 string ResourceConfig::print() const{
 	ostringstream s;
 	s << "id: " << id << ", ";
 	s << "name: '" << name << "'', ";
 	s << "reject: '" << reject_code << " " << reject_reason << "', ";
-	s << "reject_on_overload: " << reject_on_overload << ", ";
-	s << "next_route_overload: " << next_route_on_overload;
+	s << "action: " << str_action;
 	return s.str();
 }
-
 
 ResourceControl::ResourceControl()
 {
@@ -46,8 +64,7 @@ int ResourceControl::configure(AmConfigReader &cfg){
 				row["name"].c_str(),
 				row["reject_code"].as<int>(),
 				row["reject_reason"].c_str(),
-				row["reject_on_overload"].as<bool>(),
-				row["next_route_on_overload"].as<bool>()
+				row["action_id"].as<int>()
 			);
 			type2cfg.insert(pair<int,ResourceConfig>(id,rc));
 		}
@@ -113,15 +130,16 @@ ResourceCtlResponse ResourceControl::get(ResourceList &rl,
 				reject_reason = "Resource with unknown type overloaded";
 			} else {
 				ResourceConfig &rc  = ti->second;
-				if(rc.reject_on_overload){
-					DBG("overloaded resource %d reject it",rc.id);
+				DBG("overloaded resource %d:%d action: %s",rli->type,rli->id,rc.str_action.c_str());
+				if(rc.action==ResourceConfig::Accept){
+					return RES_CTL_OK;
+				} else { /* reject or choose next */
 					reject_code = rc.reject_code;
 					reject_reason = rc.reject_reason;
 					replace(reject_reason,(*rli),rc);
-					return RES_CTL_REJECT;
-				} else {
-					DBG("overloaded resource %d but no reject on overload",rc.id);
-					return RES_CTL_OK;
+					return rc.action==ResourceConfig::NextRoute?
+									RES_CTL_NEXT:
+									RES_CTL_REJECT;
 				}
 			}
 		} break;

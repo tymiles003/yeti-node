@@ -26,6 +26,8 @@ void Cdr::init(){
 	log_sip = false;
 
     time_limit = 0;
+
+	attempt_num = 0;
 }
 
 void Cdr::update_sql(const SqlCallProfile &profile){
@@ -33,15 +35,6 @@ void Cdr::update_sql(const SqlCallProfile &profile){
     outbound_proxy = profile.outbound_proxy;
     dyn_fields = profile.dyn_fields;
     time_limit = profile.time_limit;
-	try {
-		rl = resource_parse(profile.resources);
-		ResourceList::const_iterator i = rl.begin();
-		for(;i!=rl.end();++i){
-			DBG("%p: resource: <%s>",this,resource_print(*i).c_str());
-		}
-	} catch(ResourceParseException &e){
-		DBG("resources parse error:  %s <ctx = '%s'>",e.what.c_str(),e.ctx.c_str());
-	}
 }
 
 void Cdr::update_sbc(const SBCCallProfile &profile){
@@ -146,6 +139,41 @@ void Cdr::replace(ParamReplacerCtx &ctx,const AmSipRequest &req){
 
 Cdr::Cdr(){
     init();
+}
+
+Cdr::Cdr(const Cdr& cdr){
+	writed = false;
+	attempt_num = cdr.attempt_num;
+
+	msg_logger_path = cdr.msg_logger_path;
+	log_rtp = cdr.log_rtp;
+	log_sip = cdr.log_sip;
+
+	disconnect_reason = cdr.disconnect_reason;
+	disconnect_code = cdr.disconnect_code;
+	disconnect_initiator = cdr.disconnect_initiator;
+	cdr_born_time = cdr.cdr_born_time;
+	start_time = cdr.start_time;
+	connect_time = cdr.connect_time;
+	end_time = cdr.end_time;
+
+	legB_remote_ip = cdr.legB_remote_ip;
+	legB_local_ip = cdr.legB_local_ip;
+	legB_remote_port = cdr.legB_remote_port;
+	legB_local_port = cdr.legB_local_port;
+
+	legA_remote_ip = cdr.legA_remote_ip;
+	legA_local_ip = cdr.legA_local_ip;
+	legA_remote_port = cdr.legA_remote_port;
+	legA_local_port = cdr.legA_local_port;
+
+	orig_call_id = cdr.orig_call_id;
+	term_call_id = cdr.term_call_id;
+	local_tag = cdr.local_tag;
+	time_limit = cdr.time_limit;
+	SQLexception = cdr.SQLexception;
+	dyn_fields = cdr.dyn_fields;
+	outbound_proxy = cdr.outbound_proxy;
 }
 
 Cdr::Cdr(const SqlCallProfile &profile)
