@@ -142,7 +142,7 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 	append_headers_req = t["append_headers_req"].c_str();
 	aleg_append_headers_req = t["aleg_append_headers_req"].c_str();
 
-	refuse_with = t["refuse_with"].c_str();
+	//refuse_with = t["refuse_with"].c_str();
 
 	rtprelay_enabled = t["enable_rtprelay"].as<bool>(false);
 	force_symmetric_rtp = t["rtprelay_force_symmetric_rtp"].as<bool>(false)?"yes":"no";
@@ -181,6 +181,8 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 	time_limit=t["time_limit"].as<int>(0);
 	resources = t["resources"].c_str();
 
+	disconnect_code_id =t["disconnect_code_id"].as<int>(0);
+
 	INFO("Yeti: loaded SQL profile\n");
 //	infoPrint();
 
@@ -188,8 +190,11 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 }
 
 void SqlCallProfile::infoPrint(const DynFieldsT &df){
-	if (!refuse_with.empty()) {
+	if(disconnect_code_id!=0) {
+		INFO("SBC:      refusing calls with code '%d'\n", disconnect_code_id);
+	/*} else if (!refuse_with.empty()) {
 		INFO("SBC:      refusing calls with '%s'\n", refuse_with.c_str());
+		*/
 	} else {
 		INFO("SBC:      RURI      = '%s'\n", ruri.c_str());
 		INFO("SBC:      RURI-host = '%s'\n", ruri_host.c_str());
@@ -304,31 +309,30 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 			INFO("SBC:      reply translation for  %s\n", reply_trans_codes.c_str());
 		}
 
+		codec_prefs.infoPrint();
+		transcoder.infoPrint();
+
+		INFO("SBC:      time_limit: %i\n", time_limit);
+		INFO("SBC:      resources: %s\n", resources.c_str());
+
+		INFO("SBC:      reg-caching: '%s'\n", reg_caching ? "yes" : "no");
+		INFO("SBC:      min_reg_expires: %i\n", min_reg_expires);
+		INFO("SBC:      max_ua_expires: %i\n", max_ua_expires);
+
+		list<string>::const_iterator dit = dyn_fields.begin();
+		DynFieldsT::const_iterator dfit = df.begin();
+		while(dit!=dyn_fields.end()){
+			INFO("SBC:      dynamic_field['%s']: '%s'\n",
+				 dfit->first.c_str(),
+				 dit->c_str());
+			++dit;
+			++dfit;
+		}
+
+		if (append_headers.size()) {
+			INFO("SBC:      append headers '%s'\n", append_headers.c_str());
+		}
 	}
-
-	if (append_headers.size()) {
-		INFO("SBC:      append headers '%s'\n", append_headers.c_str());
-	}
-
-	INFO("SBC:      reg-caching: '%s'\n", reg_caching ? "yes" : "no");
-	INFO("SBC:      min_reg_expires: %i\n", min_reg_expires);
-	INFO("SBC:      max_ua_expires: %i\n", max_ua_expires);
-
-	INFO("SBC:      time_limit: %i\n", time_limit);
-	INFO("SBC:      resources: %s\n", resources.c_str());
-
-	list<string>::const_iterator dit = dyn_fields.begin();
-	DynFieldsT::const_iterator dfit = df.begin();
-	while(dit!=dyn_fields.end()){
-		INFO("SBC:      dynamic_field['%s']: '%s'\n",
-			 dfit->first.c_str(),
-			 dit->c_str());
-		++dit;
-		++dfit;
-	}
-
-	codec_prefs.infoPrint();
-	transcoder.infoPrint();
 }
 
 bool SqlCallProfile::readFilter(const pqxx::result::tuple &t, const char* cfg_key_filter, const char* cfg_key_list,

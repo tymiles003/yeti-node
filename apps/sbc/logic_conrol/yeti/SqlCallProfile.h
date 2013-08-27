@@ -14,6 +14,7 @@ struct SqlCallProfile
 	: public SBCCallProfile
 {
 	int time_limit;
+	int disconnect_code_id;
 	bool SQLexception;
 	list<string> dyn_fields;
 	string resources;
