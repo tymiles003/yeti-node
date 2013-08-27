@@ -16,6 +16,7 @@ set (yeti_SRCS
 	SqlCallProfile.cpp
 	Resource.cpp
 	CallCtx.cpp
+	CodesTranslator.cpp
 )
 
 SET(yeti_config_files

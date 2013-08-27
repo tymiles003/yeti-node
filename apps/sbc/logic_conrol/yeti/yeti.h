@@ -17,6 +17,7 @@
 #include "SBC.h"
 #include "ResourceControl.h"
 #include "CallCtx.h"
+#include "CodesTranslator.h"
 
 class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterface
 {
@@ -34,8 +35,12 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   CallCtx *getCtx(SBCCallLeg *call){ return reinterpret_cast<CallCtx *>(call->getLogicData()); }
   Cdr *getCdr(CallCtx *ctx) { return ctx->cdr; }
   Cdr *getCdr(SBCCallLeg *call) { return getCdr(getCtx(call)); }
+  void replace(string& s, const string& from, const string& to);
 
   void onLastLegDestroy(CallCtx *ctx,SBCCallLeg *call);
+  bool connectCallee(SBCCallLeg *call,const AmSipRequest &orig_req);
+  bool chooseNextProfile(SBCCallLeg *call);
+
  public:
   Yeti();
   ~Yeti();
@@ -77,7 +82,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
 
   void onStateChange(SBCCallLeg *call);
   void onDestroyLeg(SBCCallLeg *call);
-  CCChainProcessing onBLegRefused(SBCCallLeg *call, const AmSipReply& reply);
+  CCChainProcessing onBLegRefused(SBCCallLeg *call,AmSipReply& reply);
 
   CCChainProcessing onInitialInvite(SBCCallLeg *call, InitialInviteHandlerParams &params);
   CCChainProcessing onInDialogRequest(SBCCallLeg *call, const AmSipRequest &req);

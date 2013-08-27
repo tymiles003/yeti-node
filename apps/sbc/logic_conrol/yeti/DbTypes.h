@@ -5,7 +5,7 @@
 #include <list>
 #include <string>
 
-#define WRITECDR_STATIC_FIELDS_COUNT 21
+#define WRITECDR_STATIC_FIELDS_COUNT 25
 
 using namespace std;
 

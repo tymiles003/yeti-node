@@ -4,6 +4,8 @@
 #include <pqxx/pqxx>
 
 static const char *static_fields_names[] = {
+	"attempt_num",
+	"is_last",
 	"time_limit",
 	"legA_local_ip",
 	"legA_local_port",
@@ -19,6 +21,8 @@ static const char *static_fields_names[] = {
 	"disconnect_code",
 	"disconnect_reason",
 	"disconnect_initiator",
+	"disconnect_rewrited_code",
+	"disconnect_rewrited_reason",
 	"orig_call_id",
 	"term_call_id",
 	"local_tag",
@@ -87,6 +91,7 @@ void CdrWriter::stop()
 
 void CdrWriter::postcdr(Cdr* cdr )
 {
+  DBG("%s(%p)",FUNC_NAME,cdr);
   cdrthreadpool_mut.lock();	
   	cdrthreadpool[cdr->cdr_born_time.tv_usec%cdrthreadpool.size()]->postcdr(cdr); 
   cdrthreadpool_mut.unlock();
@@ -148,13 +153,12 @@ void CdrWriter::clearStats(){
 
 void CdrThread::postcdr(Cdr* cdr)
 {
-    //Cdr *newcdr = new Cdr(*cdr);
-    
-    queue_mut.lock();
-    //queue.push_back(newcdr);
-    queue.push_back(cdr);
-        queue_run.set(true);
-    queue_mut.unlock();
+	DBG("%s[%p](%p)",FUNC_NAME,this,cdr);
+	queue_mut.lock();
+		//queue.push_back(newcdr);
+		queue.push_back(cdr);
+		queue_run.set(true);
+	queue_mut.unlock();
 }
 
 
@@ -304,6 +308,7 @@ int CdrThread::connectdb()
 
 int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr)
 {
+  DBG("%s[%p](conn = %p,cdr = %p)",FUNC_NAME,this,conn,cdr);
   int ret = 1;
   pqxx::result r;
   pqxx::nontransaction tnx(*conn);
@@ -327,6 +332,8 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr)
 	    
       pqxx::prepare::invocation invoc = tnx.prepared("writecdr");
       /* invocate static fields */
+	invoc(cdr->attempt_num);
+	invoc(cdr->is_last);
     invoc(cdr->time_limit);
     invoc(cdr->legA_local_ip);
     invoc(cdr->legA_local_port);
@@ -342,6 +349,13 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr)
 	invoc(cdr->disconnect_code);
 	invoc(cdr->disconnect_reason);
 	invoc(cdr->disconnect_initiator);
+	if(cdr->is_last){
+		invoc(cdr->disconnect_rewrited_code);
+		invoc(cdr->disconnect_rewrited_reason);
+	} else {
+		invoc(0);
+		invoc("");
+	}
 	invoc(cdr->orig_call_id);
 	invoc(cdr->term_call_id);
 	invoc(cdr->local_tag);

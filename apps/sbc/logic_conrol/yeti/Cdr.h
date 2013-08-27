@@ -25,6 +25,7 @@ struct Cdr: public
 {
     bool writed;
 	int attempt_num;
+	bool is_last;
 
 	string msg_logger_path;
 	bool log_rtp;
@@ -33,6 +34,10 @@ struct Cdr: public
     string disconnect_reason;
     int disconnect_code;
     int disconnect_initiator;
+
+	string disconnect_rewrited_reason;
+	int disconnect_rewrited_code;
+
     struct timeval cdr_born_time;
     struct timeval start_time;
     struct timeval connect_time;
@@ -52,7 +57,7 @@ struct Cdr: public
     string outbound_proxy;
 
 	Cdr();
-	Cdr(const Cdr& cdr);
+	Cdr(const Cdr& cdr,const SqlCallProfile &profile);
     Cdr(const SqlCallProfile &profile);
 
     void init();
@@ -63,7 +68,9 @@ struct Cdr: public
     void update(SBCCallLeg &leg);
     void update(UpdateAction act);
     void update(DisconnectInitiator initiator,string reason, int code);
+	void update_rewrited(string reason, int code);
 	void replace(ParamReplacerCtx &ctx,const AmSipRequest &req);
+	void replace(string& s, const string& from, const string& to);
     void refuse(const SBCCallProfile &profile);
 	void refuse(int code, string reason);
 };

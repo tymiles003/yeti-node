@@ -14,6 +14,8 @@ struct CallCtx: public
 	list<SqlCallProfile *> profiles;
 	list<SqlCallProfile *>::iterator current_profile;
 	int attempt_num;
+	AmSipRequest *initial_invite;
+
 	SqlCallProfile *getFirstProfile();
 	SqlCallProfile *getNextProfile(bool early_state);
 	SqlCallProfile *getCurrentProfile();

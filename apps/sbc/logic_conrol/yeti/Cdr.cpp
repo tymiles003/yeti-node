@@ -1,5 +1,15 @@
 #include "Cdr.h"
 #include "AmUtils.h"
+#include "log.h"
+
+
+void Cdr::replace(string& s, const string& from, const string& to){
+	size_t pos = 0;
+	while ((pos = s.find(from, pos)) != string::npos) {
+		 s.replace(pos, from.length(), to);
+		 pos += s.length();
+	}
+}
 
 void Cdr::init(){
     //initital values
@@ -10,6 +20,9 @@ void Cdr::init(){
     gettimeofday(&cdr_born_time, NULL);
 
     writed=false;
+
+	disconnect_rewrited_reason = "";
+	disconnect_rewrited_code = 0;
 
     legB_remote_port = 0;
     legB_local_port = 0;
@@ -27,10 +40,11 @@ void Cdr::init(){
 
     time_limit = 0;
 
-	attempt_num = 0;
+	attempt_num = 1;
 }
 
 void Cdr::update_sql(const SqlCallProfile &profile){
+	DBG("Cdr::%s(SqlCallProfile)",FUNC_NAME);
     SQLexception = profile.SQLexception;
     outbound_proxy = profile.outbound_proxy;
     dyn_fields = profile.dyn_fields;
@@ -38,12 +52,14 @@ void Cdr::update_sql(const SqlCallProfile &profile){
 }
 
 void Cdr::update_sbc(const SBCCallProfile &profile){
+	DBG("Cdr::%s(SBCCallProfile)",FUNC_NAME);
 	msg_logger_path = profile.msg_logger_path;
 	log_rtp = profile.log_rtp;
 	log_sip = profile.log_sip;
 }
 
 void Cdr::update(const AmSipRequest &req){
+	DBG("%s(AmSipRequest)",FUNC_NAME);
 	if(writed) return;
 	legA_remote_ip = req.remote_ip;
     legA_remote_port = req.remote_port;
@@ -53,6 +69,7 @@ void Cdr::update(const AmSipRequest &req){
 }
 
 void Cdr::update(const AmSipReply &reply){
+	DBG("Cdr::%s(AmSipReply)",FUNC_NAME);
     if(writed) return;
     lock();
     legB_remote_ip = reply.remote_ip;
@@ -63,11 +80,12 @@ void Cdr::update(const AmSipReply &reply){
 }
 
 void Cdr::update(SBCCallLeg &leg){
+	DBG("Cdr::%s(SBCCallLeg)",FUNC_NAME);
     if(writed) return;
     lock();
     if(leg.isALeg()){
         //A leg related variables
-        local_tag = leg.getLocalTag();
+		local_tag = leg.getLocalTag();
         orig_call_id = leg.getCallID();
     } else {
         //B leg related variables
@@ -77,6 +95,7 @@ void Cdr::update(SBCCallLeg &leg){
 }
 
 void Cdr::update(UpdateAction act){
+	DBG("Cdr::%s(act = %d)",FUNC_NAME,act);
     if(writed) return;
     switch(act){
     case Start:
@@ -96,13 +115,27 @@ void Cdr::update(UpdateAction act){
 }
 
 void Cdr::update(DisconnectInitiator initiator,string reason, int code){
+	DBG("Cdr::%s(initiator = %d,reason = '%s',code = %d)",FUNC_NAME,
+		initiator,reason.c_str(),code);
     if(writed) return;
     lock();
     gettimeofday(&end_time, NULL);
     disconnect_initiator = initiator;
     disconnect_reason = reason;
     disconnect_code = code;
+	disconnect_rewrited_reason = disconnect_reason;
+	disconnect_rewrited_code = disconnect_code;
     unlock();
+}
+
+void Cdr::update_rewrited(string reason, int code){
+	DBG("Cdr::%s(reason = '%s',code = %d)",FUNC_NAME,
+		reason.c_str(),code);
+	if(writed) return;
+	lock();
+	disconnect_rewrited_reason = reason;
+	disconnect_rewrited_code = code;
+	unlock();
 }
 
 void Cdr::refuse(const SBCCallProfile &profile){
@@ -122,6 +155,8 @@ void Cdr::refuse(const SBCCallProfile &profile){
         disconnect_reason = refuse_with.substr(spos+1);
         disconnect_code = refuse_with_code;
     }
+	disconnect_rewrited_reason = disconnect_reason;
+	disconnect_rewrited_code = disconnect_code;
     unlock();
 }
 
@@ -134,46 +169,34 @@ void Cdr::refuse(int code, string reason){
 }
 
 void Cdr::replace(ParamReplacerCtx &ctx,const AmSipRequest &req){
-	msg_logger_path = ctx.replaceParameters(msg_logger_path,"msg_logger_path",req);
+	//msg_logger_path = ctx.replaceParameters(msg_logger_path,"msg_logger_path",req);
 }
 
 Cdr::Cdr(){
     init();
 }
 
-Cdr::Cdr(const Cdr& cdr){
-	writed = false;
-	attempt_num = cdr.attempt_num;
+Cdr::Cdr(const Cdr& cdr,const SqlCallProfile &profile){
+	DBG("%s(cdr = %p,profile = %p) = %p",FUNC_NAME,
+		&cdr,&profile,this);
+
+	init();
+	update_sql(profile);
+
+	attempt_num = cdr.attempt_num+1;
+	start_time = cdr.start_time;
+
+	legA_remote_ip = cdr.legA_remote_ip;
+	legA_remote_port = cdr.legA_remote_port;
+	legA_local_ip = cdr.legA_local_ip;
+	legA_local_port = cdr.legA_local_port;
+
+	orig_call_id = cdr.orig_call_id;
+	local_tag = cdr.local_tag;
 
 	msg_logger_path = cdr.msg_logger_path;
 	log_rtp = cdr.log_rtp;
 	log_sip = cdr.log_sip;
-
-	disconnect_reason = cdr.disconnect_reason;
-	disconnect_code = cdr.disconnect_code;
-	disconnect_initiator = cdr.disconnect_initiator;
-	cdr_born_time = cdr.cdr_born_time;
-	start_time = cdr.start_time;
-	connect_time = cdr.connect_time;
-	end_time = cdr.end_time;
-
-	legB_remote_ip = cdr.legB_remote_ip;
-	legB_local_ip = cdr.legB_local_ip;
-	legB_remote_port = cdr.legB_remote_port;
-	legB_local_port = cdr.legB_local_port;
-
-	legA_remote_ip = cdr.legA_remote_ip;
-	legA_local_ip = cdr.legA_local_ip;
-	legA_remote_port = cdr.legA_remote_port;
-	legA_local_port = cdr.legA_local_port;
-
-	orig_call_id = cdr.orig_call_id;
-	term_call_id = cdr.term_call_id;
-	local_tag = cdr.local_tag;
-	time_limit = cdr.time_limit;
-	SQLexception = cdr.SQLexception;
-	dyn_fields = cdr.dyn_fields;
-	outbound_proxy = cdr.outbound_proxy;
 }
 
 Cdr::Cdr(const SqlCallProfile &profile)
@@ -181,3 +204,4 @@ Cdr::Cdr(const SqlCallProfile &profile)
     init();
 	update_sql(profile);
 }
+

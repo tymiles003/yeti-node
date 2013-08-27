@@ -158,4 +158,5 @@ ResourceCtlResponse ResourceControl::get(ResourceList &rl,
 
 void ResourceControl::put(ResourceList &rl){
 	cache.put(rl);
+	rl.clear();
 }

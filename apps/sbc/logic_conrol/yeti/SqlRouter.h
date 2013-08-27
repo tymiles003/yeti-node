@@ -29,7 +29,7 @@ public:
   int run();
   void stop();
   void align_cdr(Cdr &cdr);
-  void write_cdr(Cdr *cdr);
+  void write_cdr(Cdr *cdr, bool last);
   void dump_config();
   void clearStats();
   void getStats(AmArg &arg);

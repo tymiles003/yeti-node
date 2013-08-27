@@ -286,8 +286,8 @@ void SqlRouter::getprofiles(const AmSipRequest &req,CallCtx &ctx)
   if(getprofile_fail){
     ERROR("SQL cant get profile. Drop request");
 	SqlCallProfile *profile = new SqlCallProfile();
-	profile->refuse_with=refuse_with;
-	profile->SQLexception=true;
+	profile->refuse_with = refuse_with;
+	profile->SQLexception = true;
 	ctx.profiles.push_back(profile);
   } else {
     update_counters(start_time);
@@ -396,8 +396,11 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req,
 		for(;it!=dyn_fields.end();++it){
 			profile->dyn_fields.push_back(t[it->first].c_str());
 		}
+		profile->infoPrint(dyn_fields);
 		//evaluate it
-		profile->evaluate();
+		profile->eval_resources();
+		//update some fields
+		profile->SQLexception = false;
 		//push to ret
 		entry->profiles.push_back(profile);
 	}
@@ -413,12 +416,13 @@ void SqlRouter::align_cdr(Cdr &cdr){
     }
 }
 
-void SqlRouter::write_cdr(Cdr* cdr)
+void SqlRouter::write_cdr(Cdr* cdr, bool last)
 {
   DBG("%s(%p)",FUNC_NAME,cdr);
   if(!cdr->writed){
     DBG("%s(%p) write now",FUNC_NAME,cdr);
     cdr->update(Write);
+	cdr->is_last = last;
 	//cdr->inc();
     cdr_writer->postcdr(cdr);
   } else {

@@ -6,7 +6,7 @@
 #include "AmSession.h"
 #include "CallLeg.h"
 #include "Version.h"
-
+#include "RegisterDialog.h"
 #include "SBC.h"
 struct CallLegCreator;
 
@@ -86,10 +86,15 @@ int Yeti::onLoad() {
 
     DBG("p = %p",profile);
 	if(rctl.configure(cfg)){
-		ERROR("ResourceControl confgiure failed");
+		ERROR("ResourceControl configure failed");
 		return -1;
 	}
 	rctl.start();
+
+	if (CodesTranslator::instance()->configure(cfg)){
+		ERROR("CodesTranslator configure failed");
+		return -1;
+	}
 
     if (router->configure(cfg)){
         ERROR("SqlRouter confgiure failed");
@@ -102,6 +107,14 @@ int Yeti::onLoad() {
     }
 
     return 0;
+}
+
+void Yeti::replace(string& s, const string& from, const string& to){
+	size_t pos = 0;
+	while ((pos = s.find(from, pos)) != string::npos) {
+		 s.replace(pos, from.length(), to);
+		 pos += s.length();
+	}
 }
 
 void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
@@ -223,12 +236,11 @@ SBCCallLeg *Yeti::getCallLeg( const AmSipRequest& req,
       cdr->update(req);
 	  cdr->update_sbc(*profile);
 	  cdr->refuse(*profile);
-	  router->write_cdr(cdr);
+	  router->write_cdr(cdr,true);
 	  delete call_ctx;
       return NULL;
     }
 
-    profile->cc_interfaces.clear();
     profile->cc_interfaces.push_back(self_iface);
 
     SBCCallLeg* b2b_dlg = leg_creator->create(call_profile);
@@ -236,6 +248,180 @@ SBCCallLeg *Yeti::getCallLeg( const AmSipRequest& req,
 	b2b_dlg->setLogicData(reinterpret_cast<void *>(call_ctx));
 
     return b2b_dlg;
+}
+
+bool Yeti::connectCallee(SBCCallLeg *call,const AmSipRequest &orig_req){
+
+	SBCCallProfile &call_profile = call->getCallProfile();
+	ParamReplacerCtx ctx(&call_profile);
+	ctx.app_param = getHeader(orig_req.hdrs, PARAM_HDR, true);
+
+	AmSipRequest uac_req(orig_req);
+	AmUriParser uac_ruri;
+
+	uac_ruri.uri = uac_req.r_uri;
+	if(!uac_ruri.parse_uri()) {
+		DBG("Error parsing R-URI '%s'\n",uac_ruri.uri.c_str());
+		throw AmSession::Exception(400,"Failed to parse R-URI");
+	}
+
+	call_profile.sst_aleg_enabled =
+	  ctx.replaceParameters(call_profile.sst_aleg_enabled,
+				"enable_aleg_session_timer", orig_req);
+
+	call_profile.sst_enabled = ctx.replaceParameters(call_profile.sst_enabled,
+							 "enable_session_timer", orig_req);
+
+	if ((call_profile.sst_aleg_enabled == "yes") ||
+		(call_profile.sst_enabled == "yes")) {
+
+	  call_profile.eval_sst_config(ctx,orig_req,call_profile.sst_a_cfg);
+	  if(call->applySSTCfg(call_profile.sst_a_cfg,&orig_req) < 0) {
+		throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
+	  }
+	}
+
+
+	if (!call_profile.evaluate(ctx, orig_req)) {
+	  ERROR("call profile evaluation failed\n");
+	  throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
+	}
+
+	if(call_profile.contact_hiding) {
+	  if(RegisterDialog::decodeUsername(orig_req.user,uac_ruri)) {
+		uac_req.r_uri = uac_ruri.uri_str();
+	  }
+	}
+	else if(call_profile.reg_caching) {
+	  // REG-Cache lookup
+	  uac_req.r_uri = call_profile.retarget(orig_req.user,*call->dlg);
+	}
+
+	string ruri, to, from;
+
+	ruri = call_profile.ruri.empty() ? uac_req.r_uri : call_profile.ruri;
+	if(!call_profile.ruri_host.empty()){
+	  ctx.ruri_parser.uri = ruri;
+	  if(!ctx.ruri_parser.parse_uri()) {
+		WARN("Error parsing R-URI '%s'\n", ruri.c_str());
+	  }
+	  else {
+		ctx.ruri_parser.uri_port.clear();
+		ctx.ruri_parser.uri_host = call_profile.ruri_host;
+		ruri = ctx.ruri_parser.uri_str();
+	  }
+	}
+	from = call_profile.from.empty() ? orig_req.from : call_profile.from;
+	to = call_profile.to.empty() ? orig_req.to : call_profile.to;
+
+	call->applyAProfile();
+	call_profile.apply_a_routing(ctx,orig_req,*call->dlg);
+
+	AmSipRequest invite_req(orig_req);
+
+	removeHeader(invite_req.hdrs,PARAM_HDR);
+	removeHeader(invite_req.hdrs,"P-App-Name");
+
+	if (call_profile.sst_enabled_value) {
+	  removeHeader(invite_req.hdrs,SIP_HDR_SESSION_EXPIRES);
+	  removeHeader(invite_req.hdrs,SIP_HDR_MIN_SE);
+	}
+
+	inplaceHeaderFilter(invite_req.hdrs, call_profile.headerfilter);
+
+	if (call_profile.append_headers.size() > 2) {
+	  string append_headers = call_profile.append_headers;
+	  assertEndCRLF(append_headers);
+	  invite_req.hdrs+=append_headers;
+	}
+
+	int res = call->filterSdp(invite_req.body, invite_req.method);
+	if (res < 0) {
+	  // FIXME: quick hack, throw the exception from the filtering function for
+	  // requests
+	  throw AmSession::Exception(488, SIP_REPLY_NOT_ACCEPTABLE_HERE);
+	}
+
+	call->connectCallee(to, ruri, from, orig_req, invite_req);
+
+	return false;
+}
+
+bool Yeti::chooseNextProfile(SBCCallLeg *call){
+	DBG("%s()",FUNC_NAME);
+
+	string refuse_reason;
+	int refuse_code;
+	CallCtx *ctx = getCtx(call);
+	Cdr *cdr = getCdr(ctx);
+	SqlCallProfile *profile = NULL;
+	ResourceCtlResponse rctl_ret;
+	bool has_profile = false;
+
+	profile = ctx->getNextProfile(false);
+
+	if(NULL==profile || !profile->refuse_with.empty()){
+		//pretend that nothing happen. we were never called
+		//remove excess cdr and replace ctx pointer with old
+		delete ctx->cdr;
+		ctx->cdr = cdr;
+	} else {
+		//write all cdr and replacy ctx pointer with new
+		router->write_cdr(cdr,false);
+		cdr = getCdr(ctx);
+	}
+
+	do {
+		if(NULL==profile){
+			DBG("%s() there are no profiles more",FUNC_NAME);
+			//cdr->update(DisconnectByTS,"no more profiles",503);
+			//throw AmSession::Exception(503,"no more profiles");
+			break;
+		}
+
+		DBG("%s() choosed next profile. check it for refuse",FUNC_NAME);
+
+		if(!profile->refuse_with.empty()) {
+			DBG("%s() profile contains nonempty refuse_with ",FUNC_NAME);
+			cdr->refuse(*profile);
+			break;
+			//throw AmSession::Exception(cdr->disconnect_code,cdr->disconnect_reason);
+		}
+
+		DBG("%s() no refuse field. check it for resources",FUNC_NAME);
+
+		rctl_ret = rctl.get(ctx->getCurrentResourceList(),refuse_code,refuse_reason);
+
+		if(rctl_ret == RES_CTL_OK){
+			DBG("%s() check resources  successed",FUNC_NAME);
+			profile = ctx->getCurrentProfile();
+			has_profile = true;
+			break;
+		} else if(	rctl_ret ==  RES_CTL_REJECT ||
+					rctl_ret ==  RES_CTL_ERROR){
+			DBG("%s() check resources failed with code: %d, reply: <%d '%s'>",FUNC_NAME,
+				rctl_ret,refuse_code,refuse_reason.c_str());
+			break;
+		} else if(	rctl_ret == RES_CTL_NEXT){
+			DBG("%s() check resources failed with code: %d, reply: <%d '%s'>",FUNC_NAME,
+				rctl_ret,refuse_code,refuse_reason.c_str());
+			//write old cdr here
+			profile = ctx->getNextProfile(false);
+
+			router->write_cdr(cdr,true);
+			cdr = getCdr(ctx);
+		}
+	} while(rctl_ret != RES_CTL_OK);
+
+	if(!has_profile){
+		cdr->update(DisconnectByTS,refuse_reason,refuse_code);
+		return false;
+	} else {
+		DBG("%s() update call profile for legA",FUNC_NAME);
+		profile->cc_interfaces.push_back(self_iface);
+		call->getCallProfile() = *profile;
+		return true;
+	}
 }
     //!InDialog handlers
 void Yeti::start(const string& cc_name, const string& ltag,
@@ -269,15 +455,21 @@ void Yeti::oodHandlingTerminated(const AmSipRequest *req,SqlCallProfile *call_pr
         cdr->update(Start);
         cdr->refuse(*call_profile);
         router->align_cdr(*cdr);
-        router->write_cdr(cdr);
+		router->write_cdr(cdr,true);
     }
 }
 
 void Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
 	DBG("%s(%p,leg%s) LogicData = %p",FUNC_NAME,call,call->isALeg()?"A":"B",call->getLogicData());
 	CallCtx *ctx = getCtx(call);
+	SBCCallProfile &profile = call->getCallProfile();
+	Cdr *cdr = getCdr(ctx);
 	ctx->inc();
-	ctx->cdr->update(*call);
+	if(call->isALeg()){
+		replace(profile.msg_logger_path,"%ltag",call->getLocalTag());
+		cdr->update_sbc(profile);
+	}
+	cdr->update(*call);
 }
 
 void Yeti::onStateChange(SBCCallLeg *call){
@@ -298,8 +490,11 @@ void Yeti::onDestroyLeg(SBCCallLeg *call){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	CallCtx *ctx = getCtx(call);
 	if(ctx->dec_and_test()){
+		DBG("%s(%p,leg%s) ctx->dec_and_test() = true",FUNC_NAME,call,call->isALeg()?"A":"B");
 		onLastLegDestroy(ctx,call);
 		delete ctx;
+	} else {
+		DBG("%s(%p,leg%s) ctx->dec_and_test() = false",FUNC_NAME,call,call->isALeg()?"A":"B");
 	}
 }
 
@@ -312,15 +507,53 @@ void Yeti::onLastLegDestroy(CallCtx *ctx,SBCCallLeg *call){
 	if(NULL!=ctx->getCurrentProfile())
 		rctl.put(ctx->getCurrentResourceList());
 	//write cdr (Cdr class will be deleted by CdrWriter)
-	router->write_cdr(cdr);
+	router->write_cdr(cdr,true);
 }
 
-CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, const AmSipReply& reply) {
-    DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
-    if(call->isALeg()){
-		getCdr(call)->update(DisconnectByDST,reply.reason,reply.code);
-    }
-    return ContinueProcessing;
+CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, AmSipReply& reply) {
+	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+	CallCtx *ctx = getCtx(call);
+	Cdr* cdr = getCdr(ctx);
+
+
+	if(call->isALeg()){
+
+		cdr->update(reply);
+		cdr->update(DisconnectByDST,reply.reason,reply.code);
+
+		if(CodesTranslator::instance()->stop_hunting(reply.code)){
+			DBG("stop hunting");
+		} else {
+			DBG("continue hunting");
+
+			//put current resources
+			rctl.put(ctx->getCurrentResourceList());
+
+			if(ctx->initial_invite!=NULL){
+				AmSipRequest &req = *ctx->initial_invite;
+				//!TODO: get next callprofile here instead of current
+				if(chooseNextProfile(call)){
+					DBG("%s() has new profile, so create new callee",FUNC_NAME);
+					connectCallee(call,req);
+				} else {
+					DBG("%s() no new profile, just finish as usual",FUNC_NAME);
+				}
+			} else {
+				ERROR("%s() intial_invite == NULL",FUNC_NAME);
+			}
+		}
+		/*
+		string r;
+		unsigned int c;
+		*/
+		CodesTranslator::instance()->rewrite_response(reply.code,reply.reason,
+													  reply.code,reply.reason);
+		cdr->update_rewrited(reply.reason,reply.code);
+		//reply.code = c;
+		//reply.reason = r;
+	}
+
+	return ContinueProcessing;
 }
 
 CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerParams &params) {
@@ -339,18 +572,19 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 	cdr->update(Start);
 	cdr->update(req);
 
+	ctx->initial_invite = new AmSipRequest(req);
+
 	do {
 		DBG("%s() check resources for profile. attempt %d",FUNC_NAME,attempt);
 		rctl_ret = rctl.get(ctx->getCurrentResourceList(),refuse_code,refuse_reason);
 
 		if(rctl_ret == RES_CTL_OK){
 			DBG("%s() check resources succ",FUNC_NAME);
-			profile = ctx->getCurrentProfile();
 
-			cdr->update_sbc(*profile);
-
-			ParamReplacerCtx rctx(profile);
-			cdr->replace(rctx,req);
+			//profile = ctx->getCurrentProfile();
+			//cdr->update_sbc(*profile);
+			//ParamReplacerCtx rctx(profile);
+			//cdr->replace(rctx,req);
 
 			break;
 		} else if(	rctl_ret ==  RES_CTL_REJECT ||
@@ -398,22 +632,7 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 			call->getCallProfile() = *profile;
 		}
 	}
-/*
-	string refuse_reason;
-	int refuse_code;
-	ResourceCtlResponse rctl_ret =
-		rctl.get(ctx->getCurrentResourceList(),refuse_code,refuse_reason);
-	switch(rctl_ret){
-		case RES_CTL_OK:
-			//nothing to do
-			break;
-		case RES_CTL_REJECT:
-		case RES_CTL_ERROR:
-			cdr->update(DisconnectByTS,refuse_reason,refuse_code);
-			throw AmSession::Exception(refuse_code,refuse_reason);
-			break;
-	}
-*/
+
 	if(cdr->time_limit){
         DBG("%s() save timer %d with timeout %d",FUNC_NAME,
               SBC_TIMER_ID_CALL_TIMERS_START,
@@ -506,11 +725,19 @@ CCChainProcessing Yeti::handleHoldReply(SBCCallLeg *call, bool succeeded) {
 }
 
 CCChainProcessing Yeti::onRemoteDisappeared(SBCCallLeg *call, const AmSipReply &reply){
-    DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
-    if(call->isALeg()){
-		getCdr(call)->update(DisconnectByTS,reply.reason,reply.code);
-    }
-    return ContinueProcessing;
+	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+	CallCtx *ctx = getCtx(call);
+	if(call->isALeg()){
+		//trace available values
+		if(ctx->initial_invite!=NULL){
+			AmSipRequest &req = *ctx->initial_invite;
+			DBG("req.method = '%s'",req.method.c_str());
+		} else {
+			ERROR("intial_invite == NULL");
+		}
+		getCdr(ctx)->update(DisconnectByTS,reply.reason,reply.code);
+	}
+	return ContinueProcessing;
 }
 
 CCChainProcessing Yeti::onBye(SBCCallLeg *call, const AmSipRequest &req){

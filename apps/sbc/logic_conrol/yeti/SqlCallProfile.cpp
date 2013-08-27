@@ -182,12 +182,12 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 	resources = t["resources"].c_str();
 
 	INFO("Yeti: loaded SQL profile\n");
-	infoPrint();
+//	infoPrint();
 
 	return true;
 }
 
-void SqlCallProfile::infoPrint(){
+void SqlCallProfile::infoPrint(const DynFieldsT &df){
 	if (!refuse_with.empty()) {
 		INFO("SBC:      refusing calls with '%s'\n", refuse_with.c_str());
 	} else {
@@ -318,8 +318,13 @@ void SqlCallProfile::infoPrint(){
 	INFO("SBC:      resources: %s\n", resources.c_str());
 
 	list<string>::const_iterator dit = dyn_fields.begin();
-	for(int k = 0;dit!=dyn_fields.end();++dit){
-		INFO("SBC:      dynamic_field[%d]: %s\n",k++,dit->c_str());
+	DynFieldsT::const_iterator dfit = df.begin();
+	while(dit!=dyn_fields.end()){
+		INFO("SBC:      dynamic_field['%s']: '%s'\n",
+			 dfit->first.c_str(),
+			 dit->c_str());
+		++dit;
+		++dfit;
 	}
 
 	codec_prefs.infoPrint();
@@ -387,7 +392,7 @@ bool SqlCallProfile::column_exist(const pqxx::result::tuple &t,string column_nam
 	return false;
 }
 
-bool SqlCallProfile::evaluate(){
+bool SqlCallProfile::eval_resources(){
 	DBG("%s()",FUNC_NAME);
 	try {
 		rl = resource_parse(resources);

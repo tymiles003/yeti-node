@@ -21,8 +21,7 @@ SqlCallProfile *CallCtx::getNextProfile(bool early_state){
 	}
 	if(!early_state){
 		attempt_num++;
-		cdr = new Cdr(**current_profile);
-		cdr->attempt_num = attempt_num;
+		cdr = new Cdr(*cdr,**current_profile);
 	}
 	return *current_profile;
 }
@@ -39,7 +38,10 @@ ResourceList &CallCtx::getCurrentResourceList(){
 	return (*current_profile)->rl;
 }
 
-CallCtx::CallCtx(){
+CallCtx::CallCtx():
+	initial_invite(NULL),
+	cdr(NULL)
+{
 	DBG("%s() this = %p",FUNC_NAME,this);
 }
 
@@ -49,5 +51,7 @@ CallCtx::~CallCtx(){
 	for(;it != profiles.end();++it){
 		delete (*it);
 	}
+	if(initial_invite)
+		delete initial_invite;
 }
 

@@ -6,6 +6,7 @@
 #include <string>
 
 #include "Resource.h"
+#include "DbTypes.h"
 
 using std::string;
 
@@ -27,9 +28,9 @@ struct SqlCallProfile
 	bool readCodecPrefs(const pqxx::result::tuple &t);
 	bool readTranscoder(const pqxx::result::tuple &t);
 	bool column_exist(const pqxx::result::tuple &t,string column_name);
-	bool evaluate();
+	bool eval_resources();
 
-	void infoPrint();
+	void infoPrint(const DynFieldsT &df);
 	SqlCallProfile *copy();
 };
 
