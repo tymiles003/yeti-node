@@ -189,6 +189,9 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
   } else if (method == "showVersion"){
     INFO ("showVersion received via xmlrpc2di");
     showVersion(args, ret);
+  } else if(method == "reload"){
+	INFO ("reload received via xmlrpc2di");
+	reload(args,ret);
   } else if(method == "_list"){
     ret.push(AmArg("showVersion"));
     ret.push(AmArg("getConfig"));
@@ -198,6 +201,7 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
     ret.push(AmArg("getCall"));
     ret.push(AmArg("getCalls"));
     ret.push(AmArg("getCallsCount"));
+	ret.push(AmArg("reload"));
   }
   else
     throw AmDynInvoke::NotImplemented(method);
@@ -964,4 +968,31 @@ void Yeti::showVersion(const AmArg& args, AmArg& ret) {
     p["compiled_at"] = YETI_BUILD_DATE;
     p["compiled_by"] = YETI_BUILD_USER;
     ret.push(p);
+}
+
+void Yeti::reload(const AmArg& args, AmArg& ret){
+	if(0==args.size()){
+		ret.push(400);
+		ret.push(AmArg());
+		ret[1].push("reload resources");
+		ret[1].push("reload translations");
+		return;
+	}
+	args.assertArrayFmt("s");
+	string action = args[0].asCStr();
+	if(action=="resources"){
+		if(rctl.reload()){
+			ret.push(200);
+			ret.push("OK");
+		} else {
+			ret.push(500);
+			ret.push("errors during resources config reload. there is empty resources config now");
+		}
+	} else if(action == "translations"){
+		ret.push(400);
+		ret.push("not implemented yet");
+	} else {
+		ret.push(400);
+		ret.push("unknown action");
+	}
 }

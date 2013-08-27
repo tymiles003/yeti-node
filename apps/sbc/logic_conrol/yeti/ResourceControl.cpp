@@ -38,10 +38,7 @@ ResourceControl::ResourceControl()
 }
 
 int ResourceControl::configure(AmConfigReader &cfg){
-	int ret;
 	string prefix("master");
-	DbConfig dbc;
-	pqxx::result r;
 
 	reject_on_error = cfg.getParameterInt("reject_on_cache_error",-1);
 	if(reject_on_error == -1){
@@ -50,7 +47,56 @@ int ResourceControl::configure(AmConfigReader &cfg){
 	}
 
 	dbc.cfg2dbcfg(cfg,prefix);
+
+	if(load_resources_config()){
+		ERROR("can't load resources config");
+		return -1;
+	}
+
+	return cache.configure(cfg);
+}
+
+void ResourceControl::start(){
+	DBG("%s()",FUNC_NAME);
+	cache.start();
+}
+
+void ResourceControl::stop(){
+	cache.stop();
+}
+
+bool ResourceControl::reload(){
+	bool ret = true;
+
+	cfg_lock.lock();
+	type2cfg.clear();
+	if(load_resources_config()){
+		ret = false;
+	}
+	cfg_lock.unlock();
+
+	return ret;
+}
+
+void ResourceControl::replace(string& s, const string& from, const string& to){
+	size_t pos = 0;
+	while ((pos = s.find(from, pos)) != string::npos) {
+		 s.replace(pos, from.length(), to);
+		 pos += s.length();
+	}
+}
+
+void ResourceControl::replace(string &s,Resource &r,ResourceConfig &rc){
+	replace(s,"$id",int2str(r.id));
+	replace(s,"$type",int2str(r.type));
+	replace(s,"$takes",int2str(r.takes));
+	replace(s,"$limit",int2str(r.limit));
+	replace(s,"$name",rc.name);
+}
+
+int ResourceControl::load_resources_config(){
 	try {
+		pqxx::result r;
 		pqxx::connection c(dbc.conn_str());
 			pqxx::work t(c);
 				r = t.exec("SELECT * FROM switch.load_resource_types();");
@@ -73,37 +119,11 @@ int ResourceControl::configure(AmConfigReader &cfg){
 			const ResourceConfig &c = mi->second;
 			DBG("resource cfg: <%s>",c.print().c_str());
 		}
-		ret = cache.configure(cfg);
+		return 0;
 	} catch(const pqxx::pqxx_exception &e){
 		ERROR("pqxx_exception: %s ",e.base().what());
-		ret = 1;
+		return 1;
 	}
-	return ret;
-}
-
-void ResourceControl::start(){
-	DBG("%s()",FUNC_NAME);
-	cache.start();
-}
-
-void ResourceControl::stop(){
-	cache.stop();
-}
-
-void ResourceControl::replace(string& s, const string& from, const string& to){
-	size_t pos = 0;
-	while ((pos = s.find(from, pos)) != string::npos) {
-		 s.replace(pos, from.length(), to);
-		 pos += s.length();
-	}
-}
-
-void ResourceControl::replace(string &s,Resource &r,ResourceConfig &rc){
-	replace(s,"$id",int2str(r.id));
-	replace(s,"$type",int2str(r.type));
-	replace(s,"$takes",int2str(r.takes));
-	replace(s,"$limit",int2str(r.limit));
-	replace(s,"$name",rc.name);
 }
 
 ResourceCtlResponse ResourceControl::get(ResourceList &rl,
@@ -124,6 +144,7 @@ ResourceCtlResponse ResourceControl::get(ResourceList &rl,
 			break;
 		}
 		case RES_BUSY: {
+			cfg_lock.lock();
 			map<int,ResourceConfig>::iterator ti = type2cfg.find(rli->type);
 			if(ti==type2cfg.end()){
 				reject_code = 404;
@@ -132,16 +153,20 @@ ResourceCtlResponse ResourceControl::get(ResourceList &rl,
 				ResourceConfig &rc  = ti->second;
 				DBG("overloaded resource %d:%d action: %s",rli->type,rli->id,rc.str_action.c_str());
 				if(rc.action==ResourceConfig::Accept){
+					cfg_lock.unlock();
 					return RES_CTL_OK;
 				} else { /* reject or choose next */
 					reject_code = rc.reject_code;
 					reject_reason = rc.reject_reason;
 					replace(reject_reason,(*rli),rc);
-					return rc.action==ResourceConfig::NextRoute?
+					ResourceConfig::ActionType a = rc.action;
+					cfg_lock.unlock();
+					return a==ResourceConfig::NextRoute?
 									RES_CTL_NEXT:
 									RES_CTL_REJECT;
 				}
 			}
+			cfg_lock.unlock();
 		} break;
 		case RES_ERR: {
 			ERROR("cache error reject_on_error = %d",reject_on_error);

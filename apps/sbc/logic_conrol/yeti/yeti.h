@@ -54,7 +54,6 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   bool check_and_refuse(SqlCallProfile *profile,Cdr *cdr,
 						const AmSipRequest& req,ParamReplacerCtx& ctx,
 						bool send_reply = false);
-
  public:
   Yeti();
   ~Yeti();
@@ -71,6 +70,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   void GetCalls(const AmArg& args, AmArg& ret);
   void GetCallsCount(const AmArg& args, AmArg& ret);
   void showVersion(const AmArg& args, AmArg& ret);
+  void reload(const AmArg& args, AmArg& ret);
 
         //!SBCLogicInterface handlers
   SBCCallProfile& getCallProfile( const AmSipRequest& req,

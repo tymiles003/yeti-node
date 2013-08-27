@@ -5,6 +5,7 @@
 #include "ResourceCache.h"
 #include <map>
 #include "log.h"
+#include "DbConfig.h"
 
 using namespace std;
 
@@ -47,16 +48,19 @@ class ResourceControl
 {
 	ResourceCache cache;
 	map<int,ResourceConfig> type2cfg;
+	AmMutex cfg_lock;
+	DbConfig dbc;
 
 	void replace(string &s,Resource &r,ResourceConfig &rc);
 	void replace(string& s, const string& from, const string& to);
-
+	int load_resources_config();
 	int reject_on_error;
 public:
 	ResourceControl();
 	int configure(AmConfigReader &cfg);
 	void start();
 	void stop();
+	bool reload();
 
 	ResourceCtlResponse get(ResourceList &rl,
 							  int &reject_code,
