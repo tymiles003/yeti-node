@@ -226,9 +226,15 @@ SBCCallLeg *Yeti::getCallLeg( const AmSipRequest& req,
 
 	Cdr *cdr = getCdr(call_ctx);
 
+	if(check_and_refuse(profile,cdr,req,ctx,true)) {
+		router->write_cdr(cdr,true);
+		delete call_ctx;
+		return NULL;
+	}
+
 	SBCCallProfile& call_profile = *profile;
 
-	if(!call_profile.refuse_with.empty()) {
+	/*if(!call_profile.refuse_with.empty()) {
       if(call_profile.refuse(ctx, req) < 0) {
         throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
       }
@@ -239,7 +245,7 @@ SBCCallLeg *Yeti::getCallLeg( const AmSipRequest& req,
 	  router->write_cdr(cdr,true);
 	  delete call_ctx;
       return NULL;
-    }
+	}*/
 
     profile->cc_interfaces.push_back(self_iface);
 
@@ -360,7 +366,8 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 
 	profile = ctx->getNextProfile(false);
 
-	if(NULL==profile || !profile->refuse_with.empty()){
+	//if(NULL==profile || !profile->refuse_with.empty()){
+	if(NULL==profile || profile->disconnect_code_id!=0){
 		//pretend that nothing happen. we were never called
 		//remove excess cdr and replace ctx pointer with old
 		delete ctx->cdr;
@@ -381,12 +388,18 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 
 		DBG("%s() choosed next profile. check it for refuse",FUNC_NAME);
 
+		ParamReplacerCtx rctx(profile);
+		if(check_and_refuse(profile,cdr,*ctx->initial_invite,rctx)){
+			DBG("%s() profile contains refuse code",FUNC_NAME);
+			break;
+		}
+		/*
 		if(!profile->refuse_with.empty()) {
 			DBG("%s() profile contains nonempty refuse_with ",FUNC_NAME);
 			cdr->refuse(*profile);
 			break;
 			//throw AmSession::Exception(cdr->disconnect_code,cdr->disconnect_reason);
-		}
+		}*/
 
 		DBG("%s() no refuse field. check it for resources",FUNC_NAME);
 
@@ -422,6 +435,33 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 		call->getCallProfile() = *profile;
 		return true;
 	}
+}
+
+bool Yeti::check_and_refuse(SqlCallProfile *profile,Cdr *cdr,
+							const AmSipRequest& req,ParamReplacerCtx& ctx,
+							bool send_reply){
+	if(profile->disconnect_code_id==0)
+		return false;
+	//translation here
+	unsigned int internal_code,response_code;
+	string internal_reason,response_reason;
+	CodesTranslator::instance()->translate_db_code(profile->disconnect_code_id,
+							 internal_code,internal_reason,
+							 response_code,response_reason);
+	//fill && write cdr
+	cdr->update(DisconnectByDB,internal_reason,internal_code);
+	cdr->update_rewrited(response_reason,response_code);
+
+	if(send_reply){
+		cdr->update(Start);
+		cdr->update(req);
+		cdr->update_sbc(*profile);
+		//prepare & send sip response
+		string hdrs = ctx.replaceParameters(profile->append_headers, "append_headers", req);
+		if (hdrs.size()>2) assertEndCRLF(hdrs);
+		AmSipDialog::reply_error(req, response_code, response_reason, hdrs);
+	}
+	return true;
 }
     //!InDialog handlers
 void Yeti::start(const string& cc_name, const string& ltag,
@@ -573,7 +613,7 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 	cdr->update(req);
 
 	ctx->initial_invite = new AmSipRequest(req);
-
+	try {
 	do {
 		DBG("%s() check resources for profile. attempt %d",FUNC_NAME,attempt);
 		rctl_ret = rctl.get(ctx->getCurrentResourceList(),refuse_code,refuse_reason);
@@ -600,12 +640,16 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 
 			if(NULL==profile){
 				DBG("%s() there are no profiles more",FUNC_NAME);
-				cdr->update(DisconnectByTS,refuse_reason,refuse_code);
 				throw AmSession::Exception(503,"no more profiles");
 			}
 
 			DBG("%s() choosed next profile",FUNC_NAME);
-
+			ParamReplacerCtx rctx(profile);
+			if(check_and_refuse(profile,cdr,req,rctx)){
+				throw AmSession::Exception(cdr->disconnect_rewrited_code,
+										   cdr->disconnect_rewrited_reason);
+			}
+			/*
 			if(!profile->refuse_with.empty()) {
 				DBG("%s() profile contains nonempty refuse_with ",FUNC_NAME);
 				ParamReplacerCtx rctx(profile);
@@ -616,13 +660,12 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 				//}
 				cdr->refuse(*profile);
 				throw AmSession::Exception(cdr->disconnect_code,cdr->disconnect_reason);
-			}
+			}*/
 		}
 		attempt++;
 	} while(rctl_ret != RES_CTL_OK);
 
 	if(rctl_ret != RES_CTL_OK){
-		cdr->update(DisconnectByTS,refuse_reason,refuse_code);
 		throw AmSession::Exception(refuse_code,refuse_reason);
 	} else {
 		if(attempt != 0){
@@ -632,7 +675,6 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 			call->getCallProfile() = *profile;
 		}
 	}
-
 	if(cdr->time_limit){
         DBG("%s() save timer %d with timeout %d",FUNC_NAME,
               SBC_TIMER_ID_CALL_TIMERS_START,
@@ -641,6 +683,13 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
     }
 
 	cdr_list.insert(&cdr->local_tag,cdr);
+	} catch(AmSession::Exception &e) {
+		DBG("onInitialInvite() catched AmSession::Exception(%d,%s)",
+			e.code,e.reason.c_str());
+		//!TODO: rewrite response here
+		cdr->update(DisconnectByTS,e.reason,e.code);
+		throw e;
+	}
 
     return ContinueProcessing;
 }

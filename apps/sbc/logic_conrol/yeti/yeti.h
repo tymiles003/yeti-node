@@ -23,6 +23,14 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
 {
   static Yeti* _instance;
 
+  struct RefuseException {
+	  int internal_code,response_code;
+	  string internal_reason,response_reason;
+	  RefuseException(int ic,string ir,int rc,string rr) :
+		  internal_code(ic),internal_reason(ir),
+		  response_code(rc),response_reason(rr){}
+  };
+
   SBCCallProfile *profile;  //profile for OoD requests
   CCInterface self_iface;
   CdrList cdr_list;
@@ -38,8 +46,14 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   void replace(string& s, const string& from, const string& to);
 
   void onLastLegDestroy(CallCtx *ctx,SBCCallLeg *call);
+  /*! create new B leg (serial fork)*/
   bool connectCallee(SBCCallLeg *call,const AmSipRequest &orig_req);
+  /*! choose next profile, create cdr and check resources */
   bool chooseNextProfile(SBCCallLeg *call);
+  /*! return true if call refused */
+  bool check_and_refuse(SqlCallProfile *profile,Cdr *cdr,
+						const AmSipRequest& req,ParamReplacerCtx& ctx,
+						bool send_reply = false);
 
  public:
   Yeti();
