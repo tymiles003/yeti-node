@@ -29,6 +29,18 @@ class CodesTranslator {
 	};
 	map<int,trans> code2trans;
 
+	/*! internal codes translator */
+	struct icode {
+		int internal_code,response_code;
+		string internal_reason,response_reason;
+		icode(int ic,string ir,int rc, string rr):
+			internal_code(ic),
+			internal_reason(ir),
+			response_code(rc),
+			response_reason(rr){}
+	};
+	map<unsigned int,icode> icode2resp;
+
   public:
 	CodesTranslator();
 	~CodesTranslator();
@@ -39,6 +51,11 @@ class CodesTranslator {
 	void rewrite_response(unsigned int code,const string &reason,
 						  unsigned int &out_code,string &out_reason);
 	bool stop_hunting(unsigned int code);
+	void translate_db_code(unsigned int icode,
+								 unsigned int &internal_code,
+								 string &internal_reason,
+								 unsigned int &response_code,
+								 string &response_reason);
 };
 
 #endif // CODESTRANSLATOR_H
