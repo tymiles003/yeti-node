@@ -787,6 +787,19 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
     }
   }
 
+  // Request for B leg
+  AmSipRequest invite_req(req);
+
+  initCCExtModules();
+
+  if (!logger && !call_profile.msg_logger_path.empty()) {
+	// open the logger if not already opened
+	ParamReplacerCtx ctx(&call_profile);
+	string log_path = ctx.replaceParameters(call_profile.msg_logger_path,
+						"msg_logger_path",req);
+	if (openLogger(log_path)) logRequest(req);
+  }
+
   string ruri, to, from;
   AmSipRequest uac_req(req);
   AmUriParser uac_ruri;
@@ -796,10 +809,6 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
 	throw AmSession::Exception(400,"Failed to parse R-URI");
   }
 
-  // Request for B leg
-  AmSipRequest invite_req(req);
-
-  initCCExtModules();
   // call extend call controls
   InitialInviteHandlerParams params(to, ruri, from, &req, &invite_req);
   for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
@@ -1062,7 +1071,7 @@ bool SBCCallLeg::CCStart(const AmSipRequest& req) {
 
       return false;
     }
-
+/*
     if (!logger && !call_profile.msg_logger_path.empty()) {
       // open the logger if not already opened
       ParamReplacerCtx ctx(&call_profile);
@@ -1070,7 +1079,7 @@ bool SBCCallLeg::CCStart(const AmSipRequest& req) {
 					      "msg_logger_path",req);
       if (openLogger(log_path)) logRequest(req);
     }
-
+*/
     // evaluate ret
     if (isArgArray(ret)) {
       for (size_t i=0;i<ret.size();i++) {
@@ -1265,7 +1274,7 @@ void SBCCallLeg::onCallStatusChange(const StatusChangeCause &cause)
   }
 }
 
-void SBCCallLeg::onBLegRefused(const AmSipReply& reply)
+void SBCCallLeg::onBLegRefused(AmSipReply& reply)
 {
   for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
     if ((*i)->onBLegRefused(this, reply) == StopProcessing) return;
