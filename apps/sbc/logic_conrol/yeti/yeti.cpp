@@ -378,6 +378,7 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 		ctx->cdr = cdr;
 	} else {
 		//write all cdr and replacy ctx pointer with new
+		cdr_list.erase_lookup_key(&cdr->local_tag);
 		router->write_cdr(cdr,false);
 		cdr = getCdr(ctx);
 	}
@@ -424,7 +425,6 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 				rctl_ret,refuse_code,refuse_reason.c_str());
 			//write old cdr here
 			profile = ctx->getNextProfile(false);
-
 			router->write_cdr(cdr,true);
 			cdr = getCdr(ctx);
 		}
@@ -578,6 +578,8 @@ CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, AmSipReply& reply) {
 				//!TODO: get next callprofile here instead of current
 				if(chooseNextProfile(call)){
 					DBG("%s() has new profile, so create new callee",FUNC_NAME);
+					cdr = getCdr(ctx);
+					cdr_list.insert(&cdr->local_tag,cdr);
 					connectCallee(call,req);
 				} else {
 					DBG("%s() no new profile, just finish as usual",FUNC_NAME);
