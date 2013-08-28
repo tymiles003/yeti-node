@@ -11,6 +11,7 @@
 #include "DbTypes.h"
 #include "Cdr.h"
 #include "CallCtx.h"
+struct CallCtx;
 
 using std::string;
 using std::list;
@@ -22,12 +23,13 @@ struct GetProfileException {
 	GetProfileException(string w, bool h): what(w), fatal(h) {}
 };
 
-class SqlRouter {
+class SqlRouter: public atomic_int {
 public:
   void getprofiles(const AmSipRequest&,CallCtx &ctx);
   int configure(AmConfigReader &cfg);
   int run();
   void stop();
+  void release(std::set<SqlRouter *> &routers);
   void align_cdr(Cdr &cdr);
   void write_cdr(Cdr *cdr, bool last);
   void dump_config();

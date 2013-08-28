@@ -32,16 +32,22 @@ SqlCallProfile *CallCtx::getCurrentProfile(){
 	return *current_profile;
 }
 
+SqlRouter *CallCtx::getRouter(){
+	return router;
+}
+
 ResourceList &CallCtx::getCurrentResourceList(){
 	if(current_profile == profiles.end())
 		throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
 	return (*current_profile)->rl;
 }
 
-CallCtx::CallCtx():
+CallCtx::CallCtx(SqlRouter *router):
 	initial_invite(NULL),
-	cdr(NULL)
+	cdr(NULL),
+	router(router)
 {
+	router->inc();
 	DBG("%s() this = %p",FUNC_NAME,this);
 }
 

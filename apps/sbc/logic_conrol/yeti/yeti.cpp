@@ -50,23 +50,32 @@ Yeti::Yeti():
     router(new SqlRouter())
 //    cdr_writer(new CdrWriter())
 {
+	routers.insert(router);
     DBG("Yeti()");
 }
 
 
 Yeti::~Yeti() {
     DBG("~Yeti()");
-    router->stop();
+	router->release(routers);
 	rctl.stop();
 }
 
+bool Yeti::read_config(){
+	if(cfg.loadFile(AmConfig::ModConfigPath + string(MOD_NAME ".conf"))) {
+	  ERROR("No configuration for "MOD_NAME" present (%s)\n",
+	   (AmConfig::ModConfigPath + string(MOD_NAME ".conf")).c_str()
+	  );
+	  return false;
+	}
+	return true;
+}
+
 int Yeti::onLoad() {
-    if(cfg.loadFile(AmConfig::ModConfigPath + string(MOD_NAME ".conf"))) {
-      ERROR("No configuration for "MOD_NAME" present (%s)\n",
-       (AmConfig::ModConfigPath + string(MOD_NAME ".conf")).c_str()
-      );
-      return -1;
-    }
+
+	if(!read_config()){
+		return -1;
+	}
 
     calls_show_limit = cfg.getParameterInt("calls_show_limit",100);
 
@@ -219,11 +228,15 @@ SBCCallLeg *Yeti::getCallLeg( const AmSipRequest& req,
                         ParamReplacerCtx& ctx,
                         CallLegCreator *leg_creator ){
     DBG("%s() called",FUNC_NAME);
-	CallCtx *call_ctx = new CallCtx;
-	router->getprofiles(req,*call_ctx);
+	router_mutex.lock();
+	SqlRouter *r = router;
+	router_mutex.unlock();
+	CallCtx *call_ctx = new CallCtx(r);
+	r->getprofiles(req,*call_ctx);
 
 	SqlCallProfile *profile = call_ctx->getFirstProfile();
 	if(NULL == profile){
+		r->release(routers);
 		delete call_ctx;
 		throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
 	}
@@ -231,7 +244,8 @@ SBCCallLeg *Yeti::getCallLeg( const AmSipRequest& req,
 	Cdr *cdr = getCdr(call_ctx);
 
 	if(check_and_refuse(profile,cdr,req,ctx,true)) {
-		router->write_cdr(cdr,true);
+		r->write_cdr(cdr,true);
+		r->release(routers);
 		delete call_ctx;
 		return NULL;
 	}
@@ -384,7 +398,7 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 
 	//write all cdr and replacy ctx pointer with new
 	cdr_list.erase_lookup_key(&cdr->local_tag);
-	router->write_cdr(cdr,false);
+	ctx->router->write_cdr(cdr,false);
 	cdr = getCdr(ctx);
 
 	do {
@@ -429,7 +443,7 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 				rctl_ret,refuse_code,refuse_reason.c_str());
 			//write old cdr here
 			profile = ctx->getNextProfile(false);
-			router->write_cdr(cdr,true);
+			ctx->router->write_cdr(cdr,true);
 			cdr = getCdr(ctx);
 		}
 	} while(rctl_ret != RES_CTL_OK);
@@ -502,8 +516,10 @@ void Yeti::oodHandlingTerminated(const AmSipRequest *req,SqlCallProfile *call_pr
         cdr->update(*req);
         cdr->update(Start);
         cdr->refuse(*call_profile);
-        router->align_cdr(*cdr);
+		router_mutex.lock();
+		router->align_cdr(*cdr);
 		router->write_cdr(cdr,true);
+		router_mutex.unlock();
     }
 }
 
@@ -540,6 +556,7 @@ void Yeti::onDestroyLeg(SBCCallLeg *call){
 	if(ctx->dec_and_test()){
 		DBG("%s(%p,leg%s) ctx->dec_and_test() = true",FUNC_NAME,call,call->isALeg()?"A":"B");
 		onLastLegDestroy(ctx,call);
+		ctx->router->release(routers);
 		delete ctx;
 	} else {
 		DBG("%s(%p,leg%s) ctx->dec_and_test() = false",FUNC_NAME,call,call->isALeg()?"A":"B");
@@ -555,7 +572,7 @@ void Yeti::onLastLegDestroy(CallCtx *ctx,SBCCallLeg *call){
 	if(NULL!=ctx->getCurrentProfile())
 		rctl.put(ctx->getCurrentResourceList());
 	//write cdr (Cdr class will be deleted by CdrWriter)
-	router->write_cdr(cdr,true);
+	ctx->router->write_cdr(cdr,true);
 }
 
 CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, AmSipReply& reply) {
@@ -914,10 +931,24 @@ void Yeti::GetStats(const AmArg& args, AmArg& ret){
       /* Yeti stats */
   stats["calls_show_limit"] = (int)calls_show_limit;
       /* sql_router stats */
-  if(router){
-	router->getStats(underlying_stats);
-	stats.push("router",underlying_stats);
+  router_mutex.lock();
+  AmArg routers_stats;
+  stats["active_routers_count"] = (long int)routers.size();
+  set<SqlRouter *>::const_iterator i = routers.begin();
+  for(;i!=routers.end();++i){
+		underlying_stats.clear();
+		SqlRouter *r = *i;
+		if(r){
+			router->getStats(underlying_stats);
+			if(r == router){
+				routers_stats.push("active",underlying_stats);
+			} else {
+				routers_stats.push("old",underlying_stats);
+			}
+		}
   }
+  router_mutex.unlock();
+  stats.push("routers",routers_stats);
 
   underlying_stats.clear();
   AmSessionContainer::instance()->getStats(underlying_stats);
@@ -980,13 +1011,22 @@ void Yeti::reload(const AmArg& args, AmArg& ret){
 	if(0==args.size()){
 		ret.push(400);
 		ret.push(AmArg());
-		ret[1].push("reload resources");
-		ret[1].push("reload translations");
+		ret[1].push("resources");
+		ret[1].push("translations");
+		ret[1].push("router");
 		return;
 	}
 	args.assertArrayFmt("s");
+
+	if(!read_config()){
+	  ret.push(500);
+	  ret.push("config file reload failed");
+	  return;
+	}
+
 	string action = args[0].asCStr();
 	if(action=="resources"){
+		rctl.configure_db(cfg);
 		if(rctl.reload()){
 			ret.push(200);
 			ret.push("OK");
@@ -995,6 +1035,7 @@ void Yeti::reload(const AmArg& args, AmArg& ret){
 			ret.push("errors during resources config reload. there is empty resources config now");
 		}
 	} else if(action == "translations"){
+		CodesTranslator::instance()->configure_db(cfg);
 		if(CodesTranslator::instance()->reload()){
 			ret.push(200);
 			ret.push("OK");
@@ -1002,6 +1043,40 @@ void Yeti::reload(const AmArg& args, AmArg& ret){
 			ret.push(500);
 			ret.push("errors during translations config reload. there is empty translation hashes now");
 		}
+	} else if(action == "router"){
+		//create & configure & run new instance
+		INFO("Allocate new SqlRouter instance");
+		SqlRouter *r =new SqlRouter();
+
+		INFO("Configure SqlRouter");
+		if (r->configure(cfg)){
+			ERROR("SqlRouter confgiure failed");
+			delete r;
+			ret.push(500);
+			ret.push("SqlRouter confgiure failed");
+			return;
+		}
+
+		INFO("Run SqlRouter");
+		if(r->run()){
+			ERROR("SqlRouter start failed");
+			delete r;
+			ret.push(500);
+			ret.push("SqlRouter start failed");
+			return;
+		}
+
+		INFO("replace current SqlRouter instance with newly created");
+		router_mutex.lock();
+			router->release(routers); //mark it or delete (may be deleted now if unused)
+			//replace main router pointer
+			//(old pointers still available throught existent CallCtx instances)
+			router = r;
+			routers.insert(router);
+		router_mutex.unlock();
+		INFO("SqlRouter reload successfull");
+		ret.push(200);
+		ret.push("OK");
 	} else {
 		ret.push(400);
 		ret.push("unknown action");

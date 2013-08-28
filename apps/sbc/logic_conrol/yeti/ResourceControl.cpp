@@ -38,7 +38,6 @@ ResourceControl::ResourceControl()
 }
 
 int ResourceControl::configure(AmConfigReader &cfg){
-	string prefix("master");
 
 	reject_on_error = cfg.getParameterInt("reject_on_cache_error",-1);
 	if(reject_on_error == -1){
@@ -46,7 +45,7 @@ int ResourceControl::configure(AmConfigReader &cfg){
 		return -1;
 	}
 
-	dbc.cfg2dbcfg(cfg,prefix);
+	configure_db(cfg);
 
 	if(load_resources_config()){
 		ERROR("can't load resources config");
@@ -54,6 +53,11 @@ int ResourceControl::configure(AmConfigReader &cfg){
 	}
 
 	return cache.configure(cfg);
+}
+
+void ResourceControl::configure_db(AmConfigReader &cfg){
+	string prefix("master");
+	dbc.cfg2dbcfg(cfg,prefix);
 }
 
 void ResourceControl::start(){

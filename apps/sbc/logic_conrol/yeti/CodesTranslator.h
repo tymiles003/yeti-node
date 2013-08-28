@@ -53,6 +53,7 @@ class CodesTranslator {
 	static CodesTranslator* instance();
 
 	int configure(AmConfigReader &cfg);
+	void configure_db(AmConfigReader &cfg);
 	bool reload();
 
 	void rewrite_response(unsigned int code,const string &reason,

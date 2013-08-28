@@ -19,8 +19,7 @@ CodesTranslator* CodesTranslator::instance()
 }
 
 int CodesTranslator::configure(AmConfigReader &cfg){
-	string prefix("master");
-	dbc.cfg2dbcfg(cfg,prefix);
+	configure_db(cfg);
 
 	if(load_translations_config()){
 		ERROR("can't load resources config");
@@ -28,6 +27,11 @@ int CodesTranslator::configure(AmConfigReader &cfg){
 	}
 
 	return 0;
+}
+
+void CodesTranslator::configure_db(AmConfigReader &cfg){
+	string prefix("master");
+	dbc.cfg2dbcfg(cfg,prefix);
 }
 
 bool CodesTranslator::reload(){

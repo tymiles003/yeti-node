@@ -36,6 +36,8 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   CdrList cdr_list;
   ResourceControl rctl;
   SqlRouter *router;
+  set<SqlRouter *> routers;
+  AmMutex router_mutex;
 
   AmConfigReader cfg;
   //config values
@@ -54,6 +56,8 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   bool check_and_refuse(SqlCallProfile *profile,Cdr *cdr,
 						const AmSipRequest& req,ParamReplacerCtx& ctx,
 						bool send_reply = false);
+
+  bool read_config();
  public:
   Yeti();
   ~Yeti();

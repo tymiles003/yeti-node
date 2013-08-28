@@ -58,6 +58,7 @@ class ResourceControl
 public:
 	ResourceControl();
 	int configure(AmConfigReader &cfg);
+	void configure_db(AmConfigReader &cfg);
 	void start();
 	void stop();
 	bool reload();

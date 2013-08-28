@@ -21,6 +21,7 @@ SqlRouter::SqlRouter():
   cache(NULL),
   mi(5)
 {
+  set(1);
   clearStats();
 }
 
@@ -51,6 +52,15 @@ void SqlRouter::stop()
     cdr_writer->stop();
 }
 
+void SqlRouter::release(std::set<SqlRouter *> &routers){
+	DBG("SqlRouter::release()");
+	if(dec_and_test()){
+		DBG("SqlRouter::release() stop and delete instance");
+		stop();
+		routers.erase(this);
+		delete this;
+	}
+}
 
 int SqlRouter::run(){
   master_pool->start();
@@ -467,6 +477,7 @@ void SqlRouter::getConfig(AmArg &arg){
 void SqlRouter::getStats(AmArg &arg){
   AmArg underlying_stats;
       /* SqlRouter stats */
+  arg["refs"] = (long int)get();
   arg["gt_min"] = gt_min;
   arg["gt_max"] = gt_max;
   arg["gps_max"] = gps_max;
