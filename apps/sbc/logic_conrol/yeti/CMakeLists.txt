@@ -30,6 +30,8 @@ INSTALL(PROGRAMS
 	tools/yeti-stats
 	tools/yeti-callscount
 	tools/yeti-showconfig
+	tools/yeti-getcounters
+	tools/yeti-sumcounters
 	DESTINATION ${SEMS_EXEC_PREFIX}/sbin
 )
 
