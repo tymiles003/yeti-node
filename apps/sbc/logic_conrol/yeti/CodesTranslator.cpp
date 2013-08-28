@@ -1,6 +1,5 @@
 #include "CodesTranslator.h"
 #include "sip/defs.h"
-#include "DbConfig.h"
 #include <pqxx/pqxx>
 
 CodesTranslator* CodesTranslator::_instance=0;
@@ -20,12 +19,36 @@ CodesTranslator* CodesTranslator::instance()
 }
 
 int CodesTranslator::configure(AmConfigReader &cfg){
-	int ret = 0;
 	string prefix("master");
-	DbConfig dbc;
-	pqxx::result r;
 	dbc.cfg2dbcfg(cfg,prefix);
+
+	if(load_translations_config()){
+		ERROR("can't load resources config");
+		return -1;
+	}
+
+	return 0;
+}
+
+bool CodesTranslator::reload(){
+	if(load_translations_config()){
+		return false;
+	}
+	return true;
+}
+
+int CodesTranslator::load_translations_config(){
+	int ret = 1;
+	code2pref_mutex.lock();
+	code2trans_mutex.lock();
+	icode2resp_mutex.lock();
+
+	code2pref.clear();
+	code2trans.clear();
+	icode2resp.clear();
+
 	try {
+		pqxx::result r;
 		pqxx::connection c(dbc.conn_str());
 		pqxx::work t(c);
 			r = t.exec("SELECT * from switch.load_disconnect_code_rerouting()");
@@ -81,15 +104,21 @@ int CodesTranslator::configure(AmConfigReader &cfg){
 
 		t.commit();
 		c.disconnect();
+		ret = 0;
 	} catch(const pqxx::pqxx_exception &e){
 		ERROR("pqxx_exception: %s ",e.base().what());
-		ret = 1;
 	}
+
+	code2pref_mutex.unlock();
+	code2trans_mutex.unlock();
+	icode2resp_mutex.unlock();
+
 	return ret;
 }
 
 void CodesTranslator::rewrite_response(unsigned int code,const string &reason,
 				  unsigned int &out_code,string &out_reason){
+	code2trans_mutex.lock();
 	map<int,trans>::const_iterator it = code2trans.find(code);
 	if(it!=code2trans.end()){
 		const trans &t = it->second;
@@ -104,18 +133,22 @@ void CodesTranslator::rewrite_response(unsigned int code,const string &reason,
 		out_code = code;
 		out_reason = reason;
 	}
+	code2trans_mutex.unlock();
 }
 
 bool CodesTranslator::stop_hunting(unsigned int code){
+	bool ret = true;
+	code2pref_mutex.lock();
 	map<int,pref>::const_iterator it = code2pref.find(code);
 	if(it!=code2pref.end()){
 		bool stop = it->second.is_stop_hunting;
 		DBG("stop_hunting = %d for code '%d'",stop,code);
-		return stop;
+		ret = stop;
 	} else {
 		DBG("no preference for code '%d', so simply stop hunting",code);
-		return true;
 	}
+	code2pref_mutex.unlock();
+	return ret;
 }
 
 void CodesTranslator::translate_db_code(unsigned int code,
@@ -124,6 +157,7 @@ void CodesTranslator::translate_db_code(unsigned int code,
 						 unsigned int &response_code,
 						 string &response_reason)
 {
+	icode2resp_mutex.lock();
 	map<unsigned int,icode>::const_iterator it = icode2resp.find(code);
 	if(it!=icode2resp.end()){
 		DBG("found translation for db code '%d'",code);
@@ -140,6 +174,7 @@ void CodesTranslator::translate_db_code(unsigned int code,
 		internal_code = response_code = 500;
 		internal_reason = response_reason = SIP_REPLY_SERVER_INTERNAL_ERROR;
 	}
+	icode2resp_mutex.unlock();
 }
 
 

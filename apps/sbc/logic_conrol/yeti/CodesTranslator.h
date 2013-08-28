@@ -2,7 +2,9 @@
 #define CODESTRANSLATOR_H
 
 #include "AmConfigReader.h"
+#include "AmThread.h"
 #include <map>
+#include "DbConfig.h"
 
 using namespace std;
 
@@ -16,6 +18,7 @@ class CodesTranslator {
 		pref(bool stop_hunting):is_stop_hunting(stop_hunting){}
 	};
 	map<int,pref> code2pref;
+	AmMutex code2pref_mutex;
 
 	/*! response translation preferences */
 	struct trans {
@@ -28,6 +31,7 @@ class CodesTranslator {
 			rewrite_reason(r){}
 	};
 	map<int,trans> code2trans;
+	AmMutex code2trans_mutex;
 
 	/*! internal codes translator */
 	struct icode {
@@ -40,13 +44,16 @@ class CodesTranslator {
 			response_reason(rr){}
 	};
 	map<unsigned int,icode> icode2resp;
-
+	AmMutex icode2resp_mutex;
+	DbConfig dbc;
+	int load_translations_config();
   public:
 	CodesTranslator();
 	~CodesTranslator();
 	static CodesTranslator* instance();
 
 	int configure(AmConfigReader &cfg);
+	bool reload();
 
 	void rewrite_response(unsigned int code,const string &reason,
 						  unsigned int &out_code,string &out_reason);

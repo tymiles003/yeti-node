@@ -995,8 +995,13 @@ void Yeti::reload(const AmArg& args, AmArg& ret){
 			ret.push("errors during resources config reload. there is empty resources config now");
 		}
 	} else if(action == "translations"){
-		ret.push(400);
-		ret.push("not implemented yet");
+		if(CodesTranslator::instance()->reload()){
+			ret.push(200);
+			ret.push("OK");
+		} else {
+			ret.push(500);
+			ret.push("errors during translations config reload. there is empty translation hashes now");
+		}
 	} else {
 		ret.push(400);
 		ret.push("unknown action");
