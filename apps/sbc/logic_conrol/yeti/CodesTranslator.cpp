@@ -44,9 +44,13 @@ int CodesTranslator::configure(AmConfigReader &cfg){
 			for(pqxx::result::size_type i = 0; i < r.size();++i){
 				const pqxx::result::tuple &row = r[i];
 				int code =	row["o_code"].as<int>(0);
+				string rewrited_reason = row["o_rewrited_reason"].c_str();
+				if(rewrited_reason.empty()){
+					rewrited_reason = row["o_reason"].c_str();
+				}
 				trans t(	row["o_pass_reason_to_originator"].as<bool>(false),
 							row["o_rewrited_code"].as<int>(code),
-							row["o_rewrited_reason"].c_str());
+							rewrited_reason);
 
 				code2trans.insert(pair<int,trans>(code,t));
 				DBG("ResponseTrans:     %d -> %d:'%s' pass_reason: %d",
