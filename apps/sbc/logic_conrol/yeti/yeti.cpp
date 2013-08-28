@@ -368,20 +368,24 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 	ResourceCtlResponse rctl_ret;
 	bool has_profile = false;
 
+	list<SqlCallProfile *>::iterator p = ctx->current_profile;
 	profile = ctx->getNextProfile(false);
 
 	//if(NULL==profile || !profile->refuse_with.empty()){
 	if(NULL==profile || profile->disconnect_code_id!=0){
 		//pretend that nothing happen. we were never called
 		//remove excess cdr and replace ctx pointer with old
+		DBG("%s() no more profiles or refuse profile on serial fork. ignore it",FUNC_NAME);
 		delete ctx->cdr;
 		ctx->cdr = cdr;
-	} else {
-		//write all cdr and replacy ctx pointer with new
-		cdr_list.erase_lookup_key(&cdr->local_tag);
-		router->write_cdr(cdr,false);
-		cdr = getCdr(ctx);
+		ctx->current_profile = p;
+		return false;
 	}
+
+	//write all cdr and replacy ctx pointer with new
+	cdr_list.erase_lookup_key(&cdr->local_tag);
+	router->write_cdr(cdr,false);
+	cdr = getCdr(ctx);
 
 	do {
 		if(NULL==profile){
