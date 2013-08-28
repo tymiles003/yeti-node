@@ -560,6 +560,9 @@ void Yeti::onDestroyLeg(SBCCallLeg *call){
 		delete ctx;
 	} else {
 		DBG("%s(%p,leg%s) ctx->dec_and_test() = false",FUNC_NAME,call,call->isALeg()?"A":"B");
+		//release resources
+		if(NULL!=ctx->getCurrentProfile())
+			rctl.put(ctx->getCurrentResourceList());
 	}
 }
 
@@ -568,9 +571,6 @@ void Yeti::onLastLegDestroy(CallCtx *ctx,SBCCallLeg *call){
 	Cdr *cdr = getCdr(ctx);
 	// remove from active calls
 	cdr_list.erase_lookup_key(&cdr->local_tag);
-	//release resources
-	if(NULL!=ctx->getCurrentProfile())
-		rctl.put(ctx->getCurrentResourceList());
 	//write cdr (Cdr class will be deleted by CdrWriter)
 	ctx->router->write_cdr(cdr,true);
 }

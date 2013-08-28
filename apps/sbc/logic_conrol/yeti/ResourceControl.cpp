@@ -186,6 +186,10 @@ ResourceCtlResponse ResourceControl::get(ResourceList &rl,
 }
 
 void ResourceControl::put(ResourceList &rl){
+	if(rl.empty()){
+		WARN("ResourceControl::put(%p) try to put already empty resource list",&rl);
+		return;
+	}
 	cache.put(rl);
 	rl.clear();
 }
