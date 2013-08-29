@@ -45,7 +45,6 @@ void Cdr::init(){
 
 void Cdr::update_sql(const SqlCallProfile &profile){
 	DBG("Cdr::%s(SqlCallProfile)",FUNC_NAME);
-    SQLexception = profile.SQLexception;
     outbound_proxy = profile.outbound_proxy;
     dyn_fields = profile.dyn_fields;
     time_limit = profile.time_limit;

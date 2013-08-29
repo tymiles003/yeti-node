@@ -244,26 +244,14 @@ SBCCallLeg *Yeti::getCallLeg( const AmSipRequest& req,
 	Cdr *cdr = getCdr(call_ctx);
 
 	if(check_and_refuse(profile,cdr,req,ctx,true)) {
-		r->write_cdr(cdr,true);
+		if(!call_ctx->SQLexception)	//avoid to write cdr on failed getprofile()
+			r->write_cdr(cdr,true);
 		r->release(routers);
 		delete call_ctx;
 		return NULL;
 	}
 
 	SBCCallProfile& call_profile = *profile;
-
-	/*if(!call_profile.refuse_with.empty()) {
-      if(call_profile.refuse(ctx, req) < 0) {
-        throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
-      }
-      cdr->update(Start);
-      cdr->update(req);
-	  cdr->update_sbc(*profile);
-	  cdr->refuse(*profile);
-	  router->write_cdr(cdr,true);
-	  delete call_ctx;
-      return NULL;
-	}*/
 
     profile->cc_interfaces.push_back(self_iface);
 

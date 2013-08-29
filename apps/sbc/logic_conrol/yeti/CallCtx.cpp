@@ -45,7 +45,8 @@ ResourceList &CallCtx::getCurrentResourceList(){
 CallCtx::CallCtx(SqlRouter *router):
 	initial_invite(NULL),
 	cdr(NULL),
-	router(router)
+	router(router),
+	SQLexception(false)
 {
 	router->inc();
 	DBG("%s() this = %p",FUNC_NAME,this);

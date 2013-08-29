@@ -18,6 +18,7 @@ struct CallCtx: public
 	int attempt_num;
 	AmSipRequest *initial_invite;
 	SqlRouter *router;
+	bool SQLexception;
 
 	SqlCallProfile *getFirstProfile();
 	SqlCallProfile *getNextProfile(bool early_state);

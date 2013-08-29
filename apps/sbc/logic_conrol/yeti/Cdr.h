@@ -52,7 +52,7 @@ struct Cdr: public
     string term_call_id;
     string local_tag;
     int time_limit;
-    bool SQLexception;
+
     list<string> dyn_fields;
     string outbound_proxy;
 

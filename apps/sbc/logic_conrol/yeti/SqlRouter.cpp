@@ -295,7 +295,7 @@ void SqlRouter::getprofiles(const AmSipRequest &req,CallCtx &ctx)
     ERROR("SQL cant get profile. Drop request");
 	SqlCallProfile *profile = new SqlCallProfile();
 	profile->disconnect_code_id = refuse_code;
-	profile->SQLexception = true;
+	ctx.SQLexception = true;
 	ctx.profiles.push_back(profile);
   } else {
     update_counters(start_time);
@@ -415,8 +415,6 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req,
 			delete entry;
 			throw GetProfileException(FC_EVALUATION_FAILED,false);
 		}
-		//update some fields
-		profile->SQLexception = false;
 		//push to ret
 		entry->profiles.push_back(profile);
 	}
