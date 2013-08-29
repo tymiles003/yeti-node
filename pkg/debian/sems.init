@@ -15,7 +15,7 @@ if test -f /etc/default/sems ; then
 fi
 
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
-DAEMON=/usr/local/sbin/sems
+DAEMON=/usr/sbin/sems
 NAME=sems
 DESC=sems
 
@@ -53,7 +53,7 @@ if ! test -f $DAEMON ; then
   exit 0
 fi
 
-LD_LIBRARY_PATH=/usr/local/lib/sems
+LD_LIBRARY_PATH=/usr/lib/sems
 export LD_LIBRARY_PATH
 
 set -e
