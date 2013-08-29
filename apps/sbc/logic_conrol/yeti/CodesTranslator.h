@@ -6,6 +6,15 @@
 #include <map>
 #include "DbConfig.h"
 
+//fail codes for TS
+#define	FC_PARSE_FROM_FAILED		114
+#define	FC_PARSE_TO_FAILED			115
+#define	FC_PARSE_CONTACT_FAILED		116
+#define FC_NOT_PREPARED				117
+#define FC_DB_EMPTY_RESPONSE		118
+#define FC_READ_FROM_TUPLE_FAILED	119
+#define FC_EVALUATION_FAILED		120
+
 using namespace std;
 
 class CodesTranslator {

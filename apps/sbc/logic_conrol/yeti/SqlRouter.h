@@ -10,6 +10,7 @@
 #include "ProfilesCache.h"
 #include "DbTypes.h"
 #include "Cdr.h"
+#include "CodesTranslator.h"
 #include "CallCtx.h"
 struct CallCtx;
 
@@ -19,8 +20,8 @@ using std::vector;
 
 struct GetProfileException {
 	bool fatal;			//if true we should reload pg connection
-	string what;
-	GetProfileException(string w, bool h): what(w), fatal(h) {}
+	int code;
+	GetProfileException(int c, bool h): code(c), fatal(h) {}
 };
 
 class SqlRouter: public atomic_int {

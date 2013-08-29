@@ -239,7 +239,7 @@ void SqlRouter::getprofiles(const AmSipRequest &req,CallCtx &ctx)
   PgConnectionPool *pool = master_pool;
   ProfilesCacheEntry *entry = NULL;
   bool getprofile_fail = true;
-  string refuse_with = "500 SQL error";
+  int refuse_code = 0;
   string req_hdrs,hdr;
   struct timeval start_time;
   hits++;
@@ -263,16 +263,14 @@ void SqlRouter::getprofiles(const AmSipRequest &req,CallCtx &ctx)
 			DBG("Cant get active connection on %s",pool->pool_name.c_str());
 		}
 	} catch(GetProfileException &e){
-		DBG("GetProfile exception on %s SQLThread: fatal = %d what = '%s'",
+		DBG("GetProfile exception on %s SQLThread: fatal = %d code  = '%d'",
 			pool->pool_name.c_str(),
-			e.fatal,
-			e.what.c_str());
-
+			e.fatal,e.code);
 		if(e.fatal){
 			pool->returnConnection(conn,PgConnectionPool::CONN_COMM_ERR);
 		} else {
 			pool->returnConnection(conn);
-			refuse_with = e.what;
+			refuse_code = e.code;
 		}
 	} catch(pqxx::broken_connection &e){
 		pool->returnConnection(conn,PgConnectionPool::CONN_COMM_ERR);
@@ -296,7 +294,7 @@ void SqlRouter::getprofiles(const AmSipRequest &req,CallCtx &ctx)
   if(getprofile_fail){
     ERROR("SQL cant get profile. Drop request");
 	SqlCallProfile *profile = new SqlCallProfile();
-	profile->refuse_with = refuse_with;
+	profile->disconnect_code_id = refuse_code;
 	profile->SQLexception = true;
 	ctx.profiles.push_back(profile);
   } else {
@@ -337,17 +335,17 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req,
 	sptr = req.from.c_str();
 	if(	parse_nameaddr(&na,&sptr,req.from.length()) < 0 ||
 		parse_uri(&from_uri,na.addr.s,na.addr.len) < 0){
-		throw GetProfileException("500 Invalid can't parse 'from'",true);
+		throw GetProfileException(FC_PARSE_FROM_FAILED,false);
 	}
 	sptr = req.to.c_str();
 	if(	parse_nameaddr(&na,&sptr,req.to.length()) < 0 ||
 		parse_uri(&to_uri,na.addr.s,na.addr.len) < 0){
-		throw GetProfileException("500 Invalid can't parse 'to'",true);
+		throw GetProfileException(FC_PARSE_TO_FAILED,false);
 	}
 	sptr = req.contact.c_str();
 	if(	parse_nameaddr(&na,&sptr,req.contact.length()) < 0 ||
 		parse_uri(&contact_uri,na.addr.s,na.addr.len) < 0){
-		throw GetProfileException("500 Invalid can't parse 'contact'",true);
+		throw GetProfileException(FC_PARSE_CONTACT_FAILED,false);
 	}
 
 	if(tnx.prepared("getprofile").exists()){
@@ -371,13 +369,13 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req,
 
 		r = invoc.exec();
 	} else {
-		throw GetProfileException("no such prepared query",true);
+		throw GetProfileException(FC_NOT_PREPARED,true);
 	}
 
 	DBG("%s() database returned %ld profiles",FUNC_NAME,r.size());
 
 	if (r.size()==0){
-		throw GetProfileException("500 Empty response from DB",false);
+		throw GetProfileException(FC_DB_EMPTY_RESPONSE,false);
 	}
 
 	entry = new ProfilesCacheEntry();
@@ -400,7 +398,11 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req,
 		const pqxx::result::tuple &t = (*rit);
 		SqlCallProfile* profile = new SqlCallProfile();
 		//read profile
-		profile->readFromTuple(t);
+		if(!profile->readFromTuple(t)){
+			delete profile;
+			delete entry;
+			throw GetProfileException(FC_READ_FROM_TUPLE_FAILED,false);
+		}
 		//fill dyn fields
 		DynFieldsT_iterator it = dyn_fields.begin();
 		for(;it!=dyn_fields.end();++it){
@@ -408,7 +410,11 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req,
 		}
 		profile->infoPrint(dyn_fields);
 		//evaluate it
-		profile->eval_resources();
+		if(!profile->eval()){
+			delete profile;
+			delete entry;
+			throw GetProfileException(FC_EVALUATION_FAILED,false);
+		}
 		//update some fields
 		profile->SQLexception = false;
 		//push to ret
