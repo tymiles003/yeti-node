@@ -32,6 +32,7 @@ INSTALL(PROGRAMS
 	tools/yeti-showconfig
 	tools/yeti-getcounters
 	tools/yeti-sumcounters
+	tools/yeti-csv2db
 	DESTINATION ${SEMS_EXEC_PREFIX}/sbin
 )
 
