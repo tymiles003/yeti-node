@@ -70,20 +70,39 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 	  dstcfg.setParameter(cfgkey, SBCFactory::instance()->		\
 			  cfg.getParameter(cfgkey));			\
 	}
+#define	CP_SESSION_REFRESH_METHOD(prefix,method_id,dstcfg)\
+	switch(method_id){\
+		case REFRESH_METHOD_INVITE:\
+			dstcfg.setParameter(prefix "session_refresh_method",\
+				"INVITE");\
+			break;\
+		case REFRESH_METHOD_UPDATE:\
+			dstcfg.setParameter(prefix "session_refresh_method",\
+				"UPDATE");\
+			break;\
+		case REFRESH_METHOD_UPDATE_FALLBACK_INVITE:\
+			dstcfg.setParameter(prefix "session_refresh_method",\
+				"UPDATE_FALLBACK_INVITE");\
+			break;\
+		default:\
+			ERROR("unknown session_refresh_method id '%d'",method_id);\
+			return false;\
+	}
 
 	if (sst_enabled.size() && sst_enabled != "no") {
 		if (NULL == SBCFactory::instance()->session_timer_fact) {
 			ERROR("session_timer module not loaded thus SST not supported, but required");
 			return false;
 		}
-
 		sst_b_cfg.setParameter("enable_session_timer", "yes");
 		// create sst_cfg with values from aleg_*
 		CP_SST_CFGVAR("", "session_expires", sst_b_cfg);
 		CP_SST_CFGVAR("", "minimum_timer", sst_b_cfg);
 		CP_SST_CFGVAR("", "maximum_timer", sst_b_cfg);
-		CP_SST_CFGVAR("", "session_refresh_method", sst_b_cfg);
+		//CP_SST_CFGVAR("", "session_refresh_method", sst_b_cfg);
 		CP_SST_CFGVAR("", "accept_501_reply", sst_b_cfg);
+		session_refresh_method_id = t["session_refresh_method_id"].as<int>(1);
+		CP_SESSION_REFRESH_METHOD("",session_refresh_method_id,sst_b_cfg);
 	}
 
 	if (sst_aleg_enabled.size() && sst_aleg_enabled != "no") {
@@ -92,10 +111,13 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 		CP_SST_CFGVAR("aleg_", "session_expires", sst_a_cfg);
 		CP_SST_CFGVAR("aleg_", "minimum_timer", sst_a_cfg);
 		CP_SST_CFGVAR("aleg_", "maximum_timer", sst_a_cfg);
-		CP_SST_CFGVAR("aleg_", "session_refresh_method", sst_a_cfg);
+		//CP_SST_CFGVAR("aleg_", "session_refresh_method", sst_a_cfg);
 		CP_SST_CFGVAR("aleg_", "accept_501_reply", sst_a_cfg);
+		aleg_session_refresh_method_id = t["aleg_session_refresh_method_id"].as<int>(1);
+		CP_SESSION_REFRESH_METHOD("aleg_",aleg_session_refresh_method_id,sst_a_cfg);
 	}
 #undef CP_SST_CFGVAR
+#undef CP_SESSION_REFRESH_METHOD
 
 	auth_enabled = t["enable_auth"].as<bool>(false);
 	auth_credentials.user = t["auth_user"].c_str();
@@ -408,6 +430,10 @@ bool SqlCallProfile::eval_resources(){
 		DBG("resources parse error:  %s <ctx = '%s'>",e.what.c_str(),e.ctx.c_str());
 	}
 	return true;
+}
+
+bool SqlCallProfile::eval(){
+	return eval_resources();
 }
 
 SqlCallProfile *SqlCallProfile::copy(){

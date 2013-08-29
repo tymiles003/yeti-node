@@ -8,6 +8,10 @@
 #include "Resource.h"
 #include "DbTypes.h"
 
+#define REFRESH_METHOD_INVITE					1
+#define REFRESH_METHOD_UPDATE					2
+#define REFRESH_METHOD_UPDATE_FALLBACK_INVITE	3
+
 using std::string;
 
 struct SqlCallProfile
@@ -15,6 +19,8 @@ struct SqlCallProfile
 {
 	int time_limit;
 	int disconnect_code_id;
+	int session_refresh_method_id;
+	int aleg_session_refresh_method_id;
 	bool SQLexception;
 	list<string> dyn_fields;
 	string resources;
@@ -30,6 +36,7 @@ struct SqlCallProfile
 	bool readTranscoder(const pqxx::result::tuple &t);
 	bool column_exist(const pqxx::result::tuple &t,string column_name);
 	bool eval_resources();
+	bool eval();
 
 	void infoPrint(const DynFieldsT &df);
 	SqlCallProfile *copy();
