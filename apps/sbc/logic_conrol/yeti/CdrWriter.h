@@ -14,6 +14,8 @@
 #include "DbTypes.h"
 #include <fstream>
 #include <sstream>
+#include <cstdio>
+#include <ctime>
 
 using std::string;
 using std::list;
@@ -23,6 +25,7 @@ struct CdrThreadCfg{
 	bool failover_to_slave;
 	bool failover_to_file;
 	string failover_file_dir;
+	string failover_file_completed_dir;
 	DbConfig masterdb,slavedb;
 	PreparedQueriesT prepared_queries;
 	DynFieldsT dyn_fields;
@@ -42,7 +45,9 @@ class CdrThread : public AmThread{
 	AmCondition<bool> stopped;
 	pqxx::connection *masterconn,*slaveconn;
 	CdrThreadCfg config;
-	ofstream wf;
+	auto_ptr<ofstream> wfp;
+	string write_path;
+	string completed_path;
 
 	int _connectdb(pqxx::connection **conn,string conn_str);
 	int connectdb();
@@ -61,6 +66,7 @@ public:
 	 CdrThread();
 	 ~CdrThread();
 	void clearStats();
+	void closefile();
 	void getStats(AmArg &arg);
 	void postcdr(Cdr* cdr);
 	int configure(CdrThreadCfg& cfg);
@@ -74,6 +80,7 @@ class CdrWriter{
 	CdrWriterCfg config;
 public:
 	void clearStats();
+	void closeFiles();
 	void getStats(AmArg &arg);
 	void getConfig(AmArg &arg);
 	void postcdr(Cdr* cdr);

@@ -18,8 +18,12 @@ slave_max_exceptions=0
 
 max_exceptions=0
 failover_to_slave=0
+failover_to_file=1
 
 cdr_pool_size=20
+cdr_dir = /var/spool/sems/cdrs
+cdr_completed_dir = /var/spool/sems/cdrs/complete
+
 mastercdr_host=127.0.0.1
 mastercdr_port=5432
 mastercdr_name=routeserver

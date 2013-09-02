@@ -75,6 +75,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   void GetCallsCount(const AmArg& args, AmArg& ret);
   void showVersion(const AmArg& args, AmArg& ret);
   void reload(const AmArg& args, AmArg& ret);
+  void closeCdrFiles(const AmArg& args, AmArg& ret);
 
         //!SBCLogicInterface handlers
   SBCCallProfile& getCallProfile( const AmSipRequest& req,

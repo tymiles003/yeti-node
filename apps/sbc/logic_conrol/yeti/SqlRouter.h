@@ -35,6 +35,7 @@ public:
   void write_cdr(Cdr *cdr, bool last);
   void dump_config();
   void clearStats();
+  void closeCdrFiles();
   void getStats(AmArg &arg);
   void getConfig(AmArg &arg);
 

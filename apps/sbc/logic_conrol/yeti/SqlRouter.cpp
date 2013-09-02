@@ -450,6 +450,11 @@ void SqlRouter::dump_config()
   slave_pool->dump_config();
 }
 
+void SqlRouter::closeCdrFiles(){
+	if(cdr_writer)
+		cdr_writer->closeFiles();
+}
+
 void SqlRouter::clearStats(){
   if(cdr_writer)
     cdr_writer->clearStats();

@@ -47,6 +47,7 @@ int CdrWriter::configure(CdrWriterCfg& cfg)
 	config=cfg;
 	DynFieldsT_iterator dit;
 	/*show all fields*/
+	//check for dirs
 	int i;
 	for(i = 0;i<WRITECDR_STATIC_FIELDS_COUNT;i++){
 		DBG("%d: %s",i,static_fields_names[i]);
@@ -130,6 +131,12 @@ void CdrWriter::getConfig(AmArg &arg){
 
 }
 
+void CdrWriter::closeFiles(){
+	for(vector<CdrThread*>::iterator it = cdrthreadpool.begin();it != cdrthreadpool.end();it++){
+		(*it)->closefile();
+	}
+}
+
 void CdrWriter::getStats(AmArg &arg){
 	AmArg underlying_stats,threads;
 
@@ -170,7 +177,7 @@ CdrThread::CdrThread() : queue_run(false),stopped(false),masterconn(NULL),slavec
 
 CdrThread::~CdrThread()
 {
-	wf.close();
+	closefile();
 }
 
 void CdrThread::getStats(AmArg &arg){
@@ -248,6 +255,7 @@ while(true){
 						ERROR("can't write CDR to file");
 					} else {
 						//succ writed to file
+						DBG("CDR was written into file");
 						cdr_writed = true;
 					}
 				} else {
@@ -255,8 +263,9 @@ while(true){
 				}
 			} else {
 				//succ writed to slave database
+				DBG("CDR was written into slave");
 				cdr_writed = true;
-				wf.close(); //close failover file
+				closefile();
 			}
 		} else {
 			DBG("failover_to_slave disabled");
@@ -266,6 +275,7 @@ while(true){
 					ERROR("can't write CDR to file");
 				} else {
 					//succ writed to file
+					DBG("CDR was written into file");
 					cdr_writed = true;
 				}
 			} else {
@@ -274,8 +284,9 @@ while(true){
 		}
 	} else {
 		//succ writed to master database
+		DBG("CDR was written into master");
 		cdr_writed = true;
-		wf.close(); //close failover file
+		closefile();
 	}
 
 	if(cdr_writed){
@@ -283,11 +294,16 @@ while(true){
 		DBG("CDR deleted from queue");
 		delete cdr;
 	} else {
+		/*
 		DBG("return CDR into queue");
 		queue_mut.lock();
 			queue.push_back(cdr);
 			queue_run.set(true);
 		queue_mut.unlock();
+		*/
+		//FIXME: what we should really do here ?
+		ERROR("CDR write failed. forget about it");
+		delete cdr;
 	}
 } //while
 }
@@ -402,20 +418,48 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr){
 }
 
 bool CdrThread::openfile(){
-	if(!wf.is_open()){
-		ostringstream path;
-		path << config.failover_file_dir << "/" <<
-				std::dec << time(NULL) << "-" << this << ".csv";
-		wf.open(path.str().c_str(), std::ofstream::out | std::ofstream::trunc);
-		if(!wf.is_open())
+	if(wfp.get()&&wfp->is_open()){
+		return true;
+	} else {
+		wfp.reset(new ofstream());
+		ostringstream filename;
+		char buf[80];
+		time_t nowtime;
+		struct tm timeinfo;
+
+		time(&nowtime);
+		localtime_r (&nowtime,&timeinfo);
+		strftime (buf,80,"%G%m%d_%H%M%S",&timeinfo);
+		filename << "/" << std::dec << buf << "_" << std::dec << this << ".csv";
+		write_path = config.failover_file_dir+filename.str();
+		completed_path = config.failover_file_completed_dir+filename.str();
+		wfp->open(write_path.c_str(), std::ofstream::out | std::ofstream::trunc);
+		if(!wfp->is_open()){
+			ERROR("can't open '%s'. skip writing",write_path.c_str());
 			return false;
+		}
+		DBG("write cdr file header");
 		write_header();
 		return true;
 	}
-	return true;
+	return false;
+}
+
+void CdrThread::closefile(){
+	if(!wfp.get())
+		return;
+	wfp->flush();
+	wfp->close();
+	wfp.reset();
+	if(0==rename(write_path.c_str(),completed_path.c_str())){
+		ERROR("moved from '%s' to '%s'",write_path.c_str(),completed_path.c_str());
+	} else {
+		ERROR("can't move file from '%s' to '%s'",write_path.c_str(),completed_path.c_str());
+	}
 }
 
 void CdrThread::write_header(){
+	ofstream &wf = *wfp.get();
 		//write description header
 	wf << "#version: " << YETI_VERSION << endl;
 	wf << "#static_fields_count: " << WRITECDR_STATIC_FIELDS_COUNT << endl;
@@ -440,6 +484,8 @@ int CdrThread::writecdrtofile(Cdr* cdr){
 	if(!openfile()){
 		return -1;
 	}
+	ofstream &wf = *wfp.get();
+
 	wf << std::dec <<
 		//static fields
 	wv(cdr->attempt_num) << wv(cdr->is_last) << wv(cdr->time_limit) <<
@@ -465,7 +511,7 @@ int CdrThread::writecdrtofile(Cdr* cdr){
 	lit--;
 	for(;it!=lit;++it)
 		wf << wv(*it);
-	wf << "'" << *lit << endl;
+	wf << "'" << *lit << "'" << endl;
 	wf.flush();
 	stats.writed_cdrs++;
 	return 0;
@@ -474,14 +520,42 @@ int CdrThread::writecdrtofile(Cdr* cdr){
 int CdrThreadCfg::cfg2CdrThCfg(AmConfigReader& cfg, string& prefix){
 	string suffix="master"+prefix;
 	string cdr_file_dir = prefix+"_dir";
-
-	if(!cfg.hasParameter(cdr_file_dir)){
-		ERROR("missed '%s'' parameter",cdr_file_dir.c_str());
-		return -1;
-	}
+	string cdr_file_completed_dir = prefix+"_completed_dir";
 
 	failover_to_file = cfg.getParameterInt("failover_to_file",1);
-	failover_file_dir = cfg.getParameter(cdr_file_dir);
+	if(failover_to_file){
+		if(!cfg.hasParameter(cdr_file_dir)){
+			ERROR("missed '%s'' parameter",cdr_file_dir.c_str());
+			return -1;
+		}
+		if(!cfg.hasParameter(cdr_file_completed_dir)){
+			ERROR("missed '%s'' parameter",cdr_file_completed_dir.c_str());
+			return -1;
+		}
+		failover_file_dir = cfg.getParameter(cdr_file_dir);
+		failover_file_completed_dir = cfg.getParameter(cdr_file_completed_dir);
+
+		//check for permissions
+		ofstream t1;
+		ostringstream dir_test_file;
+		dir_test_file << failover_file_dir << "/test";
+		t1.open(dir_test_file.str().c_str(),std::ofstream::out | std::ofstream::trunc);
+		if(!t1.is_open()){
+			ERROR("can't write test file in '%s' directory",failover_file_dir.c_str());
+			return -1;
+		}
+		remove(dir_test_file.str().c_str());
+
+		ofstream t2;
+		ostringstream completed_dir_test_file;
+		completed_dir_test_file << failover_file_completed_dir << "/test";
+		t2.open(completed_dir_test_file.str().c_str(),std::ofstream::out | std::ofstream::trunc);
+		if(!t2.is_open()){
+			ERROR("can't write test file in '%s' directory",failover_file_completed_dir.c_str());
+			return -1;
+		}
+		remove(completed_dir_test_file.str().c_str());
+	}
 
 	masterdb.cfg2dbcfg(cfg,suffix);
 	suffix="slave"+prefix;

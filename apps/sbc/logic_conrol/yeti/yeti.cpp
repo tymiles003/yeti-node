@@ -201,6 +201,9 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
   } else if(method == "reload"){
 	INFO ("reload received via xmlrpc2di");
 	reload(args,ret);
+  } else if(method == "closeCdrFiles"){
+	INFO ("closeCdrFiles received via xmlrpc2di");
+	closeCdrFiles(args,ret);
   } else if(method == "_list"){
     ret.push(AmArg("showVersion"));
     ret.push(AmArg("getConfig"));
@@ -211,6 +214,7 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
     ret.push(AmArg("getCalls"));
     ret.push(AmArg("getCallsCount"));
 	ret.push(AmArg("reload"));
+	ret.push(AmArg("closeCdrFiles"));
   }
   else
     throw AmDynInvoke::NotImplemented(method);
@@ -1069,4 +1073,12 @@ void Yeti::reload(const AmArg& args, AmArg& ret){
 		ret.push(400);
 		ret.push("unknown action");
 	}
+}
+
+void Yeti::closeCdrFiles(const AmArg& args, AmArg& ret){
+	router_mutex.lock();
+		router->closeCdrFiles();
+	router_mutex.unlock();
+	ret.push(200);
+	ret.push("OK");
 }
