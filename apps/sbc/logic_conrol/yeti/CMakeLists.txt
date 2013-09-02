@@ -1,5 +1,5 @@
 find_package(PQXX REQUIRED)
-find_package(HiRedis REQUIRED)
+find_package(Hiredis REQUIRED)
 
 set (yeti_SRCS
 	yeti.cpp
