@@ -422,7 +422,7 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 
 			profile = ctx->getNextProfile(false);
 			//write old cdr here
-			ctx->router->write_cdr(cdr,false);
+			ctx->router->write_cdr(cdr,true);
 			cdr = getCdr(ctx);
 		}
 	} while(rctl_ret != RES_CTL_OK);
