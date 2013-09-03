@@ -14,15 +14,23 @@ SqlCallProfile *CallCtx::getFirstProfile(){
  *we should not change the cdr or increase the number of attempts in early_state
  */
 SqlCallProfile *CallCtx::getNextProfile(bool early_state){
+	list<SqlCallProfile *>::iterator next_profile;
 	DBG("%s() this = %p",FUNC_NAME,this);
-	++current_profile;
-	if(current_profile == profiles.end()){
+
+	next_profile = current_profile;
+	++next_profile;
+	if(next_profile == profiles.end()){
 		return NULL;
 	}
 	if(!early_state){
+		if((*next_profile)->disconnect_code_id!=0){
+			//ignore refuse profiles for non early state
+			return NULL;
+		}
 		attempt_num++;
 		cdr = new Cdr(*cdr,**current_profile);
 	}
+	current_profile = next_profile;
 	return *current_profile;
 }
 

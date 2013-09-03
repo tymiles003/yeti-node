@@ -377,18 +377,13 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 	list<SqlCallProfile *>::iterator p = ctx->current_profile;
 	profile = ctx->getNextProfile(false);
 
-	//if(NULL==profile || !profile->refuse_with.empty()){
-	if(NULL==profile || profile->disconnect_code_id!=0){
+	if(NULL==profile){
 		//pretend that nothing happen. we were never called
-		//remove excess cdr and replace ctx pointer with old
 		DBG("%s() no more profiles or refuse profile on serial fork. ignore it",FUNC_NAME);
-		delete ctx->cdr;
-		ctx->cdr = cdr;
-		ctx->current_profile = p;
 		return false;
 	}
 
-	//write all cdr and replacy ctx pointer with new
+	//write cdr and replace ctx pointer with new
 	cdr_list.erase_lookup_key(&cdr->local_tag);
 	ctx->router->write_cdr(cdr,false);
 	cdr = getCdr(ctx);
@@ -396,8 +391,6 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 	do {
 		if(NULL==profile){
 			DBG("%s() there are no profiles more",FUNC_NAME);
-			//cdr->update(DisconnectByTS,"no more profiles",503);
-			//throw AmSession::Exception(503,"no more profiles");
 			break;
 		}
 
@@ -408,13 +401,6 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 			DBG("%s() profile contains refuse code",FUNC_NAME);
 			break;
 		}
-		/*
-		if(!profile->refuse_with.empty()) {
-			DBG("%s() profile contains nonempty refuse_with ",FUNC_NAME);
-			cdr->refuse(*profile);
-			break;
-			//throw AmSession::Exception(cdr->disconnect_code,cdr->disconnect_reason);
-		}*/
 
 		DBG("%s() no refuse field. check it for resources",FUNC_NAME);
 
@@ -433,9 +419,10 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 		} else if(	rctl_ret == RES_CTL_NEXT){
 			DBG("%s() check resources failed with code: %d, reply: <%d '%s'>",FUNC_NAME,
 				rctl_ret,refuse_code,refuse_reason.c_str());
-			//write old cdr here
+
 			profile = ctx->getNextProfile(false);
-			ctx->router->write_cdr(cdr,true);
+			//write old cdr here
+			ctx->router->write_cdr(cdr,false);
 			cdr = getCdr(ctx);
 		}
 	} while(rctl_ret != RES_CTL_OK);
