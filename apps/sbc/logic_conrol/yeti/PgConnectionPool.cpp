@@ -3,9 +3,9 @@
 #include <string>
 #include "AmUtils.h"
 
-#define PGPOOL_VERSION v14
-
-PgConnection::PgConnection(const PGSTD::string &opts): pqxx::connection(opts), exceptions(0)
+PgConnection::PgConnection(const PGSTD::string &opts):
+	pqxx::connection(opts),
+	exceptions(0)
 {
 	timerclear(&access_time);
 	DBG("PgConnection::PgConnection() this = [%p]\n",this);
@@ -15,37 +15,33 @@ PgConnection::~PgConnection(){
 	DBG("PgConnection::~PgConnection() this = [%p]\n",this);
 }
 
-PgConnectionPool::PgConnectionPool() :
+PgConnectionPool::PgConnectionPool():
 	total_connections(0),
 	failed_connections(0),
 	have_active_connection(false),
 	exceptions_count(0),
 	try_connect(true),
-	stopped(false)
+	stopped(false),
+	gotostop(false),
+	mi(5)
 {
-	gotostop=false;
 	clearStats();
-	mi = 5;
 }
 
-PgConnectionPool::~PgConnectionPool() {
+PgConnectionPool::~PgConnectionPool(){
 	DBG("PgCP thread stopping\n");
 }
 
-
-int PgConnectionPoolCfg::cfg2PgCfg(AmConfigReader& cfg)
-{
+int PgConnectionPoolCfg::cfg2PgCfg(AmConfigReader& cfg){
 	dbconfig.cfg2dbcfg(cfg,name);
 	size = cfg.getParameterInt(name+"_pool_size",10);
 	max_exceptions = cfg.getParameterInt(name+"_max_exceptions",0);
-	check_interval = cfg.getParameterInt(name+"_check_interval",1800);
-	check_interval=cfg.getParameterInt(name+"_check_interval",1800);
+	check_interval=cfg.getParameterInt(name+"_check_interval",25);
+	max_wait=cfg.getParameterInt(name+"_max_wait",125);
 	return 0;
 }
 
-
-void PgConnectionPool::dump_config()
-{
+void PgConnectionPool::dump_config(){
 	conn_str =	"host="+cfg.dbconfig.host+
 				" port="+int2str(cfg.dbconfig.port)+
 				" user="+cfg.dbconfig.user+
@@ -72,7 +68,7 @@ void PgConnectionPool::set_config(PgConnectionPoolCfg&config){
 	DBG("%s: PgConnectionPool configured",pool_name.c_str());
 }
 
-void PgConnectionPool::add_connections(unsigned int count) {
+void PgConnectionPool::add_connections(unsigned int count){
 	connections_mut.lock();
 		failed_connections += count;
 		total_connections += count;
@@ -80,8 +76,7 @@ void PgConnectionPool::add_connections(unsigned int count) {
 	try_connect.set(true);
 }
 
-void PgConnectionPool::returnConnection(PgConnection* c,conn_stat stat) {
-	std::map<PgConnection*,struct timeval *>::iterator tsti;
+void PgConnectionPool::returnConnection(PgConnection* c,conn_stat stat){
 	bool return_connection = false,check = false;
 	struct timeval now,ttdiff;
 	double tt_curr;
@@ -119,12 +114,21 @@ void PgConnectionPool::returnConnection(PgConnection* c,conn_stat stat) {
 				} else {
 					stats.transactions_count++;
 					timersub(&now,&c->access_time,&ttdiff);
+					tt_curr = ttdiff.tv_sec+ttdiff.tv_usec/(double)1e6;
+					if(tt_curr > stats.tt_max)
+						stats.tt_max = tt_curr;
+					if(stats.tt_min){
+						if(tt_curr < stats.tt_min)
+							stats.tt_min = tt_curr;
+					} else {
+						stats.tt_min = tt_curr;
+					}
 				}
-			} else {
-				//returnConnection() called without previous getActiveConnection()
-				timerclear(&c->access_time);
 			}
+			gettimeofday(&c->access_time,NULL);
 		connections_mut.unlock();
+
+		have_active_connection.set(true);
 
 		DBG("%s: Now %zd active connections\n",pool_name.c_str(),active_size);
 	} else {
@@ -132,28 +136,14 @@ void PgConnectionPool::returnConnection(PgConnection* c,conn_stat stat) {
 		connections_mut.lock();
 			failed_connections++;
 			unsigned int inactive_size = failed_connections;
-		connections_mut.lock();
+		connections_mut.unlock();
 		try_connect.set(true);
 
 		DBG("%s: Now %u inactive connections\n",pool_name.c_str(), inactive_size);
 	}
-
-	have_active_connection.set(true);
-
-	if(timerisset(&ttdiff)){
-			tt_curr = ttdiff.tv_sec+ttdiff.tv_usec/(double)1e6;
-			if(tt_curr > stats.tt_max)
-				stats.tt_max = tt_curr;
-			if(stats.tt_min){
-				if(tt_curr < stats.tt_min)
-					stats.tt_min = tt_curr;
-			} else {
-				stats.tt_min = tt_curr;
-			}
-	}
 }
 
-PgConnection* PgConnectionPool::getActiveConnection() {
+PgConnection* PgConnectionPool::getActiveConnection(){
 	PgConnection* res = NULL;
 	time_t now;
 	double diff,tps;
@@ -213,124 +203,143 @@ PgConnection* PgConnectionPool::getActiveConnection() {
 }
 
 
-void PgConnectionPool::run() {
-	PgConnection* co=NULL;
-	list<PgConnection*>::iterator it,start,stop;
+void PgConnectionPool::run(){
 	DBG("PgCP %s thread starting\n",pool_name.c_str());
+
 	try_connect.set(true); //for initial connections setup
-	while (true) {
-		if(gotostop) {
-			stopped.set(true);
-			return;
-		}
-		DBG("PgCP: %s: Check cycle started.",pool_name.c_str());
-		try_connect.wait_for_to(cfg.check_interval);
+
+	while (!gotostop) {
+		//DBG("PgCP: %s: Check cycle started.",pool_name.c_str());
+		try_connect.wait_for_to(PG_CONN_POOL_CHECK_TIMER_RATE);
+
+		if(gotostop)
+			break;
+
 		if (try_connect.get()){
-			while (true) {
 
-				if(gotostop) {
-					stopped.set(true);
-					return;
-				}
+			connections_mut.lock();
+				unsigned int m_failed_connections = failed_connections;
+			connections_mut.unlock();
 
-				connections_mut.lock();
-					unsigned int m_failed_connections = failed_connections;
-				connections_mut.unlock();
+			if (!m_failed_connections){
+				try_connect.set(false);
+				continue;
+			}
 
-				if (!m_failed_connections)
-					break;
-
-				// add connections until error occurs
+			if(!reconnect_failed_alarm)
 				DBG("PgCP: %s: start connection",pool_name.c_str());
+
+			// add connections until error occurs
+			while(m_failed_connections--){
 				try {
 					PgConnection* conn = new PgConnection(conn_str);
-					if (conn->is_open()){
+					if(conn->is_open()){
 						prepare_queries(conn);
 						DBG("PgCP: %s: SQL connected. Backend pid: %d.",pool_name.c_str(),conn->backendpid());
 						returnConnection(conn);
 						connections_mut.lock();
-						failed_connections--;
+							failed_connections--;
 						connections_mut.unlock();
+						reconnect_failed_alarm = false;
 					} else {
-						// WTF?
-						DBG("%s: waiting for retry 500 ms\n",pool_name.c_str());
-						usleep(500);
+						throw new pqxx::broken_connection("can't open connection");
 					}
-				} catch(const pqxx::broken_connection &exc) {
-					DBG("PgCP: %s: connection exception: %s",pool_name.c_str(),exc.what());
+				} catch(const pqxx::broken_connection &exc){
+					if(!reconnect_failed_alarm)
+						ERROR("PgCP: %s: connection exception: %s",pool_name.c_str(),exc.what());
 					exceptions_count++;
+					reconnect_failed_alarm = true;
 					if ((cfg.max_exceptions>0)&&(exceptions_count>cfg.max_exceptions)) {
-						DBG("PgCP: %s: max exception count reached. Pool stopped.",pool_name.c_str());
+						ERROR("PgCP: %s: max exception count reached. Pool stopped.",pool_name.c_str());
 						try_connect.set(false);
 						break;
 					}
-					usleep(1000000);
 				}
+			}
 
-				if (0==failed_connections){
-					WARN("PCP: %s: All sql connected.",pool_name.c_str());
-					try_connect.set(false);
-				}
-				DBG("PgCP: %s: Wait 10ms for next attempt.",pool_name.c_str());
-				usleep(10000);
-			} //while(true)
+			connections_mut.lock();
+				m_failed_connections = failed_connections;
+			connections_mut.unlock();
+			if (0==m_failed_connections){
+				WARN("PCP: %s: All sql connected.",pool_name.c_str());
+				try_connect.set(false);
+				//continue;
+			}
+
+			//attempt_interval = reconnect_failed_alarm?
+			//					PG_CONN_POOL_ATTEMPT_INTERVAl_FAILED:
+			//					PG_CONN_POOL_ATTEMPT_INTERVAl_NORMAL;
+			//DBG("PgCP: %s: Wait %dms for next attempt.",pool_name.c_str(),attempt_interval);
+			//usleep(attempt_interval); //TODO: reasonably to use condition variable waiting with timeout for proper shutdown
 		} else {
-			// connection checking
-			for(int i=0;i<10;i++){
-				bool fail=false;
-				co=getActiveConnection();
-				if(NULL==co){
-					ERROR("PCP: %s: checker: FAIL: no active connections.",pool_name.c_str());
-					break;
+			PgConnection* c = NULL;
+
+			connections_mut.lock();
+				struct timeval now,diff;
+				gettimeofday(&now,NULL);
+				//collect connections which haven't been used recently
+				list<PgConnection*> cv;
+				list<PgConnection*>::iterator i = connections.begin(),ti;
+				while(i!=connections.end()){
+					ti = i;
+					ti++;
+					c = (*i);
+					timersub(&now,&c->access_time,&diff);
+					/*DBG("diff = {%ld , %ld}, check_interval = %d",
+						diff.tv_sec,diff.tv_usec,cfg.check_interval);*/
+					if(diff.tv_sec>cfg.check_interval){
+						//DBG("connecton %p checktime is arrived. schedule to check it",c);
+						cv.push_back(c);
+						connections.erase(i);
+					}
+					i = ti;
 				}
+			connections_mut.unlock();
+
+			while(!cv.empty()){
+				//DBG("another connection check");
+				c = cv.front();
+				cv.pop_front();
 				try {
-					pqxx::work tnx(*co);
-					tnx.commit();
+					pqxx::work t(*c);
+					t.commit();
+					//DBG("check succc. return it to pool");
+					returnConnection(c,CONN_CHECK_SUCC);
 				} catch (const pqxx::pqxx_exception &e) {
-					WARN("PgCP: %s: Connection [%p] check failed. Destroy connection. Reason: %s ",pool_name.c_str(),co,e.base().what());
-					delete co;
-					fail=true;
-					connections_mut.lock();
-					failed_connections++;
-					connections_mut.unlock();
-					try_connect.set(true);
-					//break;
+					/*DBG("connection checking failed: '%s'. delete it from pool",
+						e.base().what());*/
+					returnConnection(c,CONN_COMM_ERR);
 				}
-				if (!fail){
-					DBG("PgCP: %s: checker: OK",pool_name.c_str());
-					returnConnection(co,CONN_CHECK_SUCC);
-				}
-			} //for(int i=0;i<10;i++){
+			}
+			//DBG("while end");
 		} // if (try_connect.get()) else
 	} //while(true)
+
+	connections_mut.lock();
+		while(!connections.empty()){
+			PgConnection *c = connections.front();
+			connections.pop_front();
+			DBG("PgCP: %s: Disconnect SQL. Backend pid: %d.",
+				pool_name.c_str(),c->backendpid());
+			c->disconnect();
+			delete c;
+		}
+	connections_mut.unlock();
+	stopped.set(true);
 }
 
-void PgConnectionPool::on_stop() {
-	PgConnection* res;
-	int len,pid;
+void PgConnectionPool::on_stop(){
 	DBG("PgCP %s thread stopping\n",pool_name.c_str());
-	try_connect.set(false);
 	gotostop=true;
+	stopped.set(true);
 	try_connect.set(true);
 
 	stopped.wait_for();
 
-	len=connections.size();
-	for (int i=0;i<len;i++){
-		connections_mut.lock();
-		res = connections.front();
-		connections.pop_front();
-		connections_mut.unlock();
-		pid=res->backendpid();
-		DBG("PgCP: %s: Disconnect SQL. Backend pid: %d.",pool_name.c_str(),pid);
-		res->disconnect();
-	}
 	DBG("PgCP %s All disconnected",pool_name.c_str());
 }
 
 void PgConnectionPool::clearStats(){
-	list<PgConnection*>::iterator it;
-
 	time(&mi_start);
 	tpi = 0;
 	stats.transactions_count = 0;
@@ -339,13 +348,12 @@ void PgConnectionPool::clearStats(){
 	stats.tt_max = 0;
 	stats.tps_max = 0;
 	stats.tps_avg = 0;
-	for(it = connections.begin();it!=connections.end();it++){
-	(*it)->exceptions = 0;
+	for(list<PgConnection*>::iterator it = connections.begin();it!=connections.end();it++){
+		(*it)->exceptions = 0;
 	}
 }
 
 void PgConnectionPool::getStats(AmArg &arg){
-	list<PgConnection*>::iterator it;
 	AmArg conn,conns;
 
 	connections_mut.lock();
@@ -359,7 +367,7 @@ void PgConnectionPool::getStats(AmArg &arg){
 	arg["tps_max"] = stats.tps_max;
 	arg["tps_avg"] = stats.tps_avg;
 
-	for(it = connections.begin();it!=connections.end();it++){
+	for(list<PgConnection*>::iterator it = connections.begin();it!=connections.end();it++){
 		conn["exceptions"] = (int)(*it)->exceptions;
 		conns.push(conn);
 		conn.clear();
@@ -370,8 +378,8 @@ void PgConnectionPool::getStats(AmArg &arg){
 }
 
 void PgConnectionPool::prepare_queries(PgConnection *c){
-	PreparedQueriesT::iterator it = prepared_queries.begin();
-	for(;it!=prepared_queries.end();++it){
+	PreparedQueriesT::iterator it = cfg.prepared_queries.begin();
+	for(;it!=cfg.prepared_queries.end();++it){
 		pqxx::prepare::declaration d = c->prepare(it->first,it->second.first);
 		for(int i = 0;i<it->second.second;i++){
 			d("varchar",pqxx::prepare::treat_direct);

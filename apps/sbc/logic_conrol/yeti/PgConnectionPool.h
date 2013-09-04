@@ -17,7 +17,11 @@ using std::string;
 using std::list;
 using std::vector;
 
-class PgConnection: public pqxx::connection {
+#define PG_CONN_POOL_CHECK_TIMER_RATE 20e3
+
+class PgConnection:
+	public pqxx::connection
+{
   public:
 	PgConnection(const PGSTD::string &opts);
 	~PgConnection();
@@ -36,8 +40,8 @@ struct PgConnectionPoolCfg {
 	int cfg2PgCfg(AmConfigReader& cfg);
 };
 
-class PgConnectionPool
-: public AmThread
+class PgConnectionPool:
+	public AmThread
 {
 	PgConnectionPoolCfg cfg;
 	string conn_str;
@@ -53,6 +57,8 @@ class PgConnectionPool
 
 	unsigned int exceptions_count;
 
+	bool reconnect_failed_alarm;	//skip reconnect error messages on alarm state
+
 	AmCondition<bool> stopped;
 	bool gotostop;
 
@@ -66,7 +72,6 @@ class PgConnectionPool
 		double tps_max,tps_avg;			//transactions per second
 	} stats;
 
-	PreparedQueriesT prepared_queries;
 	void prepare_queries(PgConnection *c);
 
   public:

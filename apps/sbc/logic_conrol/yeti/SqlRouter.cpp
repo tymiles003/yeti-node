@@ -200,7 +200,7 @@ int SqlRouter::configure(AmConfigReader &cfg){
     cache = new ProfilesCache(used_header_fields,cache_buckets,cache_check_interval);
   }
   return 0;
-};
+}
 
 void SqlRouter::update_counters(struct timeval &start_time){
     struct timeval now_time,diff_time;
@@ -234,26 +234,28 @@ void SqlRouter::update_counters(struct timeval &start_time){
 
 void SqlRouter::getprofiles(const AmSipRequest &req,CallCtx &ctx)
 {
-  DBG("Lookup profile for request: \n %s",req.print().c_str());
-  PgConnection *conn = NULL;
-  PgConnectionPool *pool = master_pool;
-  ProfilesCacheEntry *entry = NULL;
-  bool getprofile_fail = true;
-  int refuse_code = 0;
-  string req_hdrs,hdr;
-  struct timeval start_time;
-  hits++;
-  gettimeofday(&start_time,NULL);
+	PgConnection *conn = NULL;
+	PgConnectionPool *pool = master_pool;
+	ProfilesCacheEntry *entry = NULL;
+	bool getprofile_fail = true;
+	int refuse_code = 0xffff;
+	string req_hdrs,hdr;
+	struct timeval start_time;
 
-  if(cache_enabled&&cache->get_profiles(&req,ctx.profiles)){
-	DBG("%s() got from cache. %ld profiles in set",FUNC_NAME,ctx.profiles.size());
-    cache_hits++;
-    update_counters(start_time);
-	return;
-  }
-  
-  while (getprofile_fail&&pool) {
-    try {
+	DBG("Lookup profile for request: \n %s",req.print().c_str());
+
+	hits++;
+	gettimeofday(&start_time,NULL);
+
+	if(cache_enabled&&cache->get_profiles(&req,ctx.profiles)){
+		DBG("%s() got from cache. %ld profiles in set",FUNC_NAME,ctx.profiles.size());
+		cache_hits++;
+		update_counters(start_time);
+		return;
+	}
+
+	while (getprofile_fail&&pool) {
+	try {
 		conn = pool->getActiveConnection();
 		if(conn!=NULL){
 			entry = _getprofiles(req,conn);
@@ -261,6 +263,7 @@ void SqlRouter::getprofiles(const AmSipRequest &req,CallCtx &ctx)
 			getprofile_fail = false;
 		} else {
 			DBG("Cant get active connection on %s",pool->pool_name.c_str());
+			refuse_code = FC_GET_ACTIVE_CONNECTION;
 		}
 	} catch(GetProfileException &e){
 		DBG("GetProfile exception on %s SQLThread: fatal = %d code  = '%d'",
@@ -274,37 +277,41 @@ void SqlRouter::getprofiles(const AmSipRequest &req,CallCtx &ctx)
 		}
 	} catch(pqxx::broken_connection &e){
 		pool->returnConnection(conn,PgConnectionPool::CONN_COMM_ERR);
+		refuse_code = FC_DB_BROKEN_EXCEPTION;
 		DBG("SQL exception on %s SQLThread: pqxx::broken_connection.",pool->pool_name.c_str());
 	} catch(pqxx::conversion_error &e){
 		pool->returnConnection(conn,PgConnectionPool::CONN_DB_EXCEPTION);
+		refuse_code =  FC_DB_CONVERSION_EXCEPTION;
 		DBG("SQL exception on %s SQLThread: conversion error: %s.",pool->pool_name.c_str(),e.what());
-    } catch(pqxx::pqxx_exception &e){
+	} catch(pqxx::pqxx_exception &e){
 		pool->returnConnection(conn,PgConnectionPool::CONN_DB_EXCEPTION);
+		refuse_code = FC_DB_BASE_EXCEPTION;
 		DBG("SQL exception on %s SQLThread: %s.",pool->pool_name.c_str(),e.base().what());
-    }
-    
-    if(getprofile_fail&&pool == master_pool&&1==failover_to_slave) {
-      ERROR("SQL failover enabled. Trying slave connection");
-      pool = slave_pool;
-    } else {
-      pool = NULL;
-    }
-  }
+	}
 
-  if(getprofile_fail){
-    ERROR("SQL cant get profile. Drop request");
-	SqlCallProfile *profile = new SqlCallProfile();
-	profile->disconnect_code_id = refuse_code;
-	ctx.SQLexception = true;
-	ctx.profiles.push_back(profile);
-  } else {
-    update_counters(start_time);
-    db_hits++;
-	ctx.profiles = entry->profiles;
-	if(cache_enabled&&timerisset(&entry->expire_time))
-		cache->insert_profile(&req,entry);
-  }
-  return;
+	if(getprofile_fail&&pool == master_pool&&1==failover_to_slave) {
+		ERROR("SQL failover enabled. Trying slave connection");
+		pool = slave_pool;
+	} else {
+		pool = NULL;
+	}
+
+	} //while
+
+	if(getprofile_fail){
+		ERROR("SQL cant get profiles. Drop request");
+		SqlCallProfile *profile = new SqlCallProfile();
+		profile->disconnect_code_id = refuse_code;
+		ctx.SQLexception = true;
+		ctx.profiles.push_back(profile);
+	} else {
+		update_counters(start_time);
+		db_hits++;
+		ctx.profiles = entry->profiles;
+		if(cache_enabled&&timerisset(&entry->expire_time))
+			cache->insert_profile(&req,entry);
+	}
+	return;
 }
 
 ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req,
