@@ -331,7 +331,6 @@ void PgConnectionPool::run(){
 void PgConnectionPool::on_stop(){
 	DBG("PgCP %s thread stopping\n",pool_name.c_str());
 	gotostop=true;
-	stopped.set(true);
 	try_connect.set(true);
 
 	stopped.wait_for();
