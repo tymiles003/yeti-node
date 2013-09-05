@@ -5,7 +5,7 @@
 CodesTranslator* CodesTranslator::_instance=0;
 
 CodesTranslator::CodesTranslator(){
-
+	stat.clear();
 }
 
 CodesTranslator::~CodesTranslator(){
@@ -133,6 +133,7 @@ void CodesTranslator::rewrite_response(unsigned int code,const string &reason,
 			code,treason.c_str(),
 			out_code,out_reason.c_str());
 	} else {
+		stat.unknown_response_codes++;
 		DBG("no translation for response with code '%d'. leave it 'as is'",code);
 		out_code = code;
 		out_reason = reason;
@@ -149,6 +150,7 @@ bool CodesTranslator::stop_hunting(unsigned int code){
 		DBG("stop_hunting = %d for code '%d'",stop,code);
 		ret = stop;
 	} else {
+		stat.missed_response_configs++;
 		DBG("no preference for code '%d', so simply stop hunting",code);
 	}
 	code2pref_mutex.unlock();
@@ -174,6 +176,7 @@ void CodesTranslator::translate_db_code(unsigned int code,
 			internal_code,internal_reason.c_str(),
 			response_code,response_reason.c_str());
 	} else {
+		stat.unknown_internal_codes++;
 		DBG("no translation for db code '%d'. reply with 500",code);
 		internal_code = response_code = 500;
 		internal_reason = response_reason = SIP_REPLY_SERVER_INTERNAL_ERROR;
@@ -231,5 +234,13 @@ void CodesTranslator::GetConfig(AmArg& ret){
 	}
 	icode2resp_mutex.unlock();
 	ret.push("internal_translations",u);
+}
+
+void CodesTranslator::clearStats(){
+	stat.clear();
+}
+
+void CodesTranslator::getStats(AmArg &ret){
+	stat.get(ret);
 }
 

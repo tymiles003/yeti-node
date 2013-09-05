@@ -61,6 +61,22 @@ class CodesTranslator {
 	AmMutex icode2resp_mutex;
 	DbConfig dbc;
 	int load_translations_config();
+
+	struct {
+		unsigned int unknown_response_codes;
+		unsigned int missed_response_configs;
+		unsigned int unknown_internal_codes;
+		void clear(){
+			unknown_response_codes = 0;
+			missed_response_configs = 0;
+			unknown_internal_codes = 0;
+		}
+		void get(AmArg &arg){
+			arg["unknown_code_resloves"] = (long)unknown_response_codes;
+			arg["missed_response_configs"] = (long)missed_response_configs;
+			arg["unknown_internal_codes"] = (long)unknown_internal_codes;
+		}
+	} stat;
   public:
 	CodesTranslator();
 	~CodesTranslator();
@@ -80,6 +96,8 @@ class CodesTranslator {
 								 string &response_reason);
 
 	void GetConfig(AmArg& ret);
+	void clearStats();
+	void getStats(AmArg &ret);
 };
 
 #endif // CODESTRANSLATOR_H

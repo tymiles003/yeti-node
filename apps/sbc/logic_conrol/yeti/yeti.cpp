@@ -957,6 +957,10 @@ void Yeti::GetStats(const AmArg& args, AmArg& ret){
   rctl.getStats(u);
   stats.push("resource_control",u);
 
+  u.clear();
+  CodesTranslator::instance()->getStats(u);
+  stats.push("translator",u);
+
   ret.push(stats);
 }
 
