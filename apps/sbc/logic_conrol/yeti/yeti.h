@@ -65,6 +65,11 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   void invoke(const string& method, const AmArg& args, AmArg& ret);
   int onLoad();
 
+  struct global_config {
+	int node_id;
+	int pop_id;
+  } config;
+
         //!xmlrpc handlers
   void DropCall(const AmArg& args, AmArg& ret);
   void ClearStats(const AmArg& args, AmArg& ret);

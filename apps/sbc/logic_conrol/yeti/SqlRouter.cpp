@@ -13,6 +13,9 @@
 #include "PgConnectionPool.h"
 #include "SqlRouter.h"
 #include "DbTypes.h"
+#include "yeti.h"
+
+#define GETPROFILE_ARGS_COUNT 17
 
 SqlRouter::SqlRouter():
   master_pool(NULL),
@@ -96,8 +99,8 @@ int SqlRouter::db_configure(AmConfigReader& cfg){
     
     DBG("dyn_fields.size() = %ld",dyn_fields.size());
     prepared_queries.clear();
-	sql_query = "SELECT * FROM switch.getprofile_f($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15);";
-	prepared_queries["getprofile"] = pair<string,int>(sql_query,15);
+	sql_query = "SELECT * FROM switch.getprofile_f($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17);";
+	prepared_queries["getprofile"] = pair<string,int>(sql_query,GETPROFILE_ARGS_COUNT);
     
     cdr_prepared_queries.clear();
     sql_query = "SELECT switch.writecdr($1";
@@ -319,9 +322,8 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req,
 	pqxx::result r;
 	pqxx::nontransaction tnx(*conn);
 	string req_hdrs,hdr;
-
 	ProfilesCacheEntry *entry = NULL;
-
+	Yeti::global_config &gc = Yeti::instance()->config;
 	for(vector<string>::const_iterator it = used_header_fields.begin(); it != used_header_fields.end(); ++it){
 		hdr = getHeader(req.hdrs,*it);
 		if(hdr.length()){
@@ -356,7 +358,8 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req,
 
 	if(tnx.prepared("getprofile").exists()){
 		pqxx::prepare::invocation invoc = tnx.prepared("getprofile");
-
+		invoc(gc.node_id);
+		invoc(gc.pop_id);
 		invoc(req.remote_ip);
 		invoc(req.remote_port);
 		invoc(req.local_ip);

@@ -63,10 +63,20 @@ Yeti::~Yeti() {
 
 bool Yeti::read_config(){
 	if(cfg.loadFile(AmConfig::ModConfigPath + string(MOD_NAME ".conf"))) {
-	  ERROR("No configuration for "MOD_NAME" present (%s)\n",
-	   (AmConfig::ModConfigPath + string(MOD_NAME ".conf")).c_str()
-	  );
-	  return false;
+		ERROR("No configuration for "MOD_NAME" present (%s)\n",
+			(AmConfig::ModConfigPath + string(MOD_NAME ".conf")).c_str()
+		);
+		return false;
+	}
+	config.node_id = cfg.getParameterInt("node_id",-1);
+	if(-1 == config.node_id){
+		ERROR("Missed parameter 'node_id'");
+		return false;
+	}
+	config.pop_id = cfg.getParameterInt("pop_id",-1);
+	if(-1 == config.pop_id){
+		ERROR("Missed parameter 'pop_id'");
+		return false;
 	}
 	return true;
 }
@@ -950,6 +960,8 @@ void Yeti::GetConfig(const AmArg& args, AmArg& ret) {
 	ret.push(200);
 
 	s["calls_show_limit"] = calls_show_limit;
+	s["node_id"] = config.node_id;
+	s["pop_id"] = config.pop_id;
 
 	router_mutex.lock();
 	if(router){

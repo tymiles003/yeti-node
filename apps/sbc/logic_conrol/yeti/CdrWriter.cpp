@@ -3,8 +3,11 @@
 #include "AmThread.h"
 #include <pqxx/pqxx>
 #include "Version.h"
+#include "yeti.h"
 
 static const char *static_fields_names[] = {
+	"node_id",
+	"pop_id",
 	"attempt_num",
 	"is_last",
 	"time_limit",
@@ -45,18 +48,19 @@ CdrWriter::~CdrWriter()
 int CdrWriter::configure(CdrWriterCfg& cfg)
 {
 	config=cfg;
-	DynFieldsT_iterator dit;
-	/*show all fields*/
-	//check for dirs
-	int i;
-	for(i = 0;i<WRITECDR_STATIC_FIELDS_COUNT;i++){
-		DBG("%d: %s",i,static_fields_names[i]);
+
+	//show all query args
+	int param_num = 1;
+	//static params
+	for(;param_num<WRITECDR_STATIC_FIELDS_COUNT;param_num++){
+		DBG("%d: %s : varchar",param_num,static_fields_names[param_num-1]);
 	}
-	dit = config.dyn_fields.begin();
+	//dynamic params
+	DynFieldsT_iterator dit = config.dyn_fields.begin();
 	for(;dit!=config.dyn_fields.end();++dit){
-		i++;
-		DBG("%d: %s",i,dit->first.c_str());
+		DBG("%d: %s : %s",param_num++,dit->first.c_str(),dit->second.c_str());
 	}
+
 	return 0;
 }
 
@@ -107,7 +111,7 @@ void CdrWriter::getConfig(AmArg &arg){
 	int param_num = 1;
 	//static params
 	for(;param_num<WRITECDR_STATIC_FIELDS_COUNT;param_num++){
-		params.push(int2str(param_num)+": "+string(static_fields_names[param_num])+" : "+"varchar");
+		params.push(int2str(param_num)+": "+string(static_fields_names[param_num-1])+" : "+"varchar");
 	}
 	//dynamic params
 	DynFieldsT_iterator dit = config.dyn_fields.begin();
@@ -356,6 +360,7 @@ int CdrThread::connectdb(){
 int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr){
 	DBG("%s[%p](conn = %p,cdr = %p)",FUNC_NAME,this,conn,cdr);
 	int ret = 1;
+	Yeti::global_config &gc = Yeti::instance()->config;
 	pqxx::result r;
 	pqxx::nontransaction tnx(*conn);
 	stats.tried_cdrs++;
@@ -368,6 +373,8 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr){
 
 		pqxx::prepare::invocation invoc = tnx.prepared("writecdr");
 		/* invocate static fields */
+		invoc(gc.node_id);
+		invoc(gc.pop_id);
 		invoc(cdr->attempt_num);
 		invoc(cdr->is_last);
 		invoc(cdr->time_limit);
