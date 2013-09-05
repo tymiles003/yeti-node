@@ -909,12 +909,13 @@ void Yeti::GetCalls(const AmArg& args, AmArg& ret) {
 void Yeti::ClearStats(const AmArg& args, AmArg& ret){
     if(router)
       router->clearStats();
+	rctl.clearStats();
     ret.push(200);
     ret.push("OK");
 }
 
 void Yeti::GetStats(const AmArg& args, AmArg& ret){
-  AmArg stats,underlying_stats;
+  AmArg stats,u;
 
   ret.push(200);
       /* Yeti stats */
@@ -925,32 +926,36 @@ void Yeti::GetStats(const AmArg& args, AmArg& ret){
   stats["active_routers_count"] = (long int)routers.size();
   set<SqlRouter *>::const_iterator i = routers.begin();
   for(;i!=routers.end();++i){
-		underlying_stats.clear();
+		u.clear();
 		SqlRouter *r = *i;
 		if(r){
-			router->getStats(underlying_stats);
+			router->getStats(u);
 			if(r == router){
-				routers_stats.push("active",underlying_stats);
+				routers_stats.push("active",u);
 			} else {
-				routers_stats.push("old",underlying_stats);
+				routers_stats.push("old",u);
 			}
 		}
   }
   router_mutex.unlock();
   stats.push("routers",routers_stats);
 
-  underlying_stats.clear();
-  AmSessionContainer::instance()->getStats(underlying_stats);
-  stats.push("AmSessionContainer",underlying_stats);
+  u.clear();
+  AmSessionContainer::instance()->getStats(u);
+  stats.push("AmSessionContainer",u);
 
-  underlying_stats.clear();
-  underlying_stats["SessionNum"] = (int)AmSession::getSessionNum();
-  underlying_stats["MaxSessionNum"] = (int)AmSession::getMaxSessionNum();
-  underlying_stats["AvgSessionNum"] = (int)AmSession::getAvgSessionNum();
-  underlying_stats["MaxCPS"] = (int)AmSession::getMaxCPS();
-  underlying_stats["AvgCPS"] = (int)AmSession::getAvgCPS();
+  u.clear();
+  u["SessionNum"] = (int)AmSession::getSessionNum();
+  u["MaxSessionNum"] = (int)AmSession::getMaxSessionNum();
+  u["AvgSessionNum"] = (int)AmSession::getAvgSessionNum();
+  u["MaxCPS"] = (int)AmSession::getMaxCPS();
+  u["AvgCPS"] = (int)AmSession::getAvgCPS();
 
-  stats.push("AmSession",underlying_stats);
+  stats.push("AmSession",u);
+
+  u.clear();
+  rctl.getStats(u);
+  stats.push("resource_control",u);
 
   ret.push(stats);
 }

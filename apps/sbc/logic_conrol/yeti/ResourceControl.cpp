@@ -34,7 +34,7 @@ string ResourceConfig::print() const{
 
 ResourceControl::ResourceControl()
 {
-
+	stat.clear();
 }
 
 int ResourceControl::configure(AmConfigReader &cfg){
@@ -140,7 +140,7 @@ ResourceCtlResponse ResourceControl::get(ResourceList &rl,
 		DBG("empty resources list. do nothing");
 		return RES_CTL_OK;
 	}
-
+	stat.hits++;
 	ResourceResponse ret = cache.get(rl,rli);
 	switch(ret){
 		case RES_SUCC: {
@@ -148,6 +148,7 @@ ResourceCtlResponse ResourceControl::get(ResourceList &rl,
 			break;
 		}
 		case RES_BUSY: {
+			stat.overloaded++;
 			cfg_lock.lock();
 			map<int,ResourceConfig>::iterator ti = type2cfg.find(rli->type);
 			if(ti==type2cfg.end()){
@@ -165,14 +166,20 @@ ResourceCtlResponse ResourceControl::get(ResourceList &rl,
 					replace(reject_reason,(*rli),rc);
 					ResourceConfig::ActionType a = rc.action;
 					cfg_lock.unlock();
-					return a==ResourceConfig::NextRoute?
-									RES_CTL_NEXT:
-									RES_CTL_REJECT;
+
+					if(a==ResourceConfig::NextRoute){
+						stat.nextroute++;
+						return RES_CTL_NEXT;
+					} else {
+						stat.rejected;
+						return RES_CTL_REJECT;
+					}
 				}
 			}
 			cfg_lock.unlock();
 		} break;
 		case RES_ERR: {
+			stat.errors++;
 			ERROR("cache error reject_on_error = %d",reject_on_error);
 			if(reject_on_error){
 				reject_code = 503;
@@ -216,5 +223,13 @@ void ResourceControl::GetConfig(AmArg& ret){
 		ret.push("cache",u);
 
 	cfg_lock.unlock();
+}
+
+void ResourceControl::clearStats(){
+	stat.clear();
+}
+
+void ResourceControl::getStats(AmArg &ret){
+	stat.get(ret);
 }
 

@@ -56,6 +56,28 @@ class ResourceControl
 	void replace(string& s, const string& from, const string& to);
 	int load_resources_config();
 	int reject_on_error;
+
+	struct {
+		unsigned int hits;
+		unsigned int overloaded;
+		unsigned int rejected;
+		unsigned int nextroute;
+		unsigned int errors;
+		void clear(){
+			hits = 0;
+			overloaded = 0;
+			rejected = 0;
+			nextroute = 0;
+			errors = 0;
+		}
+		void get(AmArg &arg){
+			arg["hits"] = (long)hits;
+			arg["overloaded"] = (long)overloaded;
+			arg["rejected"] = (long)rejected;
+			arg["nextroute"] = (long)nextroute;
+			arg["errors"] = (long)errors;
+		}
+	} stat;
 public:
 	ResourceControl();
 	int configure(AmConfigReader &cfg);
@@ -71,6 +93,8 @@ public:
 	void put(ResourceList &rl);
 
 	void GetConfig(AmArg& ret);
+	void clearStats();
+	void getStats(AmArg &ret);
 };
 
 #endif // RESOURCECONTROL_H
