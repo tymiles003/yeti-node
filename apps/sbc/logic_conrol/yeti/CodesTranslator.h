@@ -3,6 +3,7 @@
 
 #include "AmConfigReader.h"
 #include "AmThread.h"
+#include "AmArg.h"
 #include <map>
 #include "DbConfig.h"
 
@@ -77,6 +78,8 @@ class CodesTranslator {
 								 string &internal_reason,
 								 unsigned int &response_code,
 								 string &response_reason);
+
+	void GetConfig(AmArg& ret);
 };
 
 #endif // CODESTRANSLATOR_H

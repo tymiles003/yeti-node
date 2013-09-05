@@ -181,4 +181,55 @@ void CodesTranslator::translate_db_code(unsigned int code,
 	icode2resp_mutex.unlock();
 }
 
+void CodesTranslator::GetConfig(AmArg& ret){
+	AmArg u;
+
+	ret["config_db"] = dbc.conn_str();
+
+	code2pref_mutex.lock();
+	{
+		map<int,pref>::const_iterator it = code2pref.begin();
+		for(;it!=code2pref.end();++it){
+			AmArg p;
+			p["is_stop_hunting"] = it->second.is_stop_hunting;
+			u.push(int2str(it->first),p);
+		}
+	}
+	code2pref_mutex.unlock();
+	ret.push("hunting",u);
+
+	u.clear();
+	code2trans_mutex.lock();
+	{
+		map<int,trans>::const_iterator it = code2trans.begin();
+		for(;it!=code2trans.end();++it){
+			AmArg p;
+			const trans &t = it->second;
+			//p["code"] = it->first;
+			p["rewrite_code"] = t.rewrite_code;
+			p["rewrite_reason"] = t.rewrite_reason;
+			p["pass_reason_to_originator"] = t.pass_reason_to_originator;
+			u.push(int2str(it->first),p);
+		}
+	}
+	code2trans_mutex.unlock();
+	ret.push("response_translations",u);
+
+	u.clear();
+	icode2resp_mutex.lock();
+	{
+		map<unsigned int,icode>::const_iterator it =  icode2resp.begin();
+		for(;it!= icode2resp.end();++it){
+			AmArg p;
+			const icode &c = it->second;
+			p["internal_code"] = c.internal_code;
+			p["internal_reason"] = c.internal_reason;
+			p["response_code"] = c.response_code;
+			p["response_reason"] = c.response_reason;
+			u.push(int2str(it->first),p);
+		}
+	}
+	icode2resp_mutex.unlock();
+	ret.push("internal_translations",u);
+}
 

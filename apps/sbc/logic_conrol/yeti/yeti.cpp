@@ -946,12 +946,27 @@ void Yeti::GetStats(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::GetConfig(const AmArg& args, AmArg& ret) {
-  AmArg a;
-  ret.push(200);
-  if(router){
-    router->getConfig(a);
-    ret.push(a);
-  }
+	AmArg u,s;
+	ret.push(200);
+
+	s["calls_show_limit"] = calls_show_limit;
+
+	router_mutex.lock();
+	if(router){
+		router->getConfig(u);
+		s.push("router",u);
+	}
+	router_mutex.unlock();
+
+	u.clear();
+	CodesTranslator::instance()->GetConfig(u);
+	s.push("translator",u);
+
+	u.clear();
+	rctl.GetConfig(u);
+	s.push("resources_control",u);
+
+	ret.push(s);
 }
 
 void Yeti::DropCall(const AmArg& args, AmArg& ret){

@@ -75,7 +75,6 @@ int SqlRouter::run(){
 int SqlRouter::db_configure(AmConfigReader& cfg){
   string sql_query,prefix("master");
   pqxx::result r;
-  DbConfig dbc;
   int n,ret = 1;
   
   dbc.cfg2dbcfg(cfg,prefix);
@@ -196,7 +195,7 @@ int SqlRouter::configure(AmConfigReader &cfg){
   cache_enabled = cfg.getParameterInt("profiles_cache_enabled",0);
   if(cache_enabled){
     cache_check_interval = cfg.getParameterInt("profiles_cache_check_interval",30);
-    int cache_buckets = cfg.getParameterInt("profiles_cache_buckets",65000);
+	cache_buckets = cfg.getParameterInt("profiles_cache_buckets",65000);
     cache = new ProfilesCache(used_header_fields,cache_buckets,cache_check_interval);
   }
   return 0;
@@ -483,11 +482,49 @@ void SqlRouter::clearStats(){
 }
 
 void SqlRouter::getConfig(AmArg &arg){
-	AmArg a;
-	if(cdr_writer){
-		cdr_writer->getConfig(a);
+	AmArg u;
+	arg["config_db"] = dbc.conn_str();
+	arg["failover_to_slave"] = failover_to_slave;
+
+	if(master_pool){
+		master_pool->getConfig(u);
+		arg.push("master_pool",u);
+		u.clear();
 	}
-	arg.push("cdrwriter",a);
+
+	if(failover_to_slave&&slave_pool){
+		slave_pool->getConfig(u);
+		arg.push("slave_pool",u);
+		u.clear();
+	}
+
+	arg["header_fields_separator"] = used_header_fields_separator;
+	vector<string>::const_iterator fit = used_header_fields.begin();
+	for(;fit!=used_header_fields.end();++fit){
+		u.push(*fit);
+	}
+	arg.push("header_fields",u);
+	u.clear();
+
+	DynFieldsT_iterator dit = dyn_fields.begin();
+	for(;dit!=dyn_fields.end();++dit){
+		u.push(dit->first + " : "+dit->second);
+	}
+	arg.push("dyn_fields",u);
+	u.clear();
+
+	if(cdr_writer){
+		cdr_writer->getConfig(u);
+		arg.push("cdrwriter",u);
+		u.clear();
+	}
+
+	arg["cache_enabled"] = cache_enabled;
+	if(cache_enabled){
+		arg["cache_check_interval"] = cache_check_interval;
+		arg["cache_buckets"] = cache_buckets;
+	}
+
 }
 
 void SqlRouter::getStats(AmArg &arg){
@@ -506,25 +543,25 @@ void SqlRouter::getStats(AmArg &arg){
   }
       /* SqlRouter ProfilesCache stats */
   if(cache_enabled){
-    underlying_stats["entries"] = (int)cache->get_count();
-    arg.push("profiles_cache",underlying_stats);
-    underlying_stats.clear();
+	underlying_stats["entries"] = (int)cache->get_count();
+	arg.push("profiles_cache",underlying_stats);
+	underlying_stats.clear();
   }
       /* pools stats */
   if(master_pool){
-    master_pool->getStats(underlying_stats);
-    arg.push("master_pool",underlying_stats);
-    underlying_stats.clear();
+	master_pool->getStats(underlying_stats);
+	arg.push("master_pool",underlying_stats);
+	underlying_stats.clear();
   }
   if(slave_pool){
-    slave_pool->getStats(underlying_stats);
-    arg.push("slave_pool",underlying_stats);
-    underlying_stats.clear();
+	slave_pool->getStats(underlying_stats);
+	arg.push("slave_pool",underlying_stats);
+	underlying_stats.clear();
   }
       /* cdr writer stats */
   if(cdr_writer){
-    cdr_writer->getStats(underlying_stats);
-    arg.push("cdr_writer",underlying_stats);
-    underlying_stats.clear();
+	cdr_writer->getStats(underlying_stats);
+	arg.push("cdr_writer",underlying_stats);
+	underlying_stats.clear();
   }
 }

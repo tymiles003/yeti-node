@@ -193,3 +193,28 @@ void ResourceControl::put(ResourceList &rl){
 	cache.put(rl);
 	rl.clear();
 }
+
+void ResourceControl::GetConfig(AmArg& ret){
+	AmArg u;
+
+	ret["db_config"] = dbc.conn_str();
+
+	cfg_lock.lock();
+		map<int,ResourceConfig>::const_iterator it = type2cfg.begin();
+		for(;it!=type2cfg.end();++it){
+			AmArg p;
+			const ResourceConfig &c = it->second;
+			p["name"] =  c.name;
+			p["reject_code"] = c.reject_code;
+			p["reject_reason"] = c.reject_reason;
+			p["action"] = c.str_action;
+			u.push(int2str(it->first),p);
+		}
+
+		u.clear();
+		cache.GetConfig(u);
+		ret.push("cache",u);
+
+	cfg_lock.unlock();
+}
+

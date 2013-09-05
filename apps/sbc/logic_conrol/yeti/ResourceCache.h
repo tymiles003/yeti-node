@@ -4,6 +4,7 @@
 #include "AmConfigReader.h"
 #include "AmThread.h"
 #include "Resource.h"
+#include "AmArg.h"
 #include "hiredis/hiredis.h"
 #include "RedisConnPool.h"
 #include <list>
@@ -39,6 +40,8 @@ public:
 	ResourceResponse get(ResourceList &rl,
 						 ResourceList::iterator &resource);
 	void put(ResourceList &rl);
+
+	void GetConfig(AmArg& ret);
 };
 
 #endif // RESOURCECACHE_H

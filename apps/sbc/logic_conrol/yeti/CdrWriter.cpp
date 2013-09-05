@@ -100,35 +100,32 @@ void CdrWriter::postcdr(Cdr* cdr )
 }
 
 void CdrWriter::getConfig(AmArg &arg){
-	AmArg param;
 	AmArg params;
-	AmArg query;
-	
-	DynFieldsT_iterator dit = config.dyn_fields.begin();
+
+	arg["failover_to_slave"] = config.failover_to_slave;
+
 	int param_num = 1;
-	
 	//static params
 	for(;param_num<WRITECDR_STATIC_FIELDS_COUNT;param_num++){
-		param.push(param_num);
-		param.push(dit->second);
-		params.push(param);
-		param.clear();
+		params.push(int2str(param_num)+": "+string(static_fields_names[param_num])+" : "+"varchar");
 	}
 	//dynamic params
+	DynFieldsT_iterator dit = config.dyn_fields.begin();
 	for(;dit!=config.dyn_fields.end();++dit){
-		param.push(param_num++);
-		param.push(dit->first);
-		param.push(dit->second);
-		params.push(param);
-		param.clear();
+		params.push(int2str(param_num++)+": "+dit->first+" : "+dit->second);
 	}
-		
-	query["name"] = config.prepared_queries.begin()->first;
-	query["query"] = config.prepared_queries.begin()->second.first;
-	query["params"] = params;
+	arg.push("query_args",params);
 
-	arg.push("queries",query);
+	arg["failover_to_file"] = config.failover_to_file;
+	if(config.failover_to_file){
+		arg["failover_file_dir"] = config.failover_file_dir;
+		arg["failover_file_completed_dir"] = config.failover_file_completed_dir;
+	}
 
+	arg["master_db"] = config.masterdb.conn_str();
+	if(config.failover_to_slave){
+		arg["slave_db"] = config.slavedb.conn_str();
+	}
 }
 
 void CdrWriter::closeFiles(){
@@ -566,11 +563,7 @@ int CdrThreadCfg::cfg2CdrThCfg(AmConfigReader& cfg, string& prefix){
 
 int CdrWriterCfg::cfg2CdrWrCfg(AmConfigReader& cfg){
 	string var=name+"_pool_size";
-	if (cfg.hasParameter(var)){
-		poolsize=cfg.getParameterInt(var);
-	} else {
-		poolsize=10;
-		WARN("Variable %s not found in config. Using: %d",var.c_str(),poolsize);
-	}
+	poolsize=cfg.getParameterInt(var,10);
+	failover_to_slave = cfg.getParameterInt("cdr_failover_to_slave",1);
 	return cfg2CdrThCfg(cfg,name);
 }

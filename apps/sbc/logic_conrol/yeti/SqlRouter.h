@@ -53,7 +53,9 @@ private:
   time_t mi;
   unsigned int gpi;
 
+  DbConfig dbc;
   int db_configure(AmConfigReader &cfg);
+
   ProfilesCacheEntry* _getprofiles(const AmSipRequest&,
 							   pqxx::connection*);
   void update_counters(struct timeval &start_time);
@@ -68,6 +70,7 @@ private:
   int failover_to_slave;
   int cache_enabled;
   double cache_check_interval;
+  int cache_buckets;
   PreparedQueriesT prepared_queries;
   PreparedQueriesT cdr_prepared_queries;
   DynFieldsT dyn_fields;

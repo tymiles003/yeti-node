@@ -273,3 +273,13 @@ void ResourceCache::put(ResourceList &rl){
 	return;
 }
 
+void ResourceCache::GetConfig(AmArg& ret){
+	AmArg u;
+
+	read_pool.GetConfig(u);
+	ret.push("read_pool",u);
+
+	u.clear();
+	write_pool.GetConfig(u);
+	ret.push("write_pool",u);
+}

@@ -3,6 +3,7 @@
 
 #include "AmConfigReader.h"
 #include "AmThread.h"
+#include "AmArg.h"
 #include "hiredis/hiredis.h"
 #include <list>
 
@@ -26,10 +27,10 @@ class RedisConnPool : public
 
 	unsigned int pool_size;
 	unsigned int failed_count;
-	unsigned int check_interval;
 	string pool_name;
 
 	RedisCfg _cfg;
+
 	int cfg2RedisCfg(const AmConfigReader &cfg, RedisCfg &rcfg,string prefix);
 	bool reconnect(redisContext *&ctx);
 public:
@@ -45,6 +46,8 @@ public:
 
 	redisContext *getConnection();
 	void putConnection(redisContext *,ConnReturnState state);
+
+	void GetConfig(AmArg& ret);
 };
 
 #endif // RADIUSCACHE_H

@@ -376,6 +376,14 @@ void PgConnectionPool::getStats(AmArg &arg){
 	connections_mut.unlock();
 }
 
+void PgConnectionPool::getConfig(AmArg &arg){
+	arg["db"] = cfg.dbconfig.conn_str();
+	arg["size"] = (int)cfg.size;
+	arg["max_exceptions"] = (int)cfg.max_exceptions;
+	arg["check_interval"] = (int)cfg.check_interval;
+	arg["max_wait"] = (int)cfg.max_wait;
+}
+
 void PgConnectionPool::prepare_queries(PgConnection *c){
 	PreparedQueriesT::iterator it = cfg.prepared_queries.begin();
 	for(;it!=cfg.prepared_queries.end();++it){

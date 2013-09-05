@@ -1,5 +1,6 @@
 #include "RedisConnPool.h"
 #include "log.h"
+#include "AmUtils.h"
 #include "exception"
 
 RedisConnPool::RedisConnPool():
@@ -196,3 +197,9 @@ bool RedisConnPool::reconnect(redisContext *&ctx){
 	}
 	return true;
 }
+
+void RedisConnPool::GetConfig(AmArg& ret){
+	ret["pool_size"] = (int)pool_size;
+	ret["server"] = _cfg.server+":"+int2str(_cfg.port);
+}
+

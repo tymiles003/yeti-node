@@ -3,6 +3,7 @@
 
 #include "AmConfigReader.h"
 #include "ResourceCache.h"
+#include "AmArg.h"
 #include <map>
 #include "log.h"
 #include "DbConfig.h"
@@ -68,6 +69,8 @@ public:
 							  string &reject_reason);
 
 	void put(ResourceList &rl);
+
+	void GetConfig(AmArg& ret);
 };
 
 #endif // RESOURCECONTROL_H

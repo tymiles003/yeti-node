@@ -97,6 +97,7 @@ class PgConnectionPool:
 
 	void clearStats();
 	void getStats(AmArg &arg);
+	void getConfig(AmArg &arg);
 };
 
 #endif
