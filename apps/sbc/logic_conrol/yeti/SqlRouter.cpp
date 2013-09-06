@@ -90,20 +90,18 @@ int SqlRouter::db_configure(AmConfigReader& cfg){
     dyn_fields.clear();
     
     for(pqxx::result::size_type i = 0; i < r.size();++i){
-#ifndef NDEBUG
 	DBG("%ld: %s,%s,%s",i,r[i]["varname"].c_str(),r[i]["vartype"].c_str(),r[i]["forcdr"].c_str());
-#endif
       if(true==r[i]["forcdr"].as<bool>())
 		dyn_fields.push_back(pair<string,string>(r[i]["varname"].c_str(),r[i]["vartype"].c_str()));
     }
     
     DBG("dyn_fields.size() = %ld",dyn_fields.size());
     prepared_queries.clear();
-	sql_query = "SELECT * FROM switch.getprofile_f($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17);";
+	sql_query = "SELECT * FROM "+getprofile_scheme+"."+getprofile_function+"($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17);";
 	prepared_queries["getprofile"] = pair<string,int>(sql_query,GETPROFILE_ARGS_COUNT);
     
     cdr_prepared_queries.clear();
-    sql_query = "SELECT switch.writecdr($1";
+	sql_query = "SELECT "+writecdr_scheme+"."+writecdr_function+"($1";
     n = WRITECDR_STATIC_FIELDS_COUNT+dyn_fields.size();
     for(int i = 2;i<=n;i++){
 	  sql_query.append(",$"+int2str(i));
@@ -120,8 +118,24 @@ int SqlRouter::db_configure(AmConfigReader& cfg){
 }
 
 int SqlRouter::configure(AmConfigReader &cfg){
-  CdrWriterCfg cdrconfig;
-  PgConnectionPoolCfg masterpoolcfg,slavepoolcfg;
+
+	CdrWriterCfg cdrconfig;
+	PgConnectionPoolCfg masterpoolcfg,slavepoolcfg;
+
+#define GET_VARIABLE(var)\
+	if(!cfg.hasParameter(#var)){\
+		ERROR("missed parameter '"#var"'");\
+		return 1;\
+	}\
+	var = cfg.getParameter(#var);
+
+	GET_VARIABLE(getprofile_scheme);
+	GET_VARIABLE(getprofile_function);
+
+	GET_VARIABLE(writecdr_scheme);
+	GET_VARIABLE(writecdr_function);
+
+#undef GET_VARIABLE
 
   if(0==db_configure(cfg)){
     INFO("SqlRouter::db_configure: config successfuly readed");
@@ -500,6 +514,9 @@ void SqlRouter::getConfig(AmArg &arg){
 		arg.push("slave_pool",u);
 		u.clear();
 	}
+
+	arg["getprofile_call"] = getprofile_scheme+"."+getprofile_function;
+	arg["writecdr_call"] =writecdr_scheme+"."+writecdr_function;
 
 	arg["header_fields_separator"] = used_header_fields_separator;
 	vector<string>::const_iterator fit = used_header_fields.begin();

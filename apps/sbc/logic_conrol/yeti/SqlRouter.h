@@ -71,6 +71,10 @@ private:
   int cache_enabled;
   double cache_check_interval;
   int cache_buckets;
+  string writecdr_scheme;
+  string writecdr_function;
+  string getprofile_scheme;
+  string getprofile_function;
   PreparedQueriesT prepared_queries;
   PreparedQueriesT cdr_prepared_queries;
   DynFieldsT dyn_fields;

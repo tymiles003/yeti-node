@@ -1,3 +1,16 @@
+### common config ###
+
+# node_id
+#	yeti instance id
+#	default: mandatory
+#
+# pop_id
+#	yeti instance point of presence id
+#	default: mandatory
+
+node_id = 1
+pop_id = 1
+
 ### SqlRouter config ###
 
 # database connection settings suffixes. similar for sqlrouter and cdrwriter 
@@ -78,6 +91,16 @@ max_exceptions=0
 used_header_fields = X-LB-NODE,X-LB-POP,X-SRC-IP,X-SRC-PORT 
 used_header_fields_separator = "#"
 
+# getprofile_scheme
+#	scheme name for getproifle query
+#	default: mandatory
+#
+# getprofile_function
+#	function name for getprofile query
+#	default: mandatory
+#
+getprofile_scheme = "switch"
+getprofile_function = "getprofile_f"
 
 ### CDR config ###
 
@@ -97,6 +120,17 @@ slavecdr_port=5432
 slavecdr_name=cdrserver
 slavecdr_user=cdrserver
 slavecdr_pass=cdrserver
+
+# writecdr_scheme
+#	scheme name for writecdr query
+#	default: mandatory
+#
+# writecdr_function
+#	function name for writecdr query
+#	default: mandatory
+#
+writecdr_scheme = "switch"
+writecdr_function = "writecdr"
 
 # failover_to_file
 #	enable failover to file on database errors or unavailability
