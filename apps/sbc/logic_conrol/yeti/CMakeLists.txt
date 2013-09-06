@@ -22,6 +22,7 @@ set (yeti_SRCS
 SET(yeti_config_files
 	yeti.dist
 	oodprofile.yeti.dist
+	process_events.yeti.dist
 )
 
 INSTALL(PROGRAMS
@@ -33,6 +34,7 @@ INSTALL(PROGRAMS
 	tools/yeti-getcounters
 	tools/yeti-sumcounters
 	tools/yeti-csv2sql
+	tools/yeti-process-events
 	DESTINATION ${SEMS_EXEC_PREFIX}/sbin
 )
 

@@ -1,0 +1,94 @@
+#!/usr/bin/python
+
+import psycopg2, psycopg2.extras, syslog, ConfigParser, xmlrpclib
+
+syslog.openlog(logoption=syslog.LOG_PID, facility=syslog.LOG_DAEMON)
+
+def dbg(msg):
+	syslog.syslog(syslog.LOG_DEBUG,msg)
+def info(msg):
+#	print msg
+	syslog.syslog(syslog.LOG_INFO,msg)
+
+def process_node(addr,cmd):
+	try:
+		info("    trying: '%s %s' ..." % (addr,cmd))
+		s = xmlrpclib.ServerProxy(addr)
+		cmds = cmd.split(' ')
+		l = len(cmds)
+		if l == 1:
+			resp = s.di('yeti',cmds[0])
+		elif l == 2:
+			resp = s.di('yeti',cmds[0],cmds[1])
+		elif l == 3:
+			resp = s.di('yeti',cmds[0],cmds[1],cmds[2])
+		else:
+			raise BaseException("unexpected params count")
+		info("    succ. resp: '%s'" % resp)
+	except xmlrpclib.Fault as e:
+		info("    failed: %d, '%s'" % (e.faultCode,e.faultString))
+		raise
+	except xmlrpclib.ProtocolError as e:
+		info("    failed: %d, '%s'" % (e.errcode,e.errmsg))
+		raise
+	except BaseException as e:
+		info("    failed %s" % e)
+		raise
+	except:
+		info("   failed")
+		raise
+try:
+	info("started")
+	# read config
+	cfg = ConfigParser.ConfigParser()
+	r = cfg.read(["./process_events.yeti.conf","/etc/sems/process_events.yeti.conf","/etc/process_events.yeti.conf"])
+	if (not len(r)) : 
+		raise BaseException("no config file")
+	conn_str = cfg.get('db', 'conn')
+	nodes = cfg.get('nodes','nodes').split()
+	if len(nodes)==0:
+		raise BaseException('no any nodes specified')
+	# retrieve & process events from db
+	conn = psycopg2.connect(conn_str)
+	try:
+		curs = conn.cursor(cursor_factory=psycopg2.extras.DictCursor);
+		try:
+			curs.execute("SELECT id, command, retries FROM switch.events FOR UPDATE NOWAIT")
+			events = curs.fetchall()
+			for r in events:
+				event_id = r["id"]
+				command = r["command"]
+				
+				
+					
+				#dbg("process event: %s" % str(r))
+				info("  process event: %s '%s' [retries: %d]" % (event_id,command,r["retries"]))
+				try:
+					for node in nodes:
+						process_node(node,command)
+					# delete processed event
+					curs.execute("DELETE FROM switch.events WHERE id=%d" % event_id);
+					info("  event processed");
+				except Exception, e:
+					info("  exception: '%s' on %s. update retries" % (e, r["id"]));
+					# update retries counter on exception
+					curs.execute("UPDATE switch.events SET retries = retries+1 WHERE id=%d" % r["id"])
+					pass
+		except:
+			conn.rollback() 
+			raise
+		conn.commit()
+		curs.close()
+	except:
+		info("failed to retreive & process")
+		raise
+	finally:
+		conn.close()
+
+	info("finished")
+except psycopg2.Error, e:
+	info("db exception: %s %s %s" % (e, e.pgcode, e.pgerror))
+except BaseException, e:
+	info("base exception: %s" % e)
+except:
+	info("unknown exception")
