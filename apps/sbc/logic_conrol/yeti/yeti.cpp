@@ -78,6 +78,13 @@ bool Yeti::read_config(){
 		ERROR("Missed parameter 'pop_id'");
 		return false;
 	}
+
+	if(!cfg.hasParameter("db_schema")){
+		ERROR("Missed parameter 'db_schema'");
+		return false;
+	}
+	config.db_schema = cfg.getParameter("db_schema");
+
 	return true;
 }
 

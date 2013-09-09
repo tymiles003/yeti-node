@@ -84,7 +84,7 @@ int SqlRouter::db_configure(AmConfigReader& cfg){
   try {  
     pqxx::connection c(dbc.conn_str());
       pqxx::work t(c);
-	r = t.exec("SELECT * from switch.load_interface();");	
+	r = t.exec("SELECT * from "+getprofile_schema+".load_interface();");
       t.commit();
     c.disconnect();
     dyn_fields.clear();
@@ -97,11 +97,11 @@ int SqlRouter::db_configure(AmConfigReader& cfg){
     
     DBG("dyn_fields.size() = %ld",dyn_fields.size());
     prepared_queries.clear();
-	sql_query = "SELECT * FROM "+getprofile_scheme+"."+getprofile_function+"($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17);";
+	sql_query = "SELECT * FROM "+getprofile_schema+"."+getprofile_function+"($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17);";
 	prepared_queries["getprofile"] = pair<string,int>(sql_query,GETPROFILE_ARGS_COUNT);
     
     cdr_prepared_queries.clear();
-	sql_query = "SELECT "+writecdr_scheme+"."+writecdr_function+"($1";
+	sql_query = "SELECT "+writecdr_schema+"."+writecdr_function+"($1";
     n = WRITECDR_STATIC_FIELDS_COUNT+dyn_fields.size();
     for(int i = 2;i<=n;i++){
 	  sql_query.append(",$"+int2str(i));
@@ -129,10 +129,10 @@ int SqlRouter::configure(AmConfigReader &cfg){
 	}\
 	var = cfg.getParameter(#var);
 
-	GET_VARIABLE(getprofile_scheme);
+	getprofile_schema = Yeti::instance()->config.db_schema;
 	GET_VARIABLE(getprofile_function);
 
-	GET_VARIABLE(writecdr_scheme);
+	GET_VARIABLE(writecdr_schema);
 	GET_VARIABLE(writecdr_function);
 
 #undef GET_VARIABLE
@@ -515,8 +515,8 @@ void SqlRouter::getConfig(AmArg &arg){
 		u.clear();
 	}
 
-	arg["getprofile_call"] = getprofile_scheme+"."+getprofile_function;
-	arg["writecdr_call"] =writecdr_scheme+"."+writecdr_function;
+	arg["getprofile_call"] = getprofile_schema+"."+getprofile_function;
+	arg["writecdr_call"] = writecdr_schema+"."+writecdr_function;
 
 	arg["header_fields_separator"] = used_header_fields_separator;
 	vector<string>::const_iterator fit = used_header_fields.begin();

@@ -11,6 +11,13 @@
 node_id = 1
 pop_id = 1
 
+# db_schema
+#	schema name which used for getprofile query and
+#	for sqlrouter,codes translator & resources control configs loading
+#	default: mandatory
+
+db_schema = switch
+
 ### SqlRouter config ###
 
 # database connection settings suffixes. similar for sqlrouter and cdrwriter 
@@ -52,6 +59,7 @@ master_pass=routeserver
 #	timeout of connection obtaining from pool in milliseconds
 #	this value affects on 100 Trying response delay. be careful
 #	default: 125
+
 master_pool_size=10
 master_check_interval=25
 master_max_exceptions=0
@@ -91,16 +99,12 @@ max_exceptions=0
 used_header_fields = X-LB-NODE,X-LB-POP,X-SRC-IP,X-SRC-PORT 
 used_header_fields_separator = "#"
 
-# getprofile_scheme
-#	scheme name for getproifle query
-#	default: mandatory
-#
+
 # getprofile_function
 #	function name for getprofile query
 #	default: mandatory
 #
-getprofile_scheme = "switch"
-getprofile_function = "getprofile_f"
+getprofile_function = getprofile_f
 
 ### CDR config ###
 
@@ -121,16 +125,16 @@ slavecdr_name=cdrserver
 slavecdr_user=cdrserver
 slavecdr_pass=cdrserver
 
-# writecdr_scheme
-#	scheme name for writecdr query
+# writecdr_schema
+#	schema name for writecdr query
 #	default: mandatory
 #
 # writecdr_function
 #	function name for writecdr query
 #	default: mandatory
 #
-writecdr_scheme = "switch"
-writecdr_function = "writecdr"
+writecdr_schema = switch
+writecdr_function = writecdr
 
 # failover_to_file
 #	enable failover to file on database errors or unavailability

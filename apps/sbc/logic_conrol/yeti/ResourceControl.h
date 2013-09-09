@@ -51,6 +51,7 @@ class ResourceControl
 	map<int,ResourceConfig> type2cfg;
 	AmMutex cfg_lock;
 	DbConfig dbc;
+	string db_schema;
 
 	void replace(string &s,Resource &r,ResourceConfig &rc);
 	void replace(string& s, const string& from, const string& to);

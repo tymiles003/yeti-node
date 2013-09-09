@@ -1,4 +1,5 @@
 #include "ResourceControl.h"
+#include "yeti.h"
 #include "AmUtils.h"
 #include "DbConfig.h"
 #include <pqxx/pqxx>
@@ -38,7 +39,7 @@ ResourceControl::ResourceControl()
 }
 
 int ResourceControl::configure(AmConfigReader &cfg){
-
+	db_schema = Yeti::instance()->config.db_schema;
 	reject_on_error = cfg.getParameterInt("reject_on_cache_error",-1);
 	if(reject_on_error == -1){
 		ERROR("missed 'reject_on_error' parameter");
@@ -103,7 +104,7 @@ int ResourceControl::load_resources_config(){
 		pqxx::result r;
 		pqxx::connection c(dbc.conn_str());
 			pqxx::work t(c);
-				r = t.exec("SELECT * FROM switch.load_resource_types();");
+				r = t.exec("SELECT * FROM "+db_schema+".load_resource_types()");
 			t.commit();
 		c.disconnect();
 		for(pqxx::result::size_type i = 0; i < r.size();++i){
@@ -171,7 +172,7 @@ ResourceCtlResponse ResourceControl::get(ResourceList &rl,
 						stat.nextroute++;
 						return RES_CTL_NEXT;
 					} else {
-						stat.rejected;
+						stat.rejected++;
 						return RES_CTL_REJECT;
 					}
 				}
@@ -205,6 +206,7 @@ void ResourceControl::GetConfig(AmArg& ret){
 	AmArg u;
 
 	ret["db_config"] = dbc.conn_str();
+	ret["db_schema"] = db_schema;
 
 	cfg_lock.lock();
 		map<int,ResourceConfig>::const_iterator it = type2cfg.begin();

@@ -68,6 +68,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   struct global_config {
 	int node_id;
 	int pop_id;
+	string db_schema;
   } config;
 
         //!xmlrpc handlers

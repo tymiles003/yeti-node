@@ -1,4 +1,5 @@
 #include "CodesTranslator.h"
+#include "yeti.h"
 #include "sip/defs.h"
 #include <pqxx/pqxx>
 
@@ -19,8 +20,8 @@ CodesTranslator* CodesTranslator::instance()
 }
 
 int CodesTranslator::configure(AmConfigReader &cfg){
+	db_schema = Yeti::instance()->config.db_schema;
 	configure_db(cfg);
-
 	if(load_translations_config()){
 		ERROR("can't load resources config");
 		return -1;
@@ -55,7 +56,7 @@ int CodesTranslator::load_translations_config(){
 		pqxx::result r;
 		pqxx::connection c(dbc.conn_str());
 		pqxx::work t(c);
-			r = t.exec("SELECT * from switch.load_disconnect_code_rerouting()");
+			r = t.exec("SELECT * from "+db_schema+".load_disconnect_code_rerouting()");
 
 			for(pqxx::result::size_type i = 0; i < r.size();++i){
 				const pqxx::result::tuple &row = r[i];
@@ -67,7 +68,7 @@ int CodesTranslator::load_translations_config(){
 					code,p.is_stop_hunting);
 			}
 
-			r = t.exec("SELECT * from switch.load_disconnect_code_rewrite()");
+			r = t.exec("SELECT * from "+db_schema+".load_disconnect_code_rewrite()");
 			for(pqxx::result::size_type i = 0; i < r.size();++i){
 				const pqxx::result::tuple &row = r[i];
 				int code =	row["o_code"].as<int>(0);
@@ -84,7 +85,7 @@ int CodesTranslator::load_translations_config(){
 					code,t.rewrite_code,t.rewrite_reason.c_str(),t.pass_reason_to_originator);
 			}
 
-			r = t.exec("SELECT * from switch.load_disconnect_code_refuse()");
+			r = t.exec("SELECT * from "+db_schema+".load_disconnect_code_refuse()");
 			for(pqxx::result::size_type i = 0; i < r.size();++i){
 				const pqxx::result::tuple &row = r[i];
 				unsigned int code =	row["o_id"].as<int>(0);
@@ -188,7 +189,7 @@ void CodesTranslator::GetConfig(AmArg& ret){
 	AmArg u;
 
 	ret["config_db"] = dbc.conn_str();
-
+	ret["db_schema"] = db_schema;
 	code2pref_mutex.lock();
 	{
 		map<int,pref>::const_iterator it = code2pref.begin();

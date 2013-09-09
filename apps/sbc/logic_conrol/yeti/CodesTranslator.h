@@ -60,6 +60,7 @@ class CodesTranslator {
 	map<unsigned int,icode> icode2resp;
 	AmMutex icode2resp_mutex;
 	DbConfig dbc;
+	string db_schema;
 	int load_translations_config();
 
 	struct {
