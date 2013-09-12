@@ -65,7 +65,6 @@ private:
   CdrWriter *cdr_writer;
   ProfilesCache *cache;
   
-  string used_header_fields_separator;
   vector<string> used_header_fields;
   int failover_to_slave;
   int cache_enabled;

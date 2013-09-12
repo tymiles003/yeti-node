@@ -74,55 +74,57 @@ int SqlRouter::run(){
 };
 
 int SqlRouter::db_configure(AmConfigReader& cfg){
-  string sql_query,prefix("master");
-  pqxx::result r;
-  int n,ret = 1;
-  
-  dbc.cfg2dbcfg(cfg,prefix);
-  try {  
-    pqxx::connection c(dbc.conn_str());
-      pqxx::work t(c);
-	r = t.exec("SELECT * from "+getprofile_schema+".load_interface();");
-      t.commit();
-    c.disconnect();
-    dyn_fields.clear();
-    
-    for(pqxx::result::size_type i = 0; i < r.size();++i){
-	DBG("%ld: %s,%s,%s",i,r[i]["varname"].c_str(),r[i]["vartype"].c_str(),r[i]["forcdr"].c_str());
-      if(true==r[i]["forcdr"].as<bool>())
-		dyn_fields.push_back(pair<string,string>(r[i]["varname"].c_str(),r[i]["vartype"].c_str()));
-    }
-    DBG("dyn_fields.size() = %ld",dyn_fields.size());
-
-    prepared_queries.clear();
-	DBG("used_header_fields.size() = %ld",used_header_fields.size());
-	sql_query = "SELECT * FROM "+getprofile_schema+"."+getprofile_function+"($1";
-	n = GETPROFILE_STATIC_FIELDS_COUNT+used_header_fields.size();
-	for(int i = 2;i<=n;i++){
-	  sql_query.append(",$"+int2str(i));
+	int ret = 1;
+try {
+	int n;
+		//load config from db
+	string sql_query,prefix("master");
+	dbc.cfg2dbcfg(cfg,prefix);
+	pqxx::connection c(dbc.conn_str());
+	{
+		pqxx::nontransaction t(c);
+		pqxx::result r = t.exec("SELECT * from "+getprofile_schema+".load_interface_out()");
+		for(pqxx::result::size_type i = 0; i < r.size();++i){
+			const pqxx::result::tuple &t = r[i];
+			DBG("%ld: %s : %s, %s",i,
+				t["varname"].c_str(),t["vartype"].c_str(),t["forcdr"].c_str());
+			if(true==t["forcdr"].as<bool>())
+				dyn_fields.push_back(pair<string,string>(t["varname"].c_str(),t["vartype"].c_str()));
+		}
 	}
-	sql_query.append(");");
-	DBG("getprofile_query = %s",sql_query.c_str());
-	prepared_queries["getprofile"] = pair<string,int>(sql_query,n);
-/*
-	sql_query = "SELECT * FROM "+getprofile_schema+"."+getprofile_function+"($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17);";
-	prepared_queries["getprofile"] = pair<string,int>(sql_query,GETPROFILE_STATIC_FIELDS_COUNT);
-*/
-    cdr_prepared_queries.clear();
-	sql_query = "SELECT "+writecdr_schema+"."+writecdr_function+"($1";
-    n = WRITECDR_STATIC_FIELDS_COUNT+dyn_fields.size();
-    for(int i = 2;i<=n;i++){
-	  sql_query.append(",$"+int2str(i));
-    }
-    sql_query.append(");");
-    cdr_prepared_queries["writecdr"] = pair<string,int>(sql_query,n);
+	{
+		pqxx::nontransaction t(c);
+		pqxx::result r = t.exec("SELECT * from "+getprofile_schema+".load_interface_in()");
+		for(pqxx::result::size_type i = 0; i < r.size();++i){
+			const pqxx::result::tuple &t = r[i];
+			DBG("%ld: %s : %s",i,
+				t["varname"].c_str(),t["vartype"].c_str());
+			used_header_fields.push_back(t["varname"].c_str());
+		}
+	}
+	c.disconnect();
 
-    ret = 0;
-    
-  } catch(const pqxx::pqxx_exception &e){
-    ERROR("SqlRouter::db_configure: pqxx_exception: %s ",e.base().what());
-  }
-  return ret;
+		//apply them
+	DBG("used_header_fields.size() = %ld",used_header_fields.size());
+
+	sql_query = "SELECT * FROM "+getprofile_schema+"."+getprofile_function+"($1";
+		n = GETPROFILE_STATIC_FIELDS_COUNT+used_header_fields.size();
+		for(int i = 2;i<=n;i++) sql_query.append(",$"+int2str(i));
+		sql_query.append(");");
+	prepared_queries["getprofile"] = pair<string,int>(sql_query,n);
+
+	sql_query = "SELECT "+writecdr_schema+"."+writecdr_function+"($1";
+		n = WRITECDR_STATIC_FIELDS_COUNT+dyn_fields.size();
+		for(int i = 2;i<=n;i++) sql_query.append(",$"+int2str(i));
+		sql_query.append(");");
+	cdr_prepared_queries["writecdr"] = pair<string,int>(sql_query,n);
+
+	ret = 0;
+
+} catch(const pqxx::pqxx_exception &e){
+	ERROR("SqlRouter::db_configure: pqxx_exception: %s ",e.base().what());
+}
+	return ret;
 }
 
 int SqlRouter::configure(AmConfigReader &cfg){
@@ -144,10 +146,6 @@ int SqlRouter::configure(AmConfigReader &cfg){
 	GET_VARIABLE(writecdr_function);
 
 #undef GET_VARIABLE
-
-	if(cfg.hasParameter("used_header_fields")) {
-		used_header_fields = explode(cfg.getParameter("used_header_fields"), ",");
-	}
 
   if(0==db_configure(cfg)){
     INFO("SqlRouter::db_configure: config successfuly readed");
@@ -209,19 +207,6 @@ int SqlRouter::configure(AmConfigReader &cfg){
     ERROR("Cdr writer pool configuration error.");
   }
 
-/*
-  used_header_fields_separator = cfg.getParameter("used_header_fields_separator");
-  if(!used_header_fields_separator.length())
-		used_header_fields_separator = ';';
-
-  if(cfg.hasParameter("used_header_fields")) {
-		used_header_fields = explode(cfg.getParameter("used_header_fields"), ",");
-	}
-	
-	for(vector<string>::const_iterator it = used_header_fields.begin(); it != used_header_fields.end(); ++it){
-		DBG("header field: '%s'",it->data());
-	}
-*/
   cache_enabled = cfg.getParameterInt("profiles_cache_enabled",0);
   if(cache_enabled){
     cache_check_interval = cfg.getParameterInt("profiles_cache_check_interval",30);
@@ -343,31 +328,18 @@ void SqlRouter::getprofiles(const AmSipRequest &req,CallCtx &ctx)
 	return;
 }
 
-ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req,
-										pqxx::connection* conn)
+ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req, pqxx::connection* conn)
 {
 	pqxx::result r;
 	pqxx::nontransaction tnx(*conn);
-	//string req_hdrs,hdr;
 	ProfilesCacheEntry *entry = NULL;
 	Yeti::global_config &gc = Yeti::instance()->config;
-	/*
-	for(vector<string>::const_iterator it = used_header_fields.begin(); it != used_header_fields.end(); ++it){
-		hdr = getHeader(req.hdrs,*it);
-		if(hdr.length()){
-			req_hdrs.append(*it);
-			req_hdrs.append(":");
-			req_hdrs.append(hdr);
-			req_hdrs.append(used_header_fields_separator);
-		}
-	}
-	DBG("req_hdrs: '%s' ",req_hdrs.c_str());*/
 
 	const char *sptr;
 	sip_nameaddr na;
 	sip_uri from_uri,to_uri,contact_uri;
-	//believe that already successfull being parsed before with underlying layers
 
+	//believe that already successfull being parsed before with underlying layers
 	sptr = req.from.c_str();
 	if(	parse_nameaddr(&na,&sptr,req.from.length()) < 0 ||
 		parse_uri(&from_uri,na.addr.s,na.addr.len) < 0){
@@ -402,15 +374,13 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req,
 		invoc(c2stlstr(contact_uri.host));
 		invoc(contact_uri.port);
 		invoc(req.user);
-		//invoc(req_hdrs);
-		//add headers from request
+		//invoc headers from sip request
 		for(vector<string>::const_iterator it = used_header_fields.begin(); it != used_header_fields.end(); ++it){
 			string hdr = getHeader(req.hdrs,*it);
-			if(hdr.length()){
+			if(hdr.length())
 				invoc(hdr);
-			} else {
+			else
 				invoc();
-			}
 		}
 		r = invoc.exec();
 	} else {
@@ -482,7 +452,6 @@ void SqlRouter::write_cdr(Cdr* cdr, bool last)
     DBG("%s(%p) write now",FUNC_NAME,cdr);
     cdr->update(Write);
 	cdr->is_last = last;
-	//cdr->inc();
     cdr_writer->postcdr(cdr);
   } else {
       DBG("%s(%p) trying to write already writed cdr",FUNC_NAME,cdr);
@@ -540,12 +509,11 @@ void SqlRouter::getConfig(AmArg &arg){
 	arg["getprofile_call"] = getprofile_schema+"."+getprofile_function;
 	arg["writecdr_call"] = writecdr_schema+"."+writecdr_function;
 
-	arg["header_fields_separator"] = used_header_fields_separator;
 	vector<string>::const_iterator fit = used_header_fields.begin();
 	for(;fit!=used_header_fields.end();++fit){
 		u.push(*fit);
 	}
-	arg.push("header_fields",u);
+	arg.push("sipreq_header_fields",u);
 	u.clear();
 
 	DynFieldsT_iterator dit = dyn_fields.begin();

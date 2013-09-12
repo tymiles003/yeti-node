@@ -88,18 +88,6 @@ slave_max_wait=125
 #	default: 0
 max_exceptions=0
 
-### pass headers to db config ###
-# yeti can include some headers values from sip request to sql server 
-# used_header_fields
-#	comma separated set of fields 
-#	default: mandatory
-#
-# used_header_fields_separator
-#	default: mandatory
-used_header_fields = X-LB-NODE,X-LB-POP,X-SRC-IP,X-SRC-PORT 
-used_header_fields_separator = "#"
-
-
 # getprofile_function
 #	function name for getprofile query
 #	default: mandatory
