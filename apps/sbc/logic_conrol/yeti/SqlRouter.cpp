@@ -15,8 +15,6 @@
 #include "DbTypes.h"
 #include "yeti.h"
 
-#define GETPROFILE_ARGS_COUNT 17
-
 SqlRouter::SqlRouter():
   master_pool(NULL),
   slave_pool(NULL),
@@ -94,12 +92,22 @@ int SqlRouter::db_configure(AmConfigReader& cfg){
       if(true==r[i]["forcdr"].as<bool>())
 		dyn_fields.push_back(pair<string,string>(r[i]["varname"].c_str(),r[i]["vartype"].c_str()));
     }
-    
     DBG("dyn_fields.size() = %ld",dyn_fields.size());
+
     prepared_queries.clear();
+	DBG("used_header_fields.size() = %ld",used_header_fields.size());
+	sql_query = "SELECT * FROM "+getprofile_schema+"."+getprofile_function+"($1";
+	n = GETPROFILE_STATIC_FIELDS_COUNT+used_header_fields.size();
+	for(int i = 2;i<=n;i++){
+	  sql_query.append(",$"+int2str(i));
+	}
+	sql_query.append(");");
+	DBG("getprofile_query = %s",sql_query.c_str());
+	prepared_queries["getprofile"] = pair<string,int>(sql_query,n);
+/*
 	sql_query = "SELECT * FROM "+getprofile_schema+"."+getprofile_function+"($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17);";
-	prepared_queries["getprofile"] = pair<string,int>(sql_query,GETPROFILE_ARGS_COUNT);
-    
+	prepared_queries["getprofile"] = pair<string,int>(sql_query,GETPROFILE_STATIC_FIELDS_COUNT);
+*/
     cdr_prepared_queries.clear();
 	sql_query = "SELECT "+writecdr_schema+"."+writecdr_function+"($1";
     n = WRITECDR_STATIC_FIELDS_COUNT+dyn_fields.size();
@@ -136,6 +144,10 @@ int SqlRouter::configure(AmConfigReader &cfg){
 	GET_VARIABLE(writecdr_function);
 
 #undef GET_VARIABLE
+
+	if(cfg.hasParameter("used_header_fields")) {
+		used_header_fields = explode(cfg.getParameter("used_header_fields"), ",");
+	}
 
   if(0==db_configure(cfg)){
     INFO("SqlRouter::db_configure: config successfuly readed");
@@ -196,19 +208,20 @@ int SqlRouter::configure(AmConfigReader &cfg){
   } else {
     ERROR("Cdr writer pool configuration error.");
   }
-  
+
+/*
   used_header_fields_separator = cfg.getParameter("used_header_fields_separator");
   if(!used_header_fields_separator.length())
 		used_header_fields_separator = ';';
 
   if(cfg.hasParameter("used_header_fields")) {
-		used_header_fields = explode(cfg.getParameter("used_header_fields"), ",");  
+		used_header_fields = explode(cfg.getParameter("used_header_fields"), ",");
 	}
 	
 	for(vector<string>::const_iterator it = used_header_fields.begin(); it != used_header_fields.end(); ++it){
 		DBG("header field: '%s'",it->data());
 	}
-	
+*/
   cache_enabled = cfg.getParameterInt("profiles_cache_enabled",0);
   if(cache_enabled){
     cache_check_interval = cfg.getParameterInt("profiles_cache_check_interval",30);
@@ -335,9 +348,10 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req,
 {
 	pqxx::result r;
 	pqxx::nontransaction tnx(*conn);
-	string req_hdrs,hdr;
+	//string req_hdrs,hdr;
 	ProfilesCacheEntry *entry = NULL;
 	Yeti::global_config &gc = Yeti::instance()->config;
+	/*
 	for(vector<string>::const_iterator it = used_header_fields.begin(); it != used_header_fields.end(); ++it){
 		hdr = getHeader(req.hdrs,*it);
 		if(hdr.length()){
@@ -347,7 +361,7 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req,
 			req_hdrs.append(used_header_fields_separator);
 		}
 	}
-	DBG("req_hdrs: '%s' ",req_hdrs.c_str());
+	DBG("req_hdrs: '%s' ",req_hdrs.c_str());*/
 
 	const char *sptr;
 	sip_nameaddr na;
@@ -388,8 +402,16 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req,
 		invoc(c2stlstr(contact_uri.host));
 		invoc(contact_uri.port);
 		invoc(req.user);
-		invoc(req_hdrs);
-
+		//invoc(req_hdrs);
+		//add headers from request
+		for(vector<string>::const_iterator it = used_header_fields.begin(); it != used_header_fields.end(); ++it){
+			string hdr = getHeader(req.hdrs,*it);
+			if(hdr.length()){
+				invoc(hdr);
+			} else {
+				invoc();
+			}
+		}
 		r = invoc.exec();
 	} else {
 		throw GetProfileException(FC_NOT_PREPARED,true);

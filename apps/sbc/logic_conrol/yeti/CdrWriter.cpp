@@ -52,7 +52,7 @@ int CdrWriter::configure(CdrWriterCfg& cfg)
 	//show all query args
 	int param_num = 1;
 	//static params
-	for(;param_num<WRITECDR_STATIC_FIELDS_COUNT;param_num++){
+	for(;param_num<=WRITECDR_STATIC_FIELDS_COUNT;param_num++){
 		DBG("%d: %s : varchar",param_num,static_fields_names[param_num-1]);
 	}
 	//dynamic params
@@ -110,7 +110,7 @@ void CdrWriter::getConfig(AmArg &arg){
 
 	int param_num = 1;
 	//static params
-	for(;param_num<WRITECDR_STATIC_FIELDS_COUNT;param_num++){
+	for(;param_num<=WRITECDR_STATIC_FIELDS_COUNT;param_num++){
 		params.push(int2str(param_num)+": "+string(static_fields_names[param_num-1])+" : "+"varchar");
 	}
 	//dynamic params
