@@ -520,7 +520,7 @@ void AudioStreamData::updateRecvStats(AmRtpStream *s)
 }
 
 int AudioStreamData::writeStream(unsigned long long ts, unsigned char *buffer, AudioStreamData &src)
-{
+	{
   if (!initialized) return 0;
   if (stream->getOnHold()) return 0; // ignore hold streams?
 
@@ -533,7 +533,7 @@ int AudioStreamData::writeStream(unsigned long long ts, unsigned char *buffer, A
     else {
       if (!src.isInitialized()) return 0;
       AmRtpAudio *src_stream = src.getStream();
-      if (src_stream->checkInterval(ts)) {
+	  if (src_stream->checkInterval(ts)||src_stream->getFrameSize()>f_size) {
         got = src_stream->get(ts, buffer, sample_rate, f_size);
         if (got > 0) {
           updateRecvStats(src_stream);
