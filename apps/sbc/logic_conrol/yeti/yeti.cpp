@@ -391,7 +391,6 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 	ResourceCtlResponse rctl_ret;
 	bool has_profile = false;
 
-	list<SqlCallProfile *>::iterator p = ctx->current_profile;
 	profile = ctx->getNextProfile(false);
 
 	if(NULL==profile){
@@ -923,7 +922,6 @@ void Yeti::ClearStats(const AmArg& args, AmArg& ret){
 
 void Yeti::GetStats(const AmArg& args, AmArg& ret){
   AmArg stats,u;
-
   ret.push(200);
       /* Yeti stats */
   stats["calls_show_limit"] = (int)calls_show_limit;

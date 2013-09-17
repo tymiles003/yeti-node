@@ -28,7 +28,7 @@ SqlCallProfile *CallCtx::getNextProfile(bool early_state){
 			return NULL;
 		}
 		attempt_num++;
-		cdr = new Cdr(*cdr,**current_profile);
+		cdr = new Cdr(*cdr,**next_profile);
 	}
 	current_profile = next_profile;
 	return *current_profile;
