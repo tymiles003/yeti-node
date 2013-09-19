@@ -767,7 +767,10 @@ CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
 				DBG("Session received system Event");
 				if (sys_ev->sys_event == AmSystemEvent::ServerShutdown) {
 					DBG("ServerShutdown event");
-					getCdr(call)->update(DisconnectByTS,"ServerShutdown",200);
+					CallCtx *ctx = getCtx(call);
+					getCdr(ctx)->update(DisconnectByTS,"ServerShutdown",200);
+					//may never reach onDestroy callback so free resources here
+					rctl.put(ctx->getCurrentResourceList());
 				}
 			}
 		}
