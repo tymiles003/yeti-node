@@ -49,6 +49,9 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 	if (!readFilter(t, "sdp_filter", "sdpfilter_list", sdpfilter, true))
 		return false;
 
+	anonymize_sdp = t["anonymize_sdp"].as<bool>(true);
+	DBG("db: %s, anonymize_sdp = %d",t["anonymize_sdp"].c_str(),anonymize_sdp);
+
 	// SDP alines filter
 	if (!readFilter(t, "sdp_alines_filter", "sdp_alinesfilter_list",
 			sdpalinesfilter, false))
