@@ -25,6 +25,7 @@ struct CdrThreadCfg{
 	bool failover_to_slave;
 	bool failover_to_file;
 	string failover_file_dir;
+	int check_interval;
 	string failover_file_completed_dir;
 	DbConfig masterdb,slavedb;
 	PreparedQueriesT prepared_queries;
@@ -48,7 +49,7 @@ class CdrThread : public AmThread{
 	auto_ptr<ofstream> wfp;
 	string write_path;
 	string completed_path;
-
+	bool masteralarm,slavealarm;
 	int _connectdb(pqxx::connection **conn,string conn_str);
 	int connectdb();
 	void prepare_queries(pqxx::connection *c);

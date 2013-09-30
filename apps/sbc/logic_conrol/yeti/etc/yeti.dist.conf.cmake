@@ -101,6 +101,12 @@ getprofile_function = getprofile_f
 #	default: 10
 cdr_pool_size=20
 
+# cdr_check_interval
+#	interval for connections checking both for master and slave (if present) in ms
+#	default: 5000
+#
+cdr_check_interval=5000
+
 mastercdr_host=127.0.0.1
 mastercdr_port=5432
 mastercdr_name=cdrserver

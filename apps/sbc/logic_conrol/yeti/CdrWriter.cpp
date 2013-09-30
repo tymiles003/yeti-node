@@ -171,7 +171,10 @@ void CdrThread::postcdr(Cdr* cdr)
 }
 
 
-CdrThread::CdrThread() : queue_run(false),stopped(false),masterconn(NULL),slaveconn(NULL),gotostop(false)
+CdrThread::CdrThread() :
+	queue_run(false),stopped(false),
+	masterconn(NULL),slaveconn(NULL),gotostop(false),
+	masteralarm(false),slavealarm(false)
 {
 	clearStats();
 }
@@ -223,27 +226,97 @@ void CdrThread::on_stop(){
 
 void CdrThread::run(){
 	INFO("Starting CdrWriter thread");
-	connectdb();
+	if(!connectdb()){
+		ERROR("can't connect to any DB on startup. give up");
+		throw std::logic_error("CdrWriter can't connect to any DB on startup");
+	}
 while(true){
 	Cdr* cdr;
-	queue_run.wait_for();
+
+	bool qrun = queue_run.wait_for_to(config.check_interval);
+
 	if (gotostop){
 		stopped.set(true);
 		return;
 	}
 
-	DBG("CdrWriter cycle startup");
+	if(!qrun){
+		DBG("queue condition wait timeout. check connections");
+		//check master conn
+		if(masterconn!=NULL){
+			try {
+				pqxx::work t(*masterconn);
+				t.commit();
+			} catch (const pqxx::pqxx_exception &e) {
+				delete masterconn;
+				if(!_connectdb(&masterconn,config.masterdb.conn_str())){
+					if(!masteralarm){
+						ERROR("CdrWriter %p master DB connection failed alarm raised",this);
+						masteralarm = true;
+					}
+				} else {
+					INFO("CdrWriter %p master DB connection failed alarm cleared",this);
+					masteralarm = false;
+				}
+			}
+		} else {
+			if(!_connectdb(&masterconn,config.masterdb.conn_str())){
+				if(!masteralarm){
+					ERROR("CdrWriter %p master DB connection failed alarm raised",this);
+					masteralarm = true;
+				}
+			} else {
+				INFO("CdrWriter %p master DB connection failed alarm cleared",this);
+				masteralarm = false;
+			}
+		}
+		//check slave connecion
+		if(!config.failover_to_slave)
+			continue;
+
+		if(slaveconn!=NULL){
+			try {
+				pqxx::work t(*slaveconn);
+				t.commit();
+			} catch (const pqxx::pqxx_exception &e) {
+				delete slaveconn;
+				if(!_connectdb(&slaveconn,config.slavedb.conn_str())){
+					if(!slavealarm){
+						ERROR("CdrWriter %p slave DB connection failed alarm raised",this);
+						slavealarm = true;
+					}
+				} else {
+					INFO("CdrWriter %p slave DB connection failed alarm cleared",this);
+					slavealarm = false;
+				}
+			}
+		} else {
+			if(!_connectdb(&slaveconn,config.slavedb.conn_str())){
+				if(!slavealarm){
+					ERROR("CdrWriter %p slave DB connection failed alarm raised",this);
+					slavealarm = true;
+				}
+			} else {
+				INFO("CdrWriter %p slave DB connection failed alarm cleared",this);
+				slavealarm = false;
+			}
+		}
+		continue;
+	}
+
+	//DBG("CdrWriter cycle beginstartup");
 
 	queue_mut.lock();
 		cdr=queue.front();
 		queue.pop_front();
 		if(0==queue.size()){
-			DBG("CdrWriter cycle stop.Empty queue");
+			//DBG("CdrWriter cycle stop.Empty queue");
 			queue_run.set(false);
 		}
 	queue_mut.unlock();
 
 	bool cdr_writed = false;
+
 	if(0!=writecdr(masterconn,cdr)){
 		ERROR("Cant write CDR to master database");
 		if (config.failover_to_slave) {
@@ -335,22 +408,26 @@ int CdrThread::_connectdb(pqxx::connection **conn,string conn_str){
 		c = new pqxx::connection(conn_str);
 		if (c->is_open()){
 			prepare_queries(c);
-			DBG("CdrWriter: SQL connected. Backend pid: %d.",c->backendpid());
+			INFO("CdrWriter: SQL connected. Backend pid: %d.",c->backendpid());
+			ret = 1;
 		}
-		*conn = c;
-		ret = 1;
 	} catch(const pqxx::broken_connection &e){
-		DBG("CdrWriter: SQL connection exception: %s",e.what());
+			DBG("CdrWriter: SQL connection exception: %s",e.what());
+		delete c;
 	} catch(const pqxx::undefined_function &e){
-		ERROR("CdrWriter: SQL connection: undefined_function query: %s, what: %s",e.query().c_str(),e.what());
+			DBG("CdrWriter: SQL connection: undefined_function query: %s, what: %s",e.query().c_str(),e.what());
 		c->disconnect();
+		delete c;
 		throw std::runtime_error("CdrThread exception");
+	} catch(...){
 	}
+	*conn = c;
 	return ret;
 }
 
 int CdrThread::connectdb(){
-	int ret = _connectdb(&masterconn,config.masterdb.conn_str());
+	int ret;
+	ret = _connectdb(&masterconn,config.masterdb.conn_str());
 	if(config.failover_to_slave){
 		ret|=_connectdb(&slaveconn,config.slavedb.conn_str());
 	}
@@ -361,10 +438,16 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr){
 	DBG("%s[%p](conn = %p,cdr = %p)",FUNC_NAME,this,conn,cdr);
 	int ret = 1;
 	Yeti::global_config &gc = Yeti::instance()->config;
-	pqxx::result r;
-	pqxx::nontransaction tnx(*conn);
+
+	if(conn==NULL){
+		ERROR("writecdr() we got NULL connection pointer.");
+		return 1;
+	}
+
 	stats.tried_cdrs++;
 	try{
+		pqxx::result r;
+		pqxx::nontransaction tnx(*conn);
 
 		if(!tnx.prepared("writecdr").exists()){
 			ERROR("have no prepared SQL statement");
@@ -416,6 +499,7 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr){
 		}
 	} catch(const pqxx::pqxx_exception &e){
 		DBG("SQL exception on CdrWriter thread: %s",e.base().what());
+		conn->disconnect();
 		stats.db_exceptions++;
 	}
 	return ret;
@@ -569,8 +653,8 @@ int CdrThreadCfg::cfg2CdrThCfg(AmConfigReader& cfg, string& prefix){
 }
 
 int CdrWriterCfg::cfg2CdrWrCfg(AmConfigReader& cfg){
-	string var=name+"_pool_size";
-	poolsize=cfg.getParameterInt(var,10);
+	poolsize=cfg.getParameterInt(name+"_pool_size",10);
+	check_interval = cfg.getParameterInt("cdr_check_interval",5000);
 	failover_to_slave = cfg.getParameterInt("cdr_failover_to_slave",1);
 	return cfg2CdrThCfg(cfg,name);
 }
