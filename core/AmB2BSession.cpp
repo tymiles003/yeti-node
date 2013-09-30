@@ -462,6 +462,12 @@ void AmB2BSession::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
       reply.cseq_method.c_str(), reply.code,reply.reason.c_str(),
       fwd?"true":"false",reply.body.getCTStr().c_str());
 
+  if(!a_leg && reply.cseq_method==SIP_METH_CANCEL && reply.code>=400){
+	  DBG("received failure reply for CANCEL on legB. Terminate leg");
+	  terminateLeg();
+	  return;
+  }
+
   if(!dlg->getRemoteTag().empty() && dlg->getRemoteTag() != reply.to_tag) {    
     DBG("sess %p received %i reply with != to-tag: %s (remote-tag:%s)",
 	this, reply.code, reply.to_tag.c_str(),dlg->getRemoteTag().c_str());
