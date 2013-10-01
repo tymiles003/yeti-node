@@ -102,4 +102,4 @@
 
 ## refuse call
 # refuse all calls with <code> <reason>
-#refuse_with="404 Not Found"
+refuse_with="404 Not Found"
