@@ -937,7 +937,7 @@ void Yeti::GetStats(const AmArg& args, AmArg& ret){
 		u.clear();
 		SqlRouter *r = *i;
 		if(r){
-			router->getStats(u);
+			r->getStats(u);
 			if(r == router){
 				routers_stats.push("active",u);
 			} else {
