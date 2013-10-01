@@ -278,10 +278,10 @@ struct SBCCallProfile
     contact_hiding(false), 
     reg_caching(false),
     log_rtp(false),
-    log_sip(false)
-  {
-      DBG("SBCCallProfile() this = %p",this);
-  }
+    log_sip(false),
+    patch_ruri_next_hop(false),
+    next_hop_1st_req(false)
+  { }
 
   ~SBCCallProfile()
   {

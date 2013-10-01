@@ -283,6 +283,8 @@ bool AmUriParser::parse_uri() {
       switch (c) {
       case '>': { uri_param = uri.substr(p1+1, pos-p1-1);
       st = uS6; p1 = pos; } break;
+      case '?': { uri_param = uri.substr(p1+1, pos-p1-1);
+      st = uSHDR; p1 = pos; } break;
       case '\t':
       case ' ': { uri_param = uri.substr(p1+1, pos-p1-1);
       st = uSPARAMWSP; p1 = pos; } break;      
@@ -391,6 +393,10 @@ bool AmUriParser::parse_params(const string& line, int& pos) {
   return true;
 }
 
+bool AmUriParser::parse_nameaddr(const string& line) {
+  size_t end;
+  return parse_contact(line, 0, end);
+}
 
 bool AmUriParser::parse_contact(const string& line, size_t pos, size_t& end) {
   int p0 = skip_name(line, pos);

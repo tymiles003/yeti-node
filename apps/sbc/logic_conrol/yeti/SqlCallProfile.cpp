@@ -37,6 +37,11 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 
 	next_hop = t["next_hop"].c_str();
 	next_hop_1st_req = t["next_hop_1st_req"].as<bool>(false);
+	patch_ruri_next_hop = true;
+
+	/**	TODO: add parameter into callprofile type in DB
+	 *	patch_ruri_next_hop = t["patch_ruri_next_hop"];
+	 */
 
 	aleg_next_hop = t["aleg_next_hop"].c_str();
 
