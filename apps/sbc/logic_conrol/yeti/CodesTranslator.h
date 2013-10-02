@@ -19,6 +19,7 @@
 #define FC_DB_BROKEN_EXCEPTION		122
 #define FC_DB_CONVERSION_EXCEPTION	123
 #define FC_DB_BASE_EXCEPTION		124
+#define DC_RTP_TIMEOUT				125
 
 using namespace std;
 

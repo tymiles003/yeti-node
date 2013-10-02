@@ -737,6 +737,21 @@ CCChainProcessing Yeti::onInDialogReply(SBCCallLeg *call, const AmSipReply &repl
 CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
     DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 
+	AmRtpTimeoutEvent *rtp_event = dynamic_cast<AmRtpTimeoutEvent*>(e);
+	if(rtp_event){
+		DBG("%s rtp_timeout event",FUNC_NAME);
+		unsigned int internal_code,response_code;
+		string internal_reason,response_reason;
+		CodesTranslator::instance()->translate_db_code(
+			DC_RTP_TIMEOUT,
+			internal_code,internal_reason,
+			response_code,response_reason);
+		Cdr *cdr = getCdr(call);
+		cdr->update(DisconnectByTS,internal_reason,internal_code);
+		cdr->update_rewrited(response_reason,response_code);
+		return ContinueProcessing;
+	}
+
     if(call->isALeg()){
         AmPluginEvent* plugin_event = dynamic_cast<AmPluginEvent*>(e);
         if(plugin_event){
