@@ -241,7 +241,7 @@ while(true){
 	}
 
 	if(!qrun){
-		DBG("queue condition wait timeout. check connections");
+//		DBG("queue condition wait timeout. check connections");
 		//check master conn
 		if(masterconn!=NULL){
 			try {

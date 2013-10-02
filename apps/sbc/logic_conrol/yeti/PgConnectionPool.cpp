@@ -129,8 +129,7 @@ void PgConnectionPool::returnConnection(PgConnection* c,conn_stat stat){
 		connections_mut.unlock();
 
 		have_active_connection.set(true);
-
-		DBG("%s: Now %zd active connections\n",pool_name.c_str(),active_size);
+		//DBG("%s: Now %zd active connections\n",pool_name.c_str(),active_size);
 	} else {
 		delete c;
 		connections_mut.lock();
