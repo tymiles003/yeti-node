@@ -46,6 +46,7 @@ public:
 
 private:
   //stats
+  time_t start_time;
   int cache_hits,db_hits,hits;
   double gt_min,gt_max;
   double gps_max,gps_avg;

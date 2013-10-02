@@ -19,6 +19,8 @@
 #include "CallCtx.h"
 #include "CodesTranslator.h"
 
+#include <ctime>
+
 class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterface
 {
   static Yeti* _instance;
@@ -70,6 +72,8 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
 	int pop_id;
 	string db_schema;
   } config;
+
+  time_t start_time;
 
         //!xmlrpc handlers
   void DropCall(const AmArg& args, AmArg& ret);

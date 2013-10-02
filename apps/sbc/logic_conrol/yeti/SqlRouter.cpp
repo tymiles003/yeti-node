@@ -70,6 +70,7 @@ int SqlRouter::run(){
     slave_pool->start();
     WARN("Slave SQLThread started\n");
   }
+  start_time = time(NULL);
   return 0;
 };
 
@@ -540,6 +541,7 @@ void SqlRouter::getConfig(AmArg &arg){
 void SqlRouter::getStats(AmArg &arg){
   AmArg underlying_stats;
       /* SqlRouter stats */
+  arg["uptime"] = difftime(time(NULL),start_time);
   arg["refs"] = (long int)get();
   arg["gt_min"] = gt_min;
   arg["gt_max"] = gt_max;

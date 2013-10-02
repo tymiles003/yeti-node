@@ -48,7 +48,6 @@ Yeti* Yeti::instance()
 
 Yeti::Yeti():
     router(new SqlRouter())
-//    cdr_writer(new CdrWriter())
 {
 	routers.insert(router);
     DBG("Yeti()");
@@ -131,6 +130,8 @@ int Yeti::onLoad() {
         ERROR("SqlRouter start failed");
         return -1;
     }
+
+	start_time = time(NULL);
 
     return 0;
 }
@@ -940,9 +941,13 @@ void Yeti::ClearStats(const AmArg& args, AmArg& ret){
 
 void Yeti::GetStats(const AmArg& args, AmArg& ret){
   AmArg stats,u;
+  time_t now;
   ret.push(200);
       /* Yeti stats */
   stats["calls_show_limit"] = (int)calls_show_limit;
+  now = time(NULL);
+  stats["localtime"] = now;
+  stats["uptime"] = difftime(now,start_time);
       /* sql_router stats */
   router_mutex.lock();
   AmArg routers_stats;

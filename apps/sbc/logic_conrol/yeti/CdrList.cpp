@@ -64,15 +64,8 @@ void CdrList::cdr2arg(const Cdr *cdr,const SqlRouter *router, AmArg& arg){
   #define add_field_to_ret(val)\
     arg[#val] = cdr->val;
   #define add_timeval_field_to_ret(val)\
-    tt = cdr->val.tv_sec;\
-    t = localtime(&tt);\
-    strftime(s,sizeof s,"%Y.%m.%d %H:%M:%S",t);\
-    arg[#val] = string(s);
-    
-  struct tm *t;
-  time_t tt;
-  char s[64];
-  
+		arg[#val] = (cdr->val.tv_sec+cdr->val.tv_usec/1e6);
+
   add_timeval_field_to_ret(cdr_born_time);
   add_timeval_field_to_ret(start_time);
   add_timeval_field_to_ret(connect_time);
