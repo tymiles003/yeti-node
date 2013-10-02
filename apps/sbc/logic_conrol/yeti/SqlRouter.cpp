@@ -340,12 +340,6 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req, pqxx::conne
 	sip_nameaddr na;
 	sip_uri from_uri,to_uri,contact_uri;
 
-	//believe that already successfull being parsed before with underlying layers
-	sptr = req.from.c_str();
-	if(	parse_nameaddr(&na,&sptr,req.from.length()) < 0 ||
-		parse_uri(&from_uri,na.addr.s,na.addr.len) < 0){
-		throw GetProfileException(FC_PARSE_FROM_FAILED,false);
-	}
 	sptr = req.to.c_str();
 	if(	parse_nameaddr(&na,&sptr,req.to.length()) < 0 ||
 		parse_uri(&to_uri,na.addr.s,na.addr.len) < 0){
@@ -356,6 +350,11 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req, pqxx::conne
 		parse_uri(&contact_uri,na.addr.s,na.addr.len) < 0){
 		throw GetProfileException(FC_PARSE_CONTACT_FAILED,false);
 	}
+	sptr = req.from.c_str();
+	if(	parse_nameaddr(&na,&sptr,req.from.length()) < 0 ||
+		parse_uri(&from_uri,na.addr.s,na.addr.len) < 0){
+		throw GetProfileException(FC_PARSE_FROM_FAILED,false);
+	}
 
 	if(tnx.prepared("getprofile").exists()){
 		pqxx::prepare::invocation invoc = tnx.prepared("getprofile");
@@ -365,6 +364,7 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req, pqxx::conne
 		invoc(req.remote_port);
 		invoc(req.local_ip);
 		invoc(req.local_port);
+		invoc(c2stlstr(na.name));
 		invoc(c2stlstr(from_uri.user));
 		invoc(c2stlstr(from_uri.host));
 		invoc(from_uri.port);
