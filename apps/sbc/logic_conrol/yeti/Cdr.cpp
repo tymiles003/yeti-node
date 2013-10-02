@@ -21,6 +21,8 @@ void Cdr::init(){
 
     writed=false;
 
+	disconnect_reason = "Unhandled sequence. report";
+	disconnect_code = 0;
 	disconnect_rewrited_reason = "";
 	disconnect_rewrited_code = 0;
 
@@ -71,10 +73,12 @@ void Cdr::update(const AmSipReply &reply){
 	DBG("Cdr::%s(AmSipReply)",FUNC_NAME);
     if(writed) return;
     lock();
-    legB_remote_ip = reply.remote_ip;
-    legB_remote_port = reply.remote_port;
-    legB_local_ip = reply.local_ip;
-    legB_local_port = reply.local_port;
+	if(reply.remote_port!=0){	//check for bogus reply (like timeout)
+		legB_remote_ip = reply.remote_ip;
+		legB_remote_port = reply.remote_port;
+		legB_local_ip = reply.local_ip;
+		legB_local_port = reply.local_port;
+	}
     unlock();
 }
 
