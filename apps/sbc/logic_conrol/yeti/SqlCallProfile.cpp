@@ -5,13 +5,13 @@
 
 SqlCallProfile::SqlCallProfile()
 {
-    DBG("SqlCallProfile(%p)",this);
-    profile_file = "SQL";
+	DBG("SqlCallProfile(%p)",this);
+	profile_file = "SQL";
 }
 
 SqlCallProfile::~SqlCallProfile()
 {
-    DBG("~SqlCallProfile(%p)",this);
+	DBG("~SqlCallProfile(%p)",this);
 }
 
 bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
