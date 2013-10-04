@@ -1,6 +1,6 @@
 find_package(PQXX REQUIRED)
 
-ADD_SUBDIRECTORY(logic_conrol/yeti)
+ADD_SUBDIRECTORY(logic_control/yeti)
 
 set (sbc_SRCS
 HeaderFilter.cpp
