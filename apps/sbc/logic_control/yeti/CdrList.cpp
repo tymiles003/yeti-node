@@ -66,6 +66,10 @@ void CdrList::cdr2arg(const Cdr *cdr,const SqlRouter *router, AmArg& arg){
 	#define add_timeval_field_to_ret(val)\
 		arg[#val] = (cdr->val.tv_sec+cdr->val.tv_usec/1e6);
 
+	struct timeval now;
+
+	gettimeofday(&now, NULL);
+	arg["local_time"] = now.tv_sec+now.tv_usec/1e6;
 	add_timeval_field_to_ret(cdr_born_time);
 	add_timeval_field_to_ret(start_time);
 	add_timeval_field_to_ret(connect_time);
