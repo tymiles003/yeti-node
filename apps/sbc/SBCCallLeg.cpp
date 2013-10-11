@@ -572,12 +572,48 @@ void SBCCallLeg::onSendRequest(AmSipRequest& req, int &flags) {
 
   if(a_leg) {
     if (!call_profile.aleg_append_headers_req.empty()) {
+
+		size_t start_pos = 0;
+		while (start_pos<call_profile.aleg_append_headers_req.length()) {
+			int res;
+			size_t name_end, val_begin, val_end, hdr_end;
+			if ((res = skip_header(call_profile.aleg_append_headers_req, start_pos, name_end, val_begin,
+					val_end, hdr_end)) != 0) {
+				ERROR("skip_header for '%s' pos: %ld, return %d",
+						call_profile.aleg_append_headers_req.c_str(),start_pos,res);
+				throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
+			}
+			string hdr_name = call_profile.aleg_append_headers_req.substr(start_pos, name_end-start_pos);
+			start_pos = hdr_end;
+			while(!getHeader(req.hdrs,hdr_name).empty()){
+				removeHeader(req.hdrs,hdr_name);
+			}
+		}
+
       DBG("appending '%s' to outbound request (A leg)\n",
 	  call_profile.aleg_append_headers_req.c_str());
       req.hdrs+=call_profile.aleg_append_headers_req;
     }
   }
   else {
+
+	  size_t start_pos = 0;
+	  while (start_pos<call_profile.append_headers_req.length()) {
+		  int res;
+		  size_t name_end, val_begin, val_end, hdr_end;
+		  if ((res = skip_header(call_profile.append_headers_req, start_pos, name_end, val_begin,
+				  val_end, hdr_end)) != 0) {
+			  ERROR("skip_header for '%s' pos: %ld, return %d",
+					  call_profile.append_headers_req.c_str(),start_pos,res);
+			  throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
+		  }
+		  string hdr_name = call_profile.append_headers_req.substr(start_pos, name_end-start_pos);
+		  start_pos = hdr_end;
+		  while(!getHeader(req.hdrs,hdr_name).empty()){
+			  removeHeader(req.hdrs,hdr_name);
+		  }
+	  }
+
     if (!call_profile.append_headers_req.empty()) {
       DBG("appending '%s' to outbound request (B leg)\n", 
 	  call_profile.append_headers_req.c_str());
@@ -889,12 +925,29 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
     removeHeader(invite_req.hdrs,SIP_HDR_MIN_SE);
   }
 
+	size_t start_pos = 0;
+	while (start_pos<call_profile.append_headers.length()) {
+		int res;
+		size_t name_end, val_begin, val_end, hdr_end;
+		if ((res = skip_header(call_profile.append_headers, start_pos, name_end, val_begin,
+				val_end, hdr_end)) != 0) {
+			ERROR("skip_header for '%s' pos: %ld, return %d",
+					call_profile.append_headers.c_str(),start_pos,res);
+			throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
+		}
+		string hdr_name = call_profile.append_headers.substr(start_pos, name_end-start_pos);
+		while(!getHeader(invite_req.hdrs,hdr_name).empty()){
+			removeHeader(invite_req.hdrs,hdr_name);
+		}
+		start_pos = hdr_end;
+	}
+
   inplaceHeaderFilter(invite_req.hdrs, call_profile.headerfilter);
 
   if (call_profile.append_headers.size() > 2) {
-    string append_headers = call_profile.append_headers;
-    assertEndCRLF(append_headers);
-    invite_req.hdrs+=append_headers;
+	string append_headers = call_profile.append_headers;
+	assertEndCRLF(append_headers);
+	invite_req.hdrs+=append_headers;
   }
   
   int res = filterSdp(invite_req.body, invite_req.method);
