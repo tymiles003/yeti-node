@@ -45,21 +45,20 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 
 	aleg_next_hop = t["aleg_next_hop"].c_str();
 
-	if (!readFilter(t, "header_filter", "header_list", headerfilter, false))
+	if (!readFilter(t, "header_filter", headerfilter, false))
 		return false;
 
-	if (!readFilter(t, "message_filter", "message_list", messagefilter, false))
+	if (!readFilter(t, "message_filter", messagefilter, false))
 		return false;
 
-	if (!readFilter(t, "sdp_filter", "sdpfilter_list", sdpfilter, true))
+	if (!readFilter(t, "sdp_filter", sdpfilter, true))
 		return false;
 
 	anonymize_sdp = t["anonymize_sdp"].as<bool>(true);
 	DBG("db: %s, anonymize_sdp = %d",t["anonymize_sdp"].c_str(),anonymize_sdp);
 
 	// SDP alines filter
-	if (!readFilter(t, "sdp_alines_filter", "sdp_alinesfilter_list",
-			sdpalinesfilter, false))
+	if (!readFilter(t, "sdp_alines_filter", sdpalinesfilter, false))
 		return false;
 
 	sst_enabled = t["enable_session_timer"].as<bool>(false)?"yes":"no";
@@ -365,8 +364,9 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 	}
 }
 
-bool SqlCallProfile::readFilter(const pqxx::result::tuple &t, const char* cfg_key_filter, const char* cfg_key_list,
+bool SqlCallProfile::readFilter(const pqxx::result::tuple &t, const char* cfg_key_filter,
 		vector<FilterEntry>& filter_list, bool keep_transparent_entry){
+/*
 	string filter = t[cfg_key_filter].c_str();
 	if (filter.empty())
 		return true;
@@ -378,11 +378,32 @@ bool SqlCallProfile::readFilter(const pqxx::result::tuple &t, const char* cfg_ke
 		return false;
 	}
 
+*/
+	FilterEntry hf;
+	string filter_key = cfg_key_filter;
+
+	int filter_type_id = t[filter_key + "_type_id"].as<int>(0);
+	switch(filter_type_id){
+		case FILTER_TYPE_TRANSPARENT:
+			hf.filter_type = Transparent;
+			break;
+		case FILTER_TYPE_BLACKLIST:
+			hf.filter_type = Blacklist;
+			break;
+		case FILTER_TYPE_WHITELIST:
+			hf.filter_type = Whitelist;
+			break;
+		default:
+			hf.filter_type = Undefined;
+			ERROR("invalid %s type_id: %d\n", cfg_key_filter, filter_type_id);
+			return false;
+	}
+
 	// no transparent filter
 	if (!keep_transparent_entry && hf.filter_type==Transparent)
 	return true;
 
-	vector<string> elems = explode(t[cfg_key_list].c_str(), ",");
+	vector<string> elems = explode(t[filter_key+"_list"].c_str(), ",");
 	for (vector<string>::iterator it=elems.begin(); it != elems.end(); it++) {
 		string c = *it;
 		std::transform(c.begin(), c.end(), c.begin(), ::tolower);

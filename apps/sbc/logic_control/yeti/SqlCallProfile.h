@@ -12,6 +12,10 @@
 #define REFRESH_METHOD_UPDATE					2
 #define REFRESH_METHOD_UPDATE_FALLBACK_INVITE	3
 
+#define FILTER_TYPE_TRANSPARENT					0
+#define FILTER_TYPE_BLACKLIST					1
+#define FILTER_TYPE_WHITELIST					2
+
 using std::string;
 
 struct SqlCallProfile
@@ -21,6 +25,7 @@ struct SqlCallProfile
 	int disconnect_code_id;
 	int session_refresh_method_id;
 	int aleg_session_refresh_method_id;
+
 	list<string> dyn_fields;
 	string resources;
 	ResourceList rl;
@@ -29,7 +34,7 @@ struct SqlCallProfile
 	~SqlCallProfile();
 
 	bool readFromTuple(const pqxx::result::tuple &t);
-	bool readFilter(const pqxx::result::tuple &t, const char* cfg_key_filter, const char* cfg_key_list,
+	bool readFilter(const pqxx::result::tuple &t, const char* cfg_key_filter,
 			vector<FilterEntry>& filter_list, bool keep_transparent_entry);
 	bool readCodecPrefs(const pqxx::result::tuple &t);
 	bool readTranscoder(const pqxx::result::tuple &t);
