@@ -35,6 +35,7 @@ INSTALL(PROGRAMS
 	tools/yeti-sumcounters
 	tools/yeti-csv2sql
 	tools/yeti-process-events
+	tools/yeti-dumplog
 	DESTINATION ${SEMS_EXEC_PREFIX}/sbin
 )
 

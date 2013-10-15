@@ -1,0 +1,22 @@
+#!/usr/bin/python
+from xmlrpclib import *
+from sys import *
+import pprint                                                                                                                                                                                                                                 
+rpcurl = 'http://127.0.0.1:8090'
+l = len(argv)
+if l < 2 or argv[1] == '--help':
+	print "usage: %s path" % argv[0]
+	exit(1)
+path = argv[1]
+
+try:
+	s = ServerProxy(rpcurl)
+	data=s.di('di_log','dumplogtodisk',path)
+	print "response:"
+	pp = pprint.PrettyPrinter(indent=4)
+	pp.pprint(data)                                                                                                                                                                                                               
+except Fault as err:
+	print "Fault code: %d" % err.faultCode
+	print "Fault string: %s" % err.faultString
+except BaseException as err:
+	print "Err: %s" % err
