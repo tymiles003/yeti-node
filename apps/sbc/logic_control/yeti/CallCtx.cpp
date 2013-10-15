@@ -54,7 +54,8 @@ CallCtx::CallCtx(SqlRouter *router):
 	initial_invite(NULL),
 	cdr(NULL),
 	router(router),
-	SQLexception(false)
+	SQLexception(false),
+	cdr_processed(false)
 {
 	router->inc();
 	DBG("%s() this = %p",FUNC_NAME,this);

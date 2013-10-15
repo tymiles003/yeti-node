@@ -13,6 +13,7 @@ struct CallCtx: public
 	atomic_int
 {
 	Cdr *cdr;
+	bool cdr_processed;
 	list<SqlCallProfile *> profiles;
 	list<SqlCallProfile *>::iterator current_profile;
 	int attempt_num;
@@ -25,6 +26,7 @@ struct CallCtx: public
 	SqlCallProfile *getCurrentProfile();
 	SqlRouter *getRouter();
 	ResourceList &getCurrentResourceList();
+	void setCdrProcessed();
 
 	CallCtx(SqlRouter *router);
 	~CallCtx();

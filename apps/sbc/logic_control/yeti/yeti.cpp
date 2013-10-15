@@ -595,11 +595,13 @@ void Yeti::onDestroyLeg(SBCCallLeg *call){
 
 void Yeti::onLastLegDestroy(CallCtx *ctx,SBCCallLeg *call){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
-	Cdr *cdr = getCdr(ctx);
-	// remove from active calls
-	cdr_list.erase(cdr);
-	//write cdr (Cdr class will be deleted by CdrWriter)
-	ctx->router->write_cdr(cdr,true);
+	if(!ctx->cdr_processed){
+		Cdr *cdr = getCdr(ctx);
+		// remove from active calls
+		cdr_list.erase(cdr);
+		//write cdr (Cdr class will be deleted by CdrWriter)
+		ctx->router->write_cdr(cdr,true);
+	}
 }
 
 CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, AmSipReply& reply) {
@@ -630,7 +632,6 @@ CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, AmSipReply& reply) {
 						ERROR("onBLegRefused(): double insert into active calls list. integrity threat");
 						ERROR("ctx: attempt = %d, cdr.logger_path = %s",
 							ctx->attempt_num,cdr->msg_logger_path.c_str());
-						//throw AmSession::Exception(500,SIP_REPLY_SERVER_INTERNAL_ERROR);
 					} else {
 						connectCallee(call,req);
 					}
@@ -774,6 +775,14 @@ CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
 		return ContinueProcessing;
 	}
 
+	AmSipReplyEvent *reply_event = dynamic_cast<AmSipReplyEvent*>(e);
+	if(reply_event){
+		if(reply_event->reply.code==408 && call->getCallStatus()==CallLeg::Disconnected){
+			ERROR("received 408 in disconnected state");
+			throw AmSession::Exception(500,SIP_REPLY_SERVER_INTERNAL_ERROR);
+		}
+	}
+
 	if(!call->isALeg())
 		return ContinueProcessing;
 
@@ -863,7 +872,18 @@ CCChainProcessing Yeti::onBye(SBCCallLeg *call, const AmSipRequest &req){
 CCChainProcessing Yeti::onOtherBye(SBCCallLeg *call, const AmSipRequest &req){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	if(call->isALeg()){
-		getCdr(call)->update(DisconnectByDST,"onOtherBye",200);
+		if(call->getCallStatus()==CallLeg::NoReply){
+			CallCtx *ctx = getCtx(call);
+			ERROR("received OtherBye in NoReply state");
+			Cdr *cdr = getCdr(ctx);
+			cdr->update(DisconnectByDST,"onEarlyOtherBye",500);
+			cdr->update_rewrited("Request terminated",487);
+			cdr_list.erase(cdr);
+			ctx->cdr_processed = true;
+			router->write_cdr(cdr,true);
+		} else {
+			getCdr(call)->update(DisconnectByDST,"onOtherBye",200);
+		}
 	}
 	return ContinueProcessing;
 }
