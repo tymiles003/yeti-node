@@ -26,6 +26,46 @@ void CdrList::free_key(string *key){
 	delete key;
 }
 
+int CdrList::insert(Cdr *cdr){
+	int err = 1;
+	if(cdr){
+		DBG("%s() local_tag = %s",FUNC_NAME,cdr->local_tag.c_str());
+		cdr->lock();
+			if(!cdr->inserted2list && MurmurHash::insert(&cdr->local_tag,cdr,true,true)){
+				err = 0;
+				cdr->inserted2list = true;
+			} else {
+				ERROR("attempt to double insert into active calls list. integrity threat");
+				log_stacktrace(L_ERR);
+			}
+		cdr->unlock();
+	} else {
+		ERROR("%s() cdr = NULL",FUNC_NAME);
+		log_stacktrace(L_ERR);
+	}
+	return err;
+}
+
+int CdrList::erase(Cdr *cdr){
+	int err = 1;
+	if(cdr){
+		DBG("%s() local_tag = %s",FUNC_NAME,cdr->local_tag.c_str());
+		cdr->lock();
+			if(cdr->inserted2list){
+				erase_lookup_key(&cdr->local_tag);
+				err = 0;
+			} else {
+				ERROR("attempt to erase not inserted cdr local_tag = %s",cdr->local_tag.c_str());
+				log_stacktrace(L_ERR);
+			}
+		cdr->unlock();
+	} else {
+		ERROR("%s() cdr = NULL",FUNC_NAME);
+		log_stacktrace(L_ERR);
+	}
+	return err;
+}
+
 Cdr *CdrList::get_by_local_tag(string local_tag){
 	return at_data(&local_tag,false);
 }

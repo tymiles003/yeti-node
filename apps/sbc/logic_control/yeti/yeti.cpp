@@ -426,7 +426,7 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 	}
 
 	//write cdr and replace ctx pointer with new
-	cdr_list.erase_lookup_key(&cdr->local_tag);
+	cdr_list.erase(cdr);
 	ctx->router->write_cdr(cdr,false);
 	cdr = getCdr(ctx);
 
@@ -597,7 +597,7 @@ void Yeti::onLastLegDestroy(CallCtx *ctx,SBCCallLeg *call){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	Cdr *cdr = getCdr(ctx);
 	// remove from active calls
-	cdr_list.erase_lookup_key(&cdr->local_tag);
+	cdr_list.erase(cdr);
 	//write cdr (Cdr class will be deleted by CdrWriter)
 	ctx->router->write_cdr(cdr,true);
 }
@@ -626,13 +626,14 @@ CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, AmSipReply& reply) {
 				if(chooseNextProfile(call)){
 					DBG("%s() has new profile, so create new callee",FUNC_NAME);
 					cdr = getCdr(ctx);
-					if(!cdr_list.insert(&cdr->local_tag,cdr,true,true)){
+					if(0!=cdr_list.insert(cdr)){
 						ERROR("onBLegRefused(): double insert into active calls list. integrity threat");
 						ERROR("ctx: attempt = %d, cdr.logger_path = %s",
 							ctx->attempt_num,cdr->msg_logger_path.c_str());
-						log_stacktrace(L_ERR);
+						//throw AmSession::Exception(500,SIP_REPLY_SERVER_INTERNAL_ERROR);
+					} else {
+						connectCallee(call,req);
 					}
-					connectCallee(call,req);
 				} else {
 					DBG("%s() no new profile, just finish as usual",FUNC_NAME);
 				}
@@ -717,13 +718,14 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 			cdr->time_limit);
 		call->saveCallTimer(SBC_TIMER_ID_CALL_TIMERS_START,cdr->time_limit);
 	}
-
-	if(!cdr_list.insert(&cdr->local_tag,cdr,true,true)){
+	if(0!=cdr_list.insert(cdr)){
 		ERROR("onInitialInvite(): double insert into active calls list. integrity threat");
 		ERROR("ctx: attempt = %d, cdr.logger_path = %s",
 			ctx->attempt_num,cdr->msg_logger_path.c_str());
 		log_stacktrace(L_ERR);
+		throw AmSession::Exception(500,SIP_REPLY_SERVER_INTERNAL_ERROR);
 	}
+
 
 	} catch(AmSession::Exception &e) {
 		DBG("onInitialInvite() catched AmSession::Exception(%d,%s)",

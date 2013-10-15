@@ -24,6 +24,7 @@ struct Cdr: public
 	AmMutex
 {
     bool writed;
+	bool inserted2list;
 	int attempt_num;
 	bool is_last;
 

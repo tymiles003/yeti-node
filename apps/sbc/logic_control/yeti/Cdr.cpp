@@ -20,6 +20,7 @@ void Cdr::init(){
     gettimeofday(&cdr_born_time, NULL);
 
     writed=false;
+	inserted2list = false;
 
 	disconnect_reason = "Unhandled sequence. report";
 	disconnect_code = 0;
