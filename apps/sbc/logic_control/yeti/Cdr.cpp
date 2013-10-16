@@ -55,7 +55,7 @@ void Cdr::update_sql(const SqlCallProfile &profile){
 
 void Cdr::update_sbc(const SBCCallProfile &profile){
 	DBG("Cdr::%s(SBCCallProfile)",FUNC_NAME);
-	msg_logger_path = profile.msg_logger_path;
+	msg_logger_path = profile.get_logger_path();
 	log_rtp = profile.log_rtp;
 	log_sip = profile.log_sip;
 }

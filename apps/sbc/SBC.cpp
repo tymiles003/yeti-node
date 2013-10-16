@@ -361,12 +361,7 @@ void SBCFactory::onOoDRequest(const AmSipRequest& req)
   }
 
   if (!call_profile.refuse_with.empty()) {
-<<<<<<< HEAD
-    //oodHandlingTerminated(req, cc_modules, call_profile);
     if (logger) delete logger;
-=======
-    oodHandlingTerminated(req, cc_modules, call_profile);
->>>>>>> master
     if(call_profile.refuse(ctx, req) < 0) {
       throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
     }

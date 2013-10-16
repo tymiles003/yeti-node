@@ -557,7 +557,9 @@ void Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
 	Cdr *cdr = getCdr(ctx);
 	ctx->inc();
 	if(call->isALeg()){
-		replace(profile.msg_logger_path,"%ltag",call->getLocalTag());
+		string log_path = profile.get_logger_path();
+		replace(log_path,"%ltag",call->getLocalTag());
+		profile.set_logger_path(log_path);
 		cdr->update_sbc(profile);
 	}
 	cdr->update(*call);

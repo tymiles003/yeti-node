@@ -293,7 +293,7 @@ struct SBCCallProfile
   bool has_logger() { return logger.get() != NULL; }
   msg_logger* get_logger(const AmSipRequest& req);
   void set_logger_path(const std::string path) { msg_logger_path = path; }
-  const string &get_logger_path() { return msg_logger_path; }
+  const string &get_logger_path() const { return msg_logger_path; }
 
   SBCCallProfile()
   : auth_enabled(false),

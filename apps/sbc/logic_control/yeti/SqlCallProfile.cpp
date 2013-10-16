@@ -199,7 +199,7 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 	if (!readCodecPrefs(t)) return false;
 	if (!readTranscoder(t)) return false;
 
-	msg_logger_path = t["msg_logger_path"].c_str();
+	set_logger_path(t["msg_logger_path"].c_str());
 	log_rtp = t["log_rtp"].as<bool>(false);
 	log_sip = t["log_sip"].as<bool>(false);
 
