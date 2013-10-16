@@ -37,6 +37,8 @@
 #include "SDPFilter.h"
 #include "RegisterCache.h"
 
+#include "sip/pcap_logger.h"
+
 typedef vector<SdpPayload>::iterator PayloadIterator;
 static string payload2str(const SdpPayload &p);
 
@@ -174,6 +176,9 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
     return false;
 
   if (!readFilter(cfg, "sdp_filter", "sdpfilter_list", sdpfilter, true))
+    return false;
+
+  if (!readFilter(cfg, "media_filter", "mediafilter_list", mediafilter, true))
     return false;
 
   anonymize_sdp = cfg.getParameter("sdp_anonymize", "no") == "yes";
@@ -440,6 +445,12 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
     filter_elems = sdpalinesfilter.size() ? sdpalinesfilter.back().filter_list.size() : 0;
     INFO("SBC:      SDP alines-filter is %sabled, %s, %zd items in list\n",
 	 sdpalinesfilter.size()?"en":"dis", filter_type.c_str(), filter_elems);
+    
+    filter_type = mediafilter.size() ?
+      FilterType2String(mediafilter.back().filter_type) : "disabled";
+    filter_elems = mediafilter.size() ? mediafilter.back().filter_list.size() : 0;
+    INFO("SBC:      SDP filter is %sabled, %s, %zd items in list\n",
+	 mediafilter.size()?"en":"dis", filter_type.c_str(), filter_elems);
 
     INFO("SBC:      RTP relay %sabled\n", rtprelay_enabled?"en":"dis");
     if (rtprelay_enabled) {
@@ -565,6 +576,7 @@ bool SBCCallProfile::operator==(const SBCCallProfile& rhs) const {
     //messagefilter_list == rhs.messagefilter_list &&
     //sdpfilter_enabled == rhs.sdpfilter_enabled &&
     sdpfilter == rhs.sdpfilter &&
+    mediafilter == rhs.mediafilter &&
     sst_enabled == rhs.sst_enabled &&
     sst_aleg_enabled == rhs.sst_aleg_enabled &&
     auth_enabled == rhs.auth_enabled &&
@@ -734,6 +746,9 @@ bool SBCCallProfile::evaluate(ParamReplacerCtx& ctx,
   REPLACE_NONEMPTY_STR(from);
   REPLACE_NONEMPTY_STR(to);
   REPLACE_NONEMPTY_STR(callid);
+
+  REPLACE_NONEMPTY_STR(dlg_contact_params);
+  REPLACE_NONEMPTY_STR(bleg_dlg_contact_params);
 
   REPLACE_NONEMPTY_STR(outbound_proxy);
   REPLACE_NONEMPTY_STR(next_hop);
@@ -1536,6 +1551,32 @@ bool SBCCallProfile::TranscoderSettings::evaluate(ParamReplacerCtx& ctx,
   }
 
   return true;
+}
+
+void SBCCallProfile::create_logger(const AmSipRequest& req)
+{
+  if (msg_logger_path.empty()) return;
+
+  ParamReplacerCtx ctx(this);
+  string log_path = ctx.replaceParameters(msg_logger_path, "msg_logger_path", req);
+  if (log_path.empty()) return;
+
+  file_msg_logger *log = new pcap_logger();
+
+  if(log->open(log_path.c_str()) != 0) {
+    // open error
+    delete log;
+    return;
+  }
+
+  // opened successfully
+  logger.reset(log);
+}
+
+msg_logger* SBCCallProfile::get_logger(const AmSipRequest& req)
+{
+  if (!logger.get() && !msg_logger_path.empty()) create_logger(req);
+  return logger.get();
 }
 
 //////////////////////////////////////////////////////////////////////////////////

@@ -194,6 +194,8 @@ struct SdpMedia
   /** pretty print */
   string debugPrint() const;
 
+  static string type2str(int type);
+
   /**
    * Checks which payloads are compatible with the payload provider,
    * inserts them into the answer, compute send/recv attributes
@@ -201,6 +203,26 @@ struct SdpMedia
    */
   void calcAnswer(const AmPayloadProvider* payload_prov, 
 		  SdpMedia& answer) const;
+};
+
+/**
+ * \brief handling SDP attribute "rtcp"
+ */
+class RtcpAddress
+{
+  private:
+    string nettype, addrtype, address;
+    bool parse(const string &src);
+    int port;
+
+  public:
+    RtcpAddress(const string &attr_value);
+    bool hasAddress() { return !address.empty(); }
+    void setAddress(const string &addr) { address = addr; }
+    const string& getAddress() { return address; }
+    void setPort(int _port) { port = _port; }
+    int getPort() { return port; }
+    string print();
 };
 
 /**

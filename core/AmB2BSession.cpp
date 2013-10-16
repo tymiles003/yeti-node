@@ -126,7 +126,23 @@ void AmB2BSession::process(AmEvent* event)
   AmSession::process(event);
 }
 
-void AmB2BSession::relayError(const string &method, unsigned cseq, bool forward, int err_code)
+void AmB2BSession::finalize()
+{
+  // clean up relayed_req
+  if(!other_id.empty()) {
+    while(!relayed_req.empty()) {
+      TransMap::iterator it = relayed_req.begin();
+      const AmSipRequest& req = it->second;
+      relayError(req.method,req.cseq,true,481,SIP_REPLY_NOT_EXIST);
+      relayed_req.erase(it);
+    }
+  }
+
+  AmSession::finalize();
+}
+
+void AmB2BSession::relayError(const string &method, unsigned cseq,
+			      bool forward, int err_code)
 {
   if (method != "ACK") {
     AmSipReply n_reply;
@@ -169,10 +185,18 @@ void AmB2BSession::onB2BEvent(B2BEvent* ev)
 
       if(req_ev->forward){
 
+	// Check Max-Forwards first
+	if(req_ev->req.max_forwards == 0) {
+	  relayError(req_ev->req.method,req_ev->req.cseq,
+		     true,483,SIP_REPLY_TOO_MANY_HOPS);
+	  return;
+	}
+
 	if (req_ev->req.method == SIP_METH_INVITE &&
 	    dlg->getUACInvTransPending()) {
 	  // don't relay INVITE if INV trans pending
-          relayError(req_ev->req.method, req_ev->req.cseq, true, 491, SIP_REPLY_PENDING);
+          relayError(req_ev->req.method, req_ev->req.cseq,
+		     true, 491, SIP_REPLY_PENDING);
 	  return;
 	}
 
@@ -306,6 +330,25 @@ static bool parseSdp(AmSdp &dst, const AmSipReply &reply)
   return false;
 }
 
+bool AmB2BSession::getMappedReferID(unsigned int refer_id, 
+				    unsigned int& mapped_id) const
+{
+  map<unsigned int, unsigned int>::const_iterator id_it =
+    refer_id_map.find(refer_id);
+  if(id_it != refer_id_map.end()) {
+    mapped_id = id_it->second;
+    return true;
+  }
+
+  return false;
+}
+
+void AmB2BSession::insertMappedReferID(unsigned int refer_id,
+				       unsigned int mapped_id)
+{
+  refer_id_map[refer_id] = mapped_id;
+}
+
 void AmB2BSession::onSipRequest(const AmSipRequest& req)
 {
   bool fwd = sip_relay_only &&
@@ -345,6 +388,29 @@ void AmB2BSession::onSipRequest(const AmSipRequest& req)
 
   if (fwd) {
     DBG("relaying B2B SIP request (fwd) %s %s\n", r_ev->req.method.c_str(), r_ev->req.r_uri.c_str());
+
+    if(r_ev->req.method == SIP_METH_NOTIFY) {
+
+      string event = getHeader(r_ev->req.hdrs,SIP_HDR_EVENT,true);
+      string id = get_header_param(event,"id");
+      event = strip_header_params(event);
+
+      if(event == "refer" && !id.empty()) {
+
+	int id_int=0;
+	if(str2int(id,id_int)) {
+
+	  unsigned int mapped_id=0;
+	  if(getMappedReferID(id_int,mapped_id)) {
+
+	    removeHeader(r_ev->req.hdrs,SIP_HDR_EVENT);
+	    r_ev->req.hdrs += SIP_HDR_COLSP(SIP_HDR_EVENT) "refer;id=" 
+	      + int2str(mapped_id) + CRLF;
+	  }
+	}
+      }
+    }
+
     int res = relayEvent(r_ev);
     if (res == 0) {
       // successfuly relayed, store the request
@@ -353,7 +419,7 @@ void AmB2BSession::onSipRequest(const AmSipRequest& req)
     }
     else {
       // relay failed, generate error reply
-      ERROR("relay failed, replying error\n");
+      DBG("relay failed, replying error\n");
       AmSipReply n_reply;
       errCode2RelayedReply(n_reply, res, 500);
       dlg->reply(req, n_reply.code, n_reply.reason);
@@ -504,8 +570,17 @@ void AmB2BSession::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
     if(reply.code >= 200) {
       if ((reply.code < 300) && (t->second.method == SIP_METH_INVITE)) {
 	DBG("not removing relayed INVITE transaction yet...\n");
-      } else 
+      } else {
+	//grab cseq-mqpping in case of REFER
+	if((reply.code < 300) && (reply.cseq_method == SIP_METH_REFER)) {
+	  if(subs->subscriptionExists(SingleSubscription::Subscriber,
+				      "refer",int2str(reply.cseq))) {
+	    // remember mapping for refer event package event-id
+	    insertMappedReferID(reply.cseq,t->second.cseq);
+	  }
+	}
 	relayed_req.erase(t);
+      }
     }
   } else {
     AmSession::onSipReply(req, reply, old_dlg_status);
@@ -844,6 +919,7 @@ int AmB2BSession::relaySip(const AmSipRequest& orig, const AmSipReply& reply)
 {
   const string* hdrs = &reply.hdrs;
   string m_hdrs;
+  const string method(orig.method);
 
   if (reply.rseq != 0) {
     m_hdrs = reply.hdrs +
@@ -879,8 +955,8 @@ int AmB2BSession::relaySip(const AmSipRequest& orig, const AmSipReply& reply)
     return err;
   }
 
-  if ((orig.method == SIP_METH_INVITE ||
-       orig.method == SIP_METH_UPDATE) &&
+  if ((method == SIP_METH_INVITE ||
+       method == SIP_METH_UPDATE) &&
       !reply.body.empty()) {
     saveSessionDescription(reply.body);
   }

@@ -27,81 +27,6 @@ static SimpleRelayController simple_relay_ctrl;
 
 static const string zero_ip("0.0.0.0");
 
-//////////////////////////////////////////////////////////////////////////////////
-// handling SDP attribute "rtcp"
-
-class RtcpAddress
-{
-  private:
-    string nettype, addrtype, address;
-    bool parse(const string &src);
-    int port;
-
-  public:
-    RtcpAddress(const string &attr_value);
-    bool hasAddress() { return !address.empty(); }
-    void setAddress(const string &addr) { address = addr; }
-    void setPort(int _port) { port = _port; }
-    string print();
-};
-
-bool RtcpAddress::parse(const string &src)
-{
-  port = 0;
-  nettype.clear();
-  addrtype.clear();
-  address.clear();
-
-  int len = src.size();
-  if (len < 1) return false;
-
-  enum { PORT, NET_TYPE, ADDR_TYPE, ADDR } s = PORT;
-
-  // parsing (somehow) according to RFC 3605
-  //    rtcp-attribute =  "a=rtcp:" port  [nettype space addrtype space
-  //                             connection-address] CRLF
-  // nettype, addrtype is ignored
-  for (int i = 0; i < len; ++i) {
-    switch (s) {
-
-      case (PORT):
-        if (src[i] >= '0' && src[i] <= '9') port = port * 10 + (src[i] - '0');
-        else if (src[i] == ' ') s = NET_TYPE;
-        else return false; // error
-        break;
-
-      case NET_TYPE:
-          if (src[i] == ' ') s = ADDR_TYPE;
-          else nettype += src[i];
-          break;
-
-      case ADDR_TYPE:
-          if (src[i] == ' ') s = ADDR;
-          else addrtype += src[i];
-          break;
-
-      case ADDR:
-          address += src[i];
-          break;
-    }
-  }
-  return s == PORT ||
-    (s == ADDR && !address.empty()); // FIXME: nettype, addrtype and addr should be verified
-}
-
-string RtcpAddress::print()
-{
-  string s(int2str(port));
-  if (!address.empty())
-    s += " IN " + addrtype + " " + address;
-  return s;
-}
-
-RtcpAddress::RtcpAddress(const string &attr_value): port(0)
-{
-  if (!parse(attr_value)) throw runtime_error("can't parse rtcp attribute value");
-}
-
 static void replaceRtcpAttr(SdpMedia &m, const string& relay_address, int rtcp_port)
 {
   for (std::vector<SdpAttribute>::iterator a = m.attributes.begin(); a != m.attributes.end(); ++a) {
@@ -600,6 +525,8 @@ void AmB2BMedia::changeSessionUnsafe(bool a_leg, AmB2BSession *new_session)
   if (a_leg) a = new_session;
   else b = new_session;
 
+  bool needs_processing = a && b && a->getRtpRelayMode() == AmB2BSession::RTP_Transcoding;
+
   // update all streams
   for (AudioStreamIterator i = audio.begin(); i != audio.end(); ++i) {
     // stop processing first to avoid unexpected results
@@ -644,6 +571,8 @@ void AmB2BMedia::changeSessionUnsafe(bool a_leg, AmB2BSession *new_session)
       }
     }
 
+    if (i->requiresProcessing()) needs_processing = true;
+
     // reset logger (needed if a stream changes)
     i->setLogger(logger);
 
@@ -671,6 +600,14 @@ void AmB2BMedia::changeSessionUnsafe(bool a_leg, AmB2BSession *new_session)
     if (b.hasLocalSocket())
       AmRtpReceiver::instance()->addStream(b.getLocalSocket(), &b);*/
   }
+
+  if (needs_processing) {
+    if (!isProcessingMedia()) {
+      ref_cnt++; // add reference (hold by AmMediaProcessor)
+      AmMediaProcessor::instance()->addSession(this, callgroup);
+    }
+  }
+  else if (isProcessingMedia()) AmMediaProcessor::instance()->removeSession(this);
 
   TRACE("session changed\n");
 }
@@ -755,7 +692,7 @@ void AmB2BMedia::clearRTPTimeout()
   }
 }
 
-static bool canRelay(const SdpMedia &m)
+bool AmB2BMedia::canRelay(const SdpMedia &m)
 {
   return (m.transport == TP_RTPAVP) ||
     (m.transport == TP_RTPSAVP) ||
@@ -964,6 +901,8 @@ void AmB2BMedia::onSdpUpdate()
 
   TRACE("starting media processing\n");
 
+  bool needs_processing = a && b && a->getRtpRelayMode() == AmB2BSession::RTP_Transcoding;
+
   // initialize streams to be able to relay & transcode (or use local audio)
   for (AudioStreamIterator i = audio.begin(); i != audio.end(); ++i) {
     i->a.stopStreamProcessing();
@@ -983,19 +922,24 @@ void AmB2BMedia::onSdpUpdate()
       i->b.initStream(playout_type, b_leg_local_sdp, b_leg_remote_sdp, i->media_idx);
     }
 
+    if (i->requiresProcessing()) needs_processing = true;
+
     i->a.resumeStreamProcessing();
     i->b.resumeStreamProcessing();
   }
 
-  // start media processing (FIXME: only if transcoding or regular audio
-  // processing required?)
+  // start media processing (only if transcoding or regular audio processing
+  // required)
   // Note: once we send local SDP to the other party we have to expect RTP but
   // we need to be fully initialised (both legs) before we can correctly handle
   // the media, right?
-  if (!isProcessingMedia()) {
-    ref_cnt++; // add reference (hold by AmMediaProcessor)
-    AmMediaProcessor::instance()->addSession(this, callgroup);
+  if (needs_processing) {
+    if (!isProcessingMedia()) {
+      ref_cnt++; // add reference (hold by AmMediaProcessor)
+      AmMediaProcessor::instance()->addSession(this, callgroup);
+    }
   }
+  else if (isProcessingMedia()) AmMediaProcessor::instance()->removeSession(this);
 }
 
 static void updateRelayStream(AmRtpStream *stream,

@@ -282,6 +282,7 @@ class AmB2BMedia: public AmMediaSession
       int media_idx;
       AudioStreamPair(AmB2BSession *_a, AmB2BSession *_b, int _media_idx): a(_a), b(_b), media_idx(_media_idx) { }
       void setLogger(msg_logger *logger) { a.setLogger(logger); b.setLogger(logger); }
+      bool requiresProcessing() { return a.getInput() || b.getInput(); }
     };
 
     struct RelayStreamPair {
@@ -360,6 +361,8 @@ class AmB2BMedia: public AmMediaSession
     bool releaseReference() { mutex.lock(); int r = --ref_cnt; mutex.unlock(); return (r == 0); }
 
     // ----------------- SDP manipulation & updates -------------------
+
+    static bool canRelay(const SdpMedia &m);
 
     /** Replace connection address and ports within SDP.
      *

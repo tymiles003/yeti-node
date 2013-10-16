@@ -290,6 +290,9 @@ void SBCCallLeg::applyAProfile()
     // copy stats counters
     rtp_pegs = call_profile.aleg_rtp_counters;
   }
+
+  if(!call_profile.dlg_contact_params.empty())
+    dlg->setContactParams(call_profile.dlg_contact_params);
 }
 
 int SBCCallLeg::applySSTCfg(AmConfigReader& sst_cfg, 
@@ -397,10 +400,19 @@ void SBCCallLeg::applyBProfile()
   // was read from caller but reading directly from profile now
   if (!call_profile.callid.empty()) 
     dlg->setCallid(call_profile.callid);
+
+  if(!call_profile.bleg_dlg_contact_params.empty())
+    dlg->setContactParams(call_profile.bleg_dlg_contact_params);
 }
 
 int SBCCallLeg::relayEvent(AmEvent* ev)
 {
+  for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
+    int res = (*i)->relayEvent(this, ev);
+    if (res > 0) return 0;
+    if (res < 0) return res;
+  }
+
     switch (ev->event_id) {
       case B2BSipRequest:
         {
@@ -418,7 +430,15 @@ int SBCCallLeg::relayEvent(AmEvent* ev)
           // todo: handle filtering errors
 
           int res = filterSdp(req_ev->req.body, req_ev->req.method);
-          if (res < 0) return res;
+          if (res < 0) {
+            delete ev; // failed relayEvent should destroy the event
+            return res;
+          }
+
+	  if((a_leg && call_profile.keep_vias)
+	     || (!a_leg && call_profile.bleg_keep_vias)) {
+	    req_ev->req.hdrs = req_ev->req.vias + req_ev->req.hdrs;
+	  }
         }
         break;
 
@@ -528,6 +548,14 @@ void SBCCallLeg::setOtherId(const AmSipReply& reply)
   if(call_profile.transparent_dlg_id && !reply.to_tag.empty()) {
     dlg->setExtLocalTag(reply.to_tag);
   }
+}
+
+void SBCCallLeg::onInitialReply(B2BSipReplyEvent *e)
+{
+  if (call_profile.transparent_dlg_id && !e->reply.to_tag.empty()) {
+    dlg->setExtLocalTag(e->reply.to_tag);
+  }
+  CallLeg::onInitialReply(e);
 }
 
 void SBCCallLeg::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
@@ -915,6 +943,9 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
 
   // prepare request to relay to the B leg(s)
 
+  if(a_leg && call_profile.keep_vias)
+    invite_req.hdrs = invite_req.vias + invite_req.hdrs;
+  
   est_invite_cseq = req.cseq;
 
   removeHeader(invite_req.hdrs,PARAM_HDR);
@@ -1131,15 +1162,13 @@ bool SBCCallLeg::CCStart(const AmSipRequest& req) {
 
       return false;
     }
-/*
-    if (!logger && !call_profile.msg_logger_path.empty()) {
+
+    if (!logger) {
       // open the logger if not already opened
-      ParamReplacerCtx ctx(&call_profile);
-      string log_path = ctx.replaceParameters(call_profile.msg_logger_path,
-					      "msg_logger_path",req);
-      if (openLogger(log_path)) logRequest(req);
+      msg_logger *l = call_profile.get_logger(req);
+      if (l) setLogger(l);
     }
-*/
+
     // evaluate ret
     if (isArgArray(ret)) {
       for (size_t i=0;i<ret.size();i++) {
@@ -1436,6 +1465,18 @@ int SBCCallLeg::filterSdp(AmMimeBody &body, const string &method)
     changed = true;
   }
 
+  if (!call_profile.mediafilter.empty()) {
+    res = filterMedia(sdp, call_profile.mediafilter);
+    if (res < 0) {
+      // result may be ignored, we need to set the SDP
+      string n_body;
+      sdp.print(n_body);
+      sdp_body->setPayload((const unsigned char*)n_body.c_str(), n_body.length());
+      return res;
+    }
+    changed = true;
+  }
+
   if (prefer_existing_codecs) {
     // We have to order payloads before adding transcoder codecs to leave
     // transcoding as the last chance (existing codecs are preferred thus
@@ -1600,40 +1641,6 @@ bool SBCCallLeg::reinvite(const AmSdp &sdp, unsigned &request_cseq)
   return true;
 }
 
-void SBCCallLeg::changeRtpMode(RTPRelayMode new_mode)
-{
-  if (new_mode == rtp_relay_mode) return; // requested mode is set already
-
-  if (!((getCallStatus() == CallLeg::Connected) ||
-        (getCallStatus() == CallLeg::Disconnecting) ||
-        (getCallStatus() == CallLeg::Disconnected))) {
-    ERROR("BUG: changeRtpMode supported for established/disconnecting/disconnected calls only\n");
-    return;
-  }
-
-  clearRtpReceiverRelay();
-
-  // we don't need to send reINVITE from here, expecting caller knows what is he
-  // doing (it is probably processing or generating its own reINVITE)
-  // Switch from RTP_Direct to RTP_Relay is safe (no audio loss), the other can
-  // be lossy because already existing media object would be destroyed.
-  // FIXME: use AmB2BMedia in all RTP relay modes to avoid these problems?
-
-  switch (new_mode) {
-  case RTP_Relay:
-  case RTP_Transcoding:
-      setMediaSession(new AmB2BMedia(a_leg ? this: NULL, a_leg ? NULL : this));
-      break;
-
-  case RTP_Direct:
-      break;
-  }
-
-  if (!getOtherId().empty())
-    relayEvent(new ChangeRtpModeEvent(new_mode, getMediaSession()));
-  setRtpRelayMode(new_mode);
-}
-
 void SBCCallLeg::initCCExtModules()
 {
   // init extended call control modules
@@ -1664,32 +1671,6 @@ void SBCCallLeg::initCCExtModules()
 
     ++cc_mod;
   }
-}
-
-void SBCCallLeg::onB2BEvent(B2BEvent* ev)
-{
-  if (ev->event_id == ChangeRtpModeEventId) {
-    ChangeRtpModeEvent *e = dynamic_cast<ChangeRtpModeEvent*>(ev);
-    if (e) {
-      if (e->new_mode == rtp_relay_mode) return; // requested mode is set already
-
-      clearRtpReceiverRelay();
-
-      switch (e->new_mode) {
-      case RTP_Relay:
-      case RTP_Transcoding:
-          setMediaSession(e->media);
-          if (e->media) getMediaSession()->changeSession(a_leg, this);
-          break;
-
-      case RTP_Direct:
-          break;
-      }
-      setRtpRelayMode(e->new_mode);
-    }
-  }
-
-  CallLeg::onB2BEvent(ev);
 }
 
 void SBCCallLeg::putOnHold()
@@ -1762,18 +1743,4 @@ void SBCCallLeg::setLogger(msg_logger *_logger)
     if (call_profile.log_rtp) m->setRtpLogger(logger);
     else m->setRtpLogger(NULL);
   }
-}
-
-void SBCCallLeg::logRequest(const AmSipRequest &req)
-{
-  if (!call_profile.log_sip || !logger) return;
-
-  req.tt.lock_bucket();
-  const sip_trans* t = req.tt.get_trans();
-  if (t) {
-    sip_msg* msg = t->msg;
-    logger->log(msg->buf,msg->len,&msg->remote_ip,
-        &msg->local_ip,msg->u.request->method_str);
-  }
-  req.tt.unlock_bucket();
 }

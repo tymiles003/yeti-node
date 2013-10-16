@@ -83,8 +83,7 @@ class SBCFactory: public AmSessionFactory,
 
   bool CCRoute(const AmSipRequest& req,
 	       vector<AmDynInvoke*>& cc_modules,
-	       SBCCallProfile& call_profile,
-               msg_logger *&logger);
+	       SBCCallProfile& call_profile);
 
  public:
   DECLARE_MODULE_INSTANCE(SBCFactory);

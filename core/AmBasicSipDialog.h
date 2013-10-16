@@ -95,6 +95,8 @@ protected:
   string remote_tag;
   string first_branch;
 
+  string contact_params; // params in Contact-HF
+
   string user;         // local user
   string domain;       // local domain
 
@@ -181,6 +183,16 @@ protected:
   virtual bool onRxReplyStatus(const AmSipReply& reply, 
 			       TransMap::iterator t_uac_it);
 
+  /**
+   * Terminate pending UAS transactions
+   */
+  virtual void termUasTrans();
+
+  /**
+   * Terminate pending UAC transactions
+   */
+  virtual void termUacTrans();
+
 public:
 
   string outbound_proxy;
@@ -238,6 +250,10 @@ public:
   const string& getExtLocalTag() const { return ext_local_tag; }
   virtual void setExtLocalTag(const string& new_ext_tag)
   { ext_local_tag = new_ext_tag; }
+
+  const string& getContactParams() const { return contact_params; }
+  virtual void setContactParams(const string& new_contact_params)
+  { contact_params = new_contact_params; }
 
   const string& getUser() const { return user; }
   virtual void setUser(const string& new_user)
@@ -349,6 +365,14 @@ public:
 			  const AmMimeBody* body = NULL,
 			  const string& hdrs = "",
 			  int flags = 0);
+
+  /**
+   * Terminates pending UAS/UAC transactions
+   */
+  virtual void finalize() {
+    termUasTrans();
+    termUacTrans();
+  }
 
   /**
    * This method should only be used to send responses

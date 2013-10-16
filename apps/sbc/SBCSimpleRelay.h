@@ -49,14 +49,12 @@ class SimpleRelayDialog
   atomic_ref_cnt*     parent_obj;
   string              other_dlg;
 
-  typedef map<unsigned int,unsigned int> RelayMap;
-  RelayMap relayed_reqs;
-
   // mediation stuff
   vector<FilterEntry>  headerfilter;
   string               append_headers;
   ReplyTranslationMap  reply_translations;
   bool                 transparent_dlg_id;
+  bool                 keep_vias;
 
   bool finished;
 
@@ -71,6 +69,9 @@ class SimpleRelayDialog
   int relayReply(const AmSipReply& reply);
 
 protected:
+  typedef map<unsigned int,unsigned int> RelayMap;
+  RelayMap relayed_reqs;
+
   // AmEventHandler
   void process(AmEvent* ev);
 
@@ -104,6 +105,14 @@ public:
 
   const string& getOtherDlg() {
     return other_dlg;
+  }
+
+  void setKeepVias(bool kv) {
+    keep_vias = kv;
+  }
+
+  bool getKeepVias() {
+    return keep_vias;
   }
 
   vector<FilterEntry>&  getHeaderFilter() { return headerfilter; }

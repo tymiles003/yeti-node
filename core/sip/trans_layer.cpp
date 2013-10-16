@@ -397,7 +397,7 @@ int _trans_layer::send_reply(const trans_ticket* tt, const cstring& dialog_id,
 
     int err = -1;
 
-    // TODO: Inspect topmost 'Via' and select proper addr (+resolve DNS names)
+    // Inspect topmost 'Via' and select proper addr (TODO: resolve DNS names)
     // refs: RFC3261 18.2.2; RFC3581
 
     sockaddr_storage remote_ip;
@@ -460,6 +460,8 @@ int _trans_layer::send_reply(const trans_ticket* tt, const cstring& dialog_id,
 	t->reset_timer(STIMER_J,J_TIMER,bucket->get_id()); 
 	goto end;
     }
+
+    stats.inc_sent_replies();
 
     if (t->retr_buf) {
 	// delete old retry-buffer 
@@ -648,6 +650,8 @@ int _trans_layer::send_sl_reply(sip_msg* req, int reply_code,
 
     int err = req->local_socket->send(&req->remote_ip,reply_buf,reply_len);
     delete [] reply_buf;
+
+    stats.inc_sent_replies();
 
     return err;
 }
@@ -934,7 +938,8 @@ static int generate_and_parse_new_msg(sip_msg* msg, sip_msg*& p_msg)
     // add 'rport' parameter defaultwise? yes, for now
     request_len += via_len(stl2cstr(via),branch,true);
  
-    request_len += copy_hdrs_len(msg->hdrs);
+    request_len += copy_hdrs_len(msg->vias);
+    request_len += copy_hdrs_len_no_via(msg->hdrs);
      
     string content_len = int2str(msg->body.len);
      
@@ -957,7 +962,8 @@ static int generate_and_parse_new_msg(sip_msg* msg, sip_msg*& p_msg)
  		    msg->u.request->ruri_str);
  
     via_wr(&c,stl2cstr(via),branch,true);
-    copy_hdrs_wr(&c,msg->hdrs);
+    copy_hdrs_wr(&c,msg->vias);
+    copy_hdrs_wr_no_via(&c,msg->hdrs);
  
     content_length_wr(&c,stl2cstr(content_len));
  
@@ -1121,6 +1127,8 @@ int _trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 	delete p_msg;
     }
     else {
+        stats.inc_sent_requests();
+
 	// save parsed method, as update_uac_request
 	// might delete p_msg, and msg->u.request->method is not set
 	int method = p_msg->u.request->method;
@@ -1302,6 +1310,7 @@ int _trans_layer::cancel(trans_ticket* tt, const cstring& hdrs)
 	delete p_msg;
     }
     else {
+        stats.inc_sent_requests(); // ?
 
 	sip_trans* cancel_t=NULL;
 	send_err = update_uac_request(bucket,cancel_t,p_msg);
@@ -1382,6 +1391,7 @@ void _trans_layer::received_msg(sip_msg* msg)
 
     switch(msg->type){
     case SIP_REQUEST: 
+        stats.inc_received_requests();
 	
 	if((t = bucket->match_request(msg,TT_UAS)) != NULL){
 
@@ -1480,6 +1490,7 @@ void _trans_layer::received_msg(sip_msg* msg)
 	break;
     
     case SIP_REPLY:
+        stats.inc_received_replies();
 
 	if((t = bucket->match_reply(msg)) != NULL){
 
@@ -1945,6 +1956,7 @@ void _trans_layer::send_non_200_ack(sip_msg* reply, sip_trans* t)
     if(send_err < 0){
 	ERROR("Error from transport layer\n");
     }
+    else stats.inc_sent_requests();
     
     if(t->logger) {
 	sockaddr_storage src_ip;
@@ -1968,6 +1980,7 @@ void _trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
 
 	n++;
 	tr->msg->send();
+        stats.inc_sent_request_retrans();
 	
 	if(tr->logger) {
 	    sockaddr_storage src_ip;
@@ -2092,11 +2105,13 @@ void _trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
 	    
 	    // re-transmit reply to INV
 	    tr->retransmit();
+            stats.inc_sent_reply_retrans();
 	}
 	else {
 
 	    // re-transmit request
 	    tr->msg->send();
+            stats.inc_sent_request_retrans();
 
 	    if(tr->logger) {
 		sockaddr_storage src_ip;
@@ -2238,6 +2253,8 @@ int _trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr)
 	    tr->msg = p_msg;
 	}		
     }
+   
+    stats.inc_sent_requests();
 
     // and re-send
     tr->msg->send();
@@ -2296,6 +2313,11 @@ const sip_trans* trans_ticket::get_trans() const
 	return _t; 
     else 
 	return NULL; 
+}
+
+void trans_ticket::remove_trans()
+{
+    _bucket->remove(_t);
 }
 
 /** EMACS **

@@ -61,7 +61,6 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
   /** common logger for RTP/RTCP and SIP packets */
   msg_logger *logger;
 
-  void logRequest(const AmSipRequest &req);
   void setLogger(msg_logger *_logger);
 
   void fixupCCInterface(const string& val, CCInterface& cc_if);
@@ -120,7 +119,6 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
   ~SBCCallLeg();
 
   void process(AmEvent* ev);
-  void onB2BEvent(B2BEvent* ev);
   void onInvite(const AmSipRequest& req);
 
   void onDtmf(int event, int duration);
@@ -171,7 +169,7 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
   AmB2BMedia *getMediaSession() { return AmB2BSession::getMediaSession(); }
   virtual bool updateLocalSdp(AmSdp &sdp);
   virtual bool updateRemoteSdp(AmSdp &sdp);
-  void changeRtpMode(RTPRelayMode new_mode);
+  void changeRtpMode(RTPRelayMode new_mode) { CallLeg::changeRtpMode(new_mode); }
 
   bool reinvite(const AmSdp &sdp, unsigned &request_cseq);
 
@@ -202,6 +200,8 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
 
   void onSipReply(const AmSipRequest& req, const AmSipReply& reply, AmSipDialog::Status old_dlg_status);
   void onSendRequest(AmSipRequest& req, int &flags);
+
+  virtual void onInitialReply(B2BSipReplyEvent *e);
 
   void onRemoteDisappeared(const AmSipReply& reply);
   void onBye(const AmSipRequest& req);

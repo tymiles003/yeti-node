@@ -139,6 +139,9 @@ private:
   /** local tag of the other leg */
   string other_id;
 
+  /** CSeq map for REFER subscriptions */
+  map<unsigned int, unsigned int> refer_id_map;
+
  protected:
   /** Tell if the session should
    *  process SIP request itself
@@ -155,7 +158,7 @@ private:
   TransMap relayed_req;
 
   /** Requests received for relaying */
-  std::map<int,AmSipRequest> recvd_req;
+  TransMap recvd_req;
 
   /** CSeq of the INVITE that established this call */
   unsigned int est_invite_cseq;
@@ -226,6 +229,9 @@ private:
   /** @see AmEventQueue */
   void process(AmEvent* event);
 
+  /** @see AmEventQueue */
+  void finalize();
+
   /** B2BEvent handler */
   virtual void onB2BEvent(B2BEvent* ev);
 
@@ -275,6 +281,13 @@ private:
   /** Passes remote SDP to AmB2BMediaSession, might be redefined to provide
    * another functionality than just simply passing SDP */
   virtual bool updateRemoteSdp(AmSdp &sdp);
+
+  /**
+   * Returns true and sets mapped_id if refer_id corresponds to an existing
+   * refer event subscription which has been relayed.
+   */
+  bool getMappedReferID(unsigned int refer_id, unsigned int& mapped_id) const;
+  virtual void insertMappedReferID(unsigned int refer_id, unsigned int mapped_id);
 
  public:
 

@@ -76,6 +76,9 @@ int SimpleRelayDialog::relayRequest(const AmSipRequest& req)
   if(headerfilter.size()) inplaceHeaderFilter(hdrs, headerfilter);
   if(!append_headers.empty()) hdrs += append_headers;
 
+  if(keep_vias)
+    hdrs = req.vias + hdrs;
+
   if(sendRequest(req.method,&req.body,hdrs,SIP_FLAGS_VERBATIM)) {
 
     AmSipReply error;
@@ -162,6 +165,7 @@ void SimpleRelayDialog::process(AmEvent* ev)
 
   B2BEvent* b2b = dynamic_cast<B2BEvent*>(ev);
   if(b2b && b2b->event_id == B2BTerminateLeg){
+    DBG("received terminate event from other leg");
     terminate();
     return;
   }
@@ -197,6 +201,8 @@ bool SimpleRelayDialog::processingCycle()
 
 void SimpleRelayDialog::finalize()
 {
+  AmBasicSipDialog::finalize();
+
   for (list<CCModuleInfo>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
     i->module->finalize(i->user_data);
   }
@@ -359,6 +365,10 @@ int SimpleRelayDialog::initUAC(const AmSipRequest& req,
   headerfilter = cp.headerfilter;
   reply_translations = cp.reply_translations;
   append_headers = cp.append_headers_req;
+  keep_vias = cp.keep_vias;
+
+  if(!cp.bleg_dlg_contact_params.empty())
+    setContactParams(cp.bleg_dlg_contact_params);
 
   return 0;
 }
@@ -386,6 +396,10 @@ int SimpleRelayDialog::initUAS(const AmSipRequest& req,
   reply_translations = cp.reply_translations;
   append_headers = cp.aleg_append_headers_req;
   transparent_dlg_id = cp.transparent_dlg_id;
+  keep_vias = cp.bleg_keep_vias;
+
+  if(!cp.dlg_contact_params.empty())
+    setContactParams(cp.dlg_contact_params);
 
   return 0;
 }

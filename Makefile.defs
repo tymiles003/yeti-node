@@ -23,13 +23,14 @@ REL_VERSION := $(VERSION).$(PATCHLEVEL).$(SUBLEVEL)
 RELEASE := $(REL_VERSION)$(EXTRAVERSION)
 endif
 
-APP_NAME=sems
+APP_NAME ?= sems
 
 CPPFLAGS += -D_DEBUG \
 	  -D_THREAD_SAFE -D_REENTRANT \
 	  -DSEMS_VERSION='"$(RELEASE)"' -DARCH='"$(ARCH)"'\
 	  -DOS='"$(OS)"' 	\
-	  -DSYSTEM_SAMPLECLOCK_RATE=32000LL
+	  -DSYSTEM_SAMPLECLOCK_RATE=32000LL \
+          -DSEMS_APP_NAME='"$(APP_NAME)"'
 #         -DMAX_RTP_SESSIONS=8192 \
 #	  -DSUPPORT_IPV6 \
 #	  -DNO_THREADID_LOG \
@@ -93,6 +94,11 @@ LONG_DEBUG_MESSAGE=yes
 # Is this a debug build or not?
 debug=no
 
+# Propagate all unparsed SIP headers into AmSipReply. Disabled by default
+# because only special applications might need this and it brings higher memory
+# demands and affects performance.
+#PROPAGATE_UNPARSED_REPLY_HEADERS=no
+
 
 ################### end of configuration section #######################
 
@@ -121,6 +127,9 @@ ifndef LONG_DEBUG_MESSAGE
 CPPFLAGS += -DLOG_BUFFER_LEN=2048
 endif
 
+ifeq ($(PROPAGATE_UNPARSED_REPLY_HEADERS),yes)
+CPPFLAGS += -DPROPAGATE_UNPARSED_REPLY_HEADERS
+endif
 
 # Additions for Solaris support.
 ifeq ($(OS),solaris)
@@ -151,8 +160,6 @@ CXX = g++
 CC = gcc
 LD = $(CC)
 
-#CXXFLAGS += -Wall -Wno-reorder -Wno-unused -fPIC -g -fno-inline $(EXTRA_CXXFLAGS)
-#CFLAGS   += -Wall -fPIC -g -fno-inline $(EXTRA_CFLAGS)
 CXXFLAGS += -Wall -Wno-reorder -Wno-unused -fPIC -g $(EXTRA_CXXFLAGS)
 CFLAGS   += -Wall -fPIC -g $(EXTRA_CFLAGS)
 

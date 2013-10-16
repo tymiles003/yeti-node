@@ -39,6 +39,8 @@ AmBasicSipDialog::AmBasicSipDialog(AmBasicSipEventHandler* h)
 
 AmBasicSipDialog::~AmBasicSipDialog()
 {
+  termUasTrans();
+  termUacTrans();
   if (logger) dec_ref(logger);
   dump();
 }
@@ -103,15 +105,18 @@ string AmBasicSipDialog::getContactHdr()
   if(!ext_local_tag.empty()) {
     contact_uri += local_tag + "@";
   }
-    
+
   int oif = getOutboundIf();
   assert(oif >= 0);
   assert(oif < (int)AmConfig::SIP_Ifs.size());
   
-  contact_uri += (AmConfig::SIP_Ifs[oif].PublicIP.empty() ?
-		  AmConfig::SIP_Ifs[oif].LocalIP :
-		  AmConfig::SIP_Ifs[oif].PublicIP);
+  contact_uri += AmConfig::SIP_Ifs[oif].getIP();
   contact_uri += ":" + int2str(AmConfig::SIP_Ifs[oif].LocalPort);
+
+  if(!contact_params.empty()) {
+    contact_uri += ";" + contact_params;
+  }
+
   contact_uri += ">" CRLF;
 
   return contact_uri;
@@ -298,12 +303,9 @@ void AmBasicSipDialog::onRxRequest(const AmSipRequest& req)
   DBG("AmBasicSipDialog::onRxRequest(req = %s)\n", req.method.c_str());
 
   if(logger && (req.method != SIP_METH_ACK)) {
-    req.tt.lock_bucket();
-    const sip_trans* t = req.tt.get_trans();
-    sip_msg* msg = t->msg;
-    logger->log(msg->buf,msg->len,&msg->remote_ip,
-		&msg->local_ip,msg->u.request->method_str);
-    req.tt.unlock_bucket();
+    // log only non-initial received requests, the initial one is already logged
+    // or will be logged at application level (problem with SBCSimpleRelay)
+    if (!callid.empty()) req.log(logger);
   }
 
   if(!onRxReqSanity(req))
@@ -380,6 +382,37 @@ bool AmBasicSipDialog::onRxReplyStatus(const AmSipReply& reply,
   }
   
   return true;
+}
+
+void AmBasicSipDialog::termUasTrans()
+{
+  while(!uas_trans.empty()) {
+
+    TransMap::iterator it = uas_trans.begin();
+    int req_cseq = it->first;
+    const AmSipRequest& req = it->second;
+    DBG("terminating UAS transaction (%u %s)",req.cseq,req.cseq_method.c_str());
+
+    reply(req,481,SIP_REPLY_NOT_EXIST);
+
+    it = uas_trans.find(req_cseq);
+    if(it != uas_trans.end())
+      uas_trans.erase(it);
+  }
+}
+
+void AmBasicSipDialog::termUacTrans()
+{
+  while(!uac_trans.empty()) {
+    TransMap::iterator it = uac_trans.begin();
+    trans_ticket& tt = it->second.tt;
+
+    tt.lock_bucket();
+    tt.remove_trans();
+    tt.unlock_bucket();
+
+    uac_trans.erase(it);
+  }
 }
 
 void AmBasicSipDialog::onRxReply(const AmSipReply& reply)
@@ -557,7 +590,7 @@ int AmBasicSipDialog::reply(const AmSipRequest& req,
       reply.hdrs += SIP_HDR_COLSP(SIP_HDR_SERVER) + AmConfig::Signature + CRLF;
   }
 
-  if ((code < 300) && !(flags & SIP_FLAGS_NOCONTACT)) {
+  if ((code > 100 && code < 300) && !(flags & SIP_FLAGS_NOCONTACT)) {
     /* if 300<=code<400, explicit contact setting should be done */
     reply.contact = getContactHdr();
   }
@@ -651,9 +684,6 @@ int AmBasicSipDialog::sendRequest(const string& method,
     // add Signature
     if (AmConfig::Signature.length())
       req.hdrs += SIP_HDR_COLSP(SIP_HDR_USER_AGENT) + AmConfig::Signature + CRLF;
-    
-    req.hdrs += SIP_HDR_COLSP(SIP_HDR_MAX_FORWARDS) + 
-      int2str(AmConfig::MaxForwards) + CRLF;
   }
 
   int res = SipCtrlInterface::send(req, local_tag,

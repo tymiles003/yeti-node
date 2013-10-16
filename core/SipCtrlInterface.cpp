@@ -206,10 +206,10 @@ int _SipCtrlInterface::send(AmSipRequest &req, const string& dialog_id,
     string cseq = int2str(req.cseq)
 	+ " " + req.method;
 
-    msg->cseq = new sip_header(0,"CSeq",stl2cstr(cseq));
+    msg->cseq = new sip_header(0,SIP_HDR_CSEQ,stl2cstr(cseq));
     msg->hdrs.push_back(msg->cseq);
 
-    msg->callid = new sip_header(0,"Call-ID",stl2cstr(req.callid));
+    msg->callid = new sip_header(0,SIP_HDR_CALL_ID,stl2cstr(req.callid));
     msg->hdrs.push_back(msg->callid);
 
     if(!req.contact.empty()){
@@ -235,6 +235,13 @@ int _SipCtrlInterface::send(AmSipRequest &req, const string& dialog_id,
 	    return -1;
 	}
     }
+
+    if(req.max_forwards < 0) {
+	req.max_forwards = AmConfig::MaxForwards;
+    }
+
+    string mf = int2str(req.max_forwards);
+    msg->hdrs.push_back(new sip_header(0,SIP_HDR_MAX_FORWARDS,stl2cstr(mf)));
 
     if(!req.hdrs.empty()) {
 	
@@ -410,9 +417,9 @@ inline bool _SipCtrlInterface::sip_msg2am_request(const sip_msg *msg,
 
     if(get_contact(msg) && get_contact(msg)->value.len){
 
+	sip_nameaddr na;
 	cstring contact = get_contact(msg)->value;
-	list<cstring> contact_list;
-	if(parse_nameaddr_list(contact_list,contact.s,contact.len) < 0) {
+	if(parse_first_nameaddr(&na,contact.s,contact.len) < 0) {
 	    WARN("Contact parsing failed\n");
 	    WARN("\tcontact = '%.*s'\n",contact.len,contact.s);
 	    WARN("\trequest = '%.*s'\n",msg->len,msg->buf);
@@ -422,34 +429,8 @@ inline bool _SipCtrlInterface::sip_msg2am_request(const sip_msg *msg,
 	    return false;
 	}
 
-	for(list<cstring>::iterator it = contact_list.begin();
-	    it != contact_list.end(); it++) {
-	    
-	    DBG("single contact = '%.*s'\n", it->len,it->s);
-	}
-
-	cstring contact_na = *contact_list.begin();
-
-	sip_nameaddr na;
-	const char* c = contact_na.s;
-	if((contact_na.len == 1) || (*c == '*')) {
-	    if(contact_list.size() != 1) {
-		trans_layer::instance()->
-		    send_sf_error_reply(&tt, msg, 400, "Bad Contact");
-		return false;
-	    }
-	    req.contact = "*";
-	}
-	else if(parse_nameaddr(&na,&c,contact_na.len) < 0){
-	    DBG("Contact parsing failed\n");
-	    DBG("\tcontact = '%.*s'\n",contact_na.len,contact_na.s);
-	    DBG("\trequest = '%.*s'\n",msg->len,msg->buf);
-
-	    trans_layer::instance()->
-		send_sf_error_reply(&tt, msg, 400, "Bad Contact");
-	    return false;
-	}
-	else {
+	const char* c = na.addr.s;
+	if((na.addr.len != 1) || (*c != '*')) {
 	    sip_uri u;
 	    if(parse_uri(&u,na.addr.s,na.addr.len)){
 		DBG("'Contact' in new request contains a malformed URI\n");
@@ -462,14 +443,14 @@ inline bool _SipCtrlInterface::sip_msg2am_request(const sip_msg *msg,
 	    }
 
 	    req.from_uri = c2stlstr(na.addr);
+	}
 
-	    list<sip_header*>::const_iterator c_it = msg->contacts.begin();
-	    req.contact = c2stlstr((*c_it)->value);
-	    ++c_it;
-	    
-	    for(;c_it!=msg->contacts.end(); ++c_it){
-		req.contact += ", " + c2stlstr((*c_it)->value);
-	    }
+	list<sip_header*>::const_iterator c_it = msg->contacts.begin();
+	req.contact = c2stlstr((*c_it)->value);
+	++c_it;
+
+	for(;c_it!=msg->contacts.end(); ++c_it){
+	    req.contact += ", " + c2stlstr((*c_it)->value);
 	}
     }
     else {
@@ -478,6 +459,7 @@ inline bool _SipCtrlInterface::sip_msg2am_request(const sip_msg *msg,
 	    DBG("\trequest = '%.*s'\n",msg->len,msg->buf);
 	    trans_layer::instance()->
 		send_sf_error_reply(&tt, msg, 400, "Missing Contact-HF");
+	    return false;
 	}
     }
     
@@ -523,14 +505,30 @@ inline bool _SipCtrlInterface::sip_msg2am_request(const sip_msg *msg,
     for (list<sip_header *>::const_iterator it = msg->hdrs.begin(); 
 	 it != msg->hdrs.end(); ++it) {
 
-	if((*it)->type == sip_header::H_OTHER || 
-                (*it)->type == sip_header::H_REQUIRE){
+	switch((*it)->type) {
+	case sip_header::H_OTHER:
+	case sip_header::H_REQUIRE:
 	    req.hdrs += c2stlstr((*it)->name) + ": " 
 		+ c2stlstr((*it)->value) + CRLF;
+	    break;
+	case sip_header::H_VIA:
+	    req.vias += c2stlstr((*it)->name) + ": " 
+		+ c2stlstr((*it)->value) + CRLF;
+	    break;
+	case sip_header::H_MAX_FORWARDS:
+	    if(!str2int(c2stlstr((*it)->value),req.max_forwards) ||
+	       (req.max_forwards < 0) ||
+	       (req.max_forwards > 255)) {
+		trans_layer::instance()->
+		    send_sf_error_reply(&tt, msg, 400, "Incorrect Max-Forwards");
+		return false;
+	    }
+	    break;
 	}
     }
 
-    req.via1 = c2stlstr(msg->via1->value);
+    if(req.max_forwards < 0)
+	req.max_forwards = AmConfig::MaxForwards;
 
     req.remote_ip = get_addr_str(&msg->remote_ip).c_str();
     req.remote_port = htons(((sockaddr_in*)&msg->remote_ip)->sin_port);
@@ -540,6 +538,7 @@ inline bool _SipCtrlInterface::sip_msg2am_request(const sip_msg *msg,
     req.trsp = msg->local_socket->get_transport();
     req.local_if = msg->local_socket->get_if();
 
+    req.via1 = c2stlstr(msg->via1->value);
     if(msg->vias.size() > 1) {
 	req.first_hop = false;
     } 
@@ -573,21 +572,20 @@ inline bool _SipCtrlInterface::sip_msg2am_reply(sip_msg *msg, AmSipReply &reply)
     reply.code   = msg->u.reply->code;
     reply.reason = c2stlstr(msg->u.reply->reason);
 
-    if(get_contact(msg)){
+    if(get_contact(msg) && get_contact(msg)->value.len){
 
 	// parse the first contact
-	const char* c = get_contact(msg)->value.s;
 	sip_nameaddr na;
-	
-	int err = parse_nameaddr(&na,&c,get_contact(msg)->value.len);
-	if(err < 0) {
+	cstring contact = get_contact(msg)->value;
+	if(parse_first_nameaddr(&na,contact.s,contact.len) < 0) {
 	    
-	    ERROR("Contact nameaddr parsing failed\n");
-	    return false;
+	    ERROR("Contact nameaddr parsing failed ('%.*s')\n",
+		  contact.len,contact.s);
 	}
-	
-	reply.to_uri = c2stlstr(na.addr);
-	
+	else {
+	    reply.to_uri = c2stlstr(na.addr);
+	}
+
 	list<sip_header*>::iterator c_it = msg->contacts.begin();
 	reply.contact = c2stlstr((*c_it)->value);
 	++c_it;
@@ -608,6 +606,9 @@ inline bool _SipCtrlInterface::sip_msg2am_reply(sip_msg *msg, AmSipReply &reply)
     unsigned rseq;
     for (list<sip_header*>::iterator it = msg->hdrs.begin(); 
 	 it != msg->hdrs.end(); ++it) {
+#ifdef PROPAGATE_UNPARSED_REPLY_HEADERS
+        reply.unparsed_headers.push_back(AmSipHeader((*it)->name, (*it)->value));
+#endif
         switch ((*it)->type) {
           case sip_header::H_OTHER:
           case sip_header::H_REQUIRE:
@@ -681,8 +682,20 @@ void _SipCtrlInterface::handle_sip_reply(const string& dialog_id, sip_msg* msg)
     
     AmSipReply   reply;
 
-    if (! sip_msg2am_reply(msg, reply))
+
+    if (! sip_msg2am_reply(msg, reply)) {
+      ERROR("failed to convert sip_msg to AmSipReply\n");
+      // trans_bucket::match_reply only uses via_branch & cseq
+      reply.cseq = get_cseq(msg)->num;
+      reply.cseq_method = c2stlstr(get_cseq(msg)->method_str);
+      reply.code = 500;
+      reply.reason = "Internal Server Error";
+      reply.callid = c2stlstr(msg->callid->value);
+      reply.to_tag = c2stlstr(((sip_from_to*)msg->to->p)->tag);
+      reply.from_tag  = c2stlstr(((sip_from_to*)msg->from->p)->tag);
+      AmSipDispatcher::instance()->handleSipMsg(dialog_id, reply);
       return;
+    }
     
     DBG("Received reply: %i %s\n",reply.code,reply.reason.c_str());
     DBG_PARAM(reply.callid);

@@ -43,23 +43,37 @@ int copy_hdrs_len(const list<sip_header*>& hdrs)
     return ret;
 }
 
-void copy_hdrs_wr(char** c,
-		  const list<sip_header*>& hdrs)
+int  copy_hdrs_len_no_via(const list<sip_header*>& hdrs)
 {
+    int ret = 0;
+
     list<sip_header*>::const_iterator it = hdrs.begin();
     for(;it != hdrs.end(); ++it){
-	
-	memcpy(*c,(*it)->name.s,(*it)->name.len);
-	*c += (*it)->name.len;
 
-	*((*c)++) = ':';
-	*((*c)++) = SP;
+        if((*it)->type == sip_header::H_VIA)
+	  continue;
 
-	memcpy(*c,(*it)->value.s,(*it)->value.len);
-	*c += (*it)->value.len;
-
-	*((*c)++) = CR;
-	*((*c)++) = LF;
+	ret += copy_hdr_len(*it);
     }
+    
+    return ret;
 }
 
+void copy_hdrs_wr(char** c, const list<sip_header*>& hdrs)
+{
+    list<sip_header*>::const_iterator it = hdrs.begin();
+    for(;it != hdrs.end(); ++it)
+        copy_hdr_wr(c,*it);
+}
+
+void copy_hdrs_wr_no_via(char** c, const list<sip_header*>& hdrs)
+{
+    list<sip_header*>::const_iterator it = hdrs.begin();
+    for(;it != hdrs.end(); ++it) {
+
+        if((*it)->type == sip_header::H_VIA)
+	  continue;
+
+        copy_hdr_wr(c,*it);
+    }
+}

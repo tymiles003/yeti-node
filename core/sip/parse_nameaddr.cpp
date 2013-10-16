@@ -33,11 +33,7 @@
 
 sip_nameaddr::~sip_nameaddr()
 {
-    list<sip_avp*>::iterator it = params.begin();
-    for(;it != params.end(); ++it){
-	
-	delete *it;
-    }
+  free_gen_params(&params);
 }
 
 int parse_nameaddr(sip_nameaddr* na, const char** c, int len)
@@ -111,7 +107,7 @@ int parse_nameaddr(sip_nameaddr* na, const char** c, int len)
 
 	    case ';':
 		na->addr.set(beg, *c - beg);
-		return parse_gen_params(&na->params,c, end-*c, 0);
+		return parse_gen_params_sc(&na->params,c, end-*c, 0);
 	    }
 	    break;
 
@@ -122,7 +118,7 @@ int parse_nameaddr(sip_nameaddr* na, const char** c, int len)
 
 	    case ';':
 		na->addr.set(beg, uri_end - beg);
-		return parse_gen_params(&na->params,c, end-*c, 0);
+		return parse_gen_params_sc(&na->params,c, end-*c, 0);
 
 	    case '<':
 		st = NA_URI;
@@ -198,7 +194,7 @@ int parse_nameaddr(sip_nameaddr* na, const char** c, int len)
 
 		na->addr.set(beg, *c - beg);
 		(*c)++;
-		return parse_gen_params(&na->params,c, end-*c, 0);
+		return parse_gen_params_sc(&na->params,c, end-*c, 0);
 	    }
 	    break;
 
@@ -230,7 +226,7 @@ int parse_nameaddr(sip_nameaddr* na, const char** c, int len)
 	return MALFORMED_SIP_MSG;
     }
     
-    return parse_gen_params(&na->params,c, end-*c, 0);
+    return parse_gen_params_sc(&na->params,c, end-*c, 0);
 }
 
 static int skip_2_next_nameaddr(const char*& c, 
@@ -344,7 +340,7 @@ int parse_nameaddr_list(list<cstring>& nas, const char* c, int len)
       const char* na_begin = c;
       int err = skip_2_next_nameaddr(c,na_end,end);
       if(err < 0){
-	ERROR("While parsing route header\n");
+	ERROR("While parsing nameaddr list ('%.*s')\n",len,na_begin);
 	return -1;
       }
 
@@ -357,4 +353,21 @@ int parse_nameaddr_list(list<cstring>& nas, const char* c, int len)
     }
 
     return 0;
+}
+
+int parse_first_nameaddr(sip_nameaddr* na, const char* c, int len)
+{
+  const char* tmp_c = c;
+  const char* end = c + len;
+  const char* na_end = NULL;
+  const char* na_begin = c;
+
+  int err = skip_2_next_nameaddr(tmp_c,na_end,end);
+  if(err < 0){
+    ERROR("While parsing first nameaddr ('%.*s')\n",len,c);
+    return -1;
+  }
+
+  tmp_c = c;
+  return parse_nameaddr(na,&tmp_c,na_end-tmp_c);
 }

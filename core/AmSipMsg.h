@@ -20,7 +20,6 @@ class _AmSipMsgInDlg
   string to_tag;
 
   string callid;
-  string via1;
 
   unsigned int cseq;
   string cseq_method;
@@ -49,6 +48,18 @@ class _AmSipMsgInDlg
   virtual string print() const = 0;
 };
 
+#ifdef PROPAGATE_UNPARSED_REPLY_HEADERS
+
+struct AmSipHeader
+{
+  string name, value;
+  AmSipHeader() { }
+  AmSipHeader(const string &_name, const string &_value): name(_name), value(_value) { }
+  AmSipHeader(const cstring &_name, const cstring &_value): name(_name.s, _name.len), value(_value.s, _value.len) { }
+};
+
+#endif
+
 /** \brief represents a SIP reply */
 class AmSipReply : public _AmSipMsgInDlg
 {
@@ -56,6 +67,9 @@ class AmSipReply : public _AmSipMsgInDlg
   unsigned int code;
   string       reason;
   string       to_uri;
+#ifdef PROPAGATE_UNPARSED_REPLY_HEADERS
+  list<AmSipHeader> unparsed_headers;
+#endif
 
  AmSipReply() : code(0), _AmSipMsgInDlg() { }
   ~AmSipReply() { }
@@ -76,15 +90,21 @@ class AmSipRequest : public _AmSipMsgInDlg
 
   string rack_method;
   unsigned int rack_cseq;
+
+  string vias;
+  string via1;
   string via_branch;
   bool   first_hop;
 
+  int max_forwards;
+
   unsigned short local_if;
 
-  AmSipRequest() : _AmSipMsgInDlg() { }
+  AmSipRequest();
   ~AmSipRequest() { }
   
   string print() const;
+  void log(msg_logger *logger) const;
 };
 
 string getHeader(const string& hdrs,const string& hdr_name, bool single = false);

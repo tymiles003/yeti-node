@@ -279,13 +279,14 @@ void RegisterDialog::fixUacContactHosts(const AmSipRequest& req,
 						req,cp,ctx);
 
       list<sip_avp*> uri_params;
-      string old_params = ";" + uac_contacts[i].uri_param;
+      const string& old_params = uac_contacts[i].uri_param;
       const char* c = old_params.c_str();
 
       if(parse_gen_params(&uri_params,&c,old_params.length(),0) < 0) {
 
 	DBG("could not parse Contact URI parameters: '%s'",
 	    uac_contacts[i].uri_param.c_str());
+	free_gen_params(&uri_params);
 	continue;
       }
 
@@ -308,6 +309,7 @@ void RegisterDialog::fixUacContactHosts(const AmSipRequest& req,
 	}
       }
 
+      free_gen_params(&uri_params);
       uac_contacts[i].uri_param = new_params;
     }
     else if(!reg_caching) {
@@ -316,7 +318,7 @@ void RegisterDialog::fixUacContactHosts(const AmSipRequest& req,
     }
 
     // patch host & port
-    uac_contacts[i].uri_host = AmConfig::SIP_Ifs[oif].LocalIP;
+    uac_contacts[i].uri_host = AmConfig::SIP_Ifs[oif].getIP();
 
     if(AmConfig::SIP_Ifs[oif].LocalPort == 5060)
       uac_contacts[i].uri_port.clear();

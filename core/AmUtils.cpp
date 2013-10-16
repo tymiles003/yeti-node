@@ -72,15 +72,16 @@ string int2str(unsigned int val)
   return string((char*)(buffer+i+1));
 }
 
-string int2str(int val)
+template<class T, class DT>
+string signed2str(T val, T (*abs_func) (T), DT (*div_func) (T, T))
 {
   char buffer[64] = {0,0};
   int i=62;
-  div_t d;
+  DT d;
 
-  d.quot = abs(val);
+  d.quot = abs_func(val);
   do{
-    d = div(d.quot,10);
+    d = div_func(d.quot,10);
     buffer[i] = _int2str_lookup[d.rem];
   }while(--i && d.quot);
 
@@ -92,25 +93,9 @@ string int2str(int val)
   return string((char*)(buffer+i+1));
 }
 
-string long2str(long int val)
-{
-  char buffer[64] = {0,0};
-  int i=62;
-  ldiv_t d;
-
-  d.quot = abs(val);
-  do{
-    d = ldiv(d.quot,10);
-    buffer[i] = _int2str_lookup[d.rem];
-  }while(--i && d.quot);
-
-  if (i && (val<0)) {
-    buffer[i]='-';
-    i--;
-  }
-
-  return string((char*)(buffer+i+1));
-}
+string int2str(int val) { return signed2str<int, div_t>(val, abs, div); }
+string long2str(long int val) { return signed2str<long, ldiv_t>(val, labs, ldiv); }
+string longlong2str(long long int val) { return signed2str<long long, lldiv_t>(val, llabs, lldiv); }
 
 static char _int2hex_lookup[] = { '0', '1', '2', '3', '4', '5', '6' , '7', '8', '9','A','B','C','D','E','F' };
 static char _int2hex_lookup_l[] = { '0', '1', '2', '3', '4', '5', '6' , '7', '8', '9','a','b','c','d','e','f' };
@@ -1005,7 +990,7 @@ bool read_regex_mapping(const string& fname, const char* sep,
 	return false;
       }
       regex_t app_re;
-      if (regcomp(&app_re, re_v[0].c_str(), REG_EXTENDED | REG_NOSUB)) {
+      if (regcomp(&app_re, re_v[0].c_str(), REG_EXTENDED)) {
 	ERROR("compiling regex '%s' in %s.\n", 
 	      re_v[0].c_str(), fname.c_str());
 	return false;
@@ -1018,13 +1003,37 @@ bool read_regex_mapping(const string& fname, const char* sep,
   return true;
 }
 
+void ReplaceStringInPlace(std::string& subject, const std::string& search,
+                          const std::string& replace) {
+  size_t pos = 0;
+  while ((pos = subject.find(search, pos)) != std::string::npos) {
+    subject.replace(pos, search.length(), replace);
+    pos += replace.length();
+  }
+}
+
+#define MAX_GROUPS 9
+
 bool run_regex_mapping(const RegexMappingVector& mapping, const char* test_s,
-		       string& result) {
+                       string& result) {
+  regmatch_t groups[MAX_GROUPS];
   for (RegexMappingVector::const_iterator it = mapping.begin();
        it != mapping.end(); it++) {
-    if (!regexec(&it->first, test_s, 0, NULL, 0)) {
-      DBG("match of '%s' to %s\n", test_s, it->second.c_str());
+    if (!regexec(&it->first, test_s, MAX_GROUPS, groups, 0)) {
       result = it->second;
+      string soh(1, char(1));
+      ReplaceStringInPlace(result, "\\\\", soh);
+      unsigned int g = 0;
+      for (g = 1; g < MAX_GROUPS; g++) {
+        if (groups[g].rm_so == (int)(size_t)-1) break;
+        DBG("group %u: [%2u-%2u]: %.*s\n",
+            g, groups[g].rm_so, groups[g].rm_eo,
+            groups[g].rm_eo - groups[g].rm_so, test_s + groups[g].rm_so);
+	std::string match(test_s + groups[g].rm_so,
+			  groups[g].rm_eo - groups[g].rm_so);
+        ReplaceStringInPlace(result, "\\" + int2str(g), match);
+      }
+      ReplaceStringInPlace(result, soh, "\\");
       return true;
     }
   }
