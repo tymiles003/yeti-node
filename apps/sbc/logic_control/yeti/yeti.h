@@ -60,6 +60,10 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
 						bool send_reply = false);
 
   bool read_config();
+
+  CCChainProcessing onRtpTimeout(SBCCallLeg *call,const AmRtpTimeoutEvent &rtp_event);
+  void onServerShutdown(SBCCallLeg *call);
+
  public:
   Yeti();
   ~Yeti();
@@ -109,7 +113,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
         //!ExtendedCCInterface handlers
   void init(SBCCallLeg *call, const map<string, string> &values);
 
-  void onStateChange(SBCCallLeg *call);
+  void onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cause);
   void onDestroyLeg(SBCCallLeg *call);
   CCChainProcessing onBLegRefused(SBCCallLeg *call,AmSipReply& reply);
 
@@ -126,6 +130,8 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   CCChainProcessing onBye(SBCCallLeg *call, const AmSipRequest &req);
   CCChainProcessing onOtherBye(SBCCallLeg *call, const AmSipRequest &req);
   void onCallConnected(SBCCallLeg *call, const AmSipReply& reply);
+
+  int relayEvent(SBCCallLeg *call, AmEvent *e);
 
         //!OoD handlers
   void init(SBCCallProfile &profile, SimpleRelayDialog *relay, void *&user_data);

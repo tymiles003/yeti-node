@@ -565,7 +565,7 @@ void Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
 	cdr->update(*call);
 }
 
-void Yeti::onStateChange(SBCCallLeg *call){
+void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cause){
 	DBG("%s(%p,leg%s,state = %d)",FUNC_NAME,call,call->isALeg()?"A":"B",call->getCallStatus());
     /*
     from CallLeg.h
@@ -764,17 +764,7 @@ CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
 
 	AmRtpTimeoutEvent *rtp_event = dynamic_cast<AmRtpTimeoutEvent*>(e);
 	if(rtp_event){
-		DBG("%s rtp_timeout event",FUNC_NAME);
-		unsigned int internal_code,response_code;
-		string internal_reason,response_reason;
-		CodesTranslator::instance()->translate_db_code(
-			DC_RTP_TIMEOUT,
-			internal_code,internal_reason,
-			response_code,response_reason);
-		Cdr *cdr = getCdr(call);
-		cdr->update(DisconnectByTS,internal_reason,internal_code);
-		cdr->update_rewrited(response_reason,response_code);
-		return ContinueProcessing;
+		return onRtpTimeout(call,*rtp_event);
 	}
 
 	AmSipReplyEvent *reply_event = dynamic_cast<AmSipReplyEvent*>(e);
@@ -816,15 +806,34 @@ CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
 		if(sys_ev){
 			DBG("Session received system Event");
 			if (sys_ev->sys_event == AmSystemEvent::ServerShutdown) {
-				DBG("ServerShutdown event");
-				CallCtx *ctx = getCtx(call);
-				getCdr(ctx)->update(DisconnectByTS,"ServerShutdown",200);
-				//may never reach onDestroy callback so free resources here
-				rctl.put(ctx->getCurrentResourceList());
+				onServerShutdown(call);
 			}
 		}
 	}
 	return ContinueProcessing;
+}
+
+
+CCChainProcessing Yeti::onRtpTimeout(SBCCallLeg *call,const AmRtpTimeoutEvent &rtp_event){
+	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+	unsigned int internal_code,response_code;
+	string internal_reason,response_reason;
+	CodesTranslator::instance()->translate_db_code(
+		DC_RTP_TIMEOUT,
+		internal_code,internal_reason,
+		response_code,response_reason);
+	Cdr *cdr = getCdr(call);
+	cdr->update(DisconnectByTS,internal_reason,internal_code);
+	cdr->update_rewrited(response_reason,response_code);
+	return ContinueProcessing;
+}
+
+void Yeti::onServerShutdown(SBCCallLeg *call){
+	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+	CallCtx *ctx = getCtx(call);
+	getCdr(ctx)->update(DisconnectByTS,"ServerShutdown",200);
+	//may never reach onDestroy callback so free resources here
+	rctl.put(ctx->getCurrentResourceList());
 }
 
 CCChainProcessing Yeti::putOnHold(SBCCallLeg *call) {
@@ -896,6 +905,11 @@ void Yeti::onCallConnected(SBCCallLeg *call, const AmSipReply& reply){
 		Cdr *cdr = getCdr(call);
 		cdr->update(Connect);
 	}
+}
+
+int Yeti::relayEvent(SBCCallLeg *call, AmEvent *e){
+	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+	return 0;
 }
 	//!Ood handlers
 
