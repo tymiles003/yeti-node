@@ -62,7 +62,7 @@ void ResourceControl::configure_db(AmConfigReader &cfg){
 }
 
 void ResourceControl::start(){
-	DBG("%s()",FUNC_NAME);
+//	DBG("%s()",FUNC_NAME);
 	cache.start();
 }
 
@@ -122,7 +122,7 @@ int ResourceControl::load_resources_config(){
 		map<int,ResourceConfig>::const_iterator mi = type2cfg.begin();
 		for(;mi!=type2cfg.end();++mi){
 			const ResourceConfig &c = mi->second;
-			DBG("resource cfg: <%s>",c.print().c_str());
+			DBG("resource cfg:     <%s>",c.print().c_str());
 		}
 		return 0;
 	} catch(const pqxx::pqxx_exception &e){

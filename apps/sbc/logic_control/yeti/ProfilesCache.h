@@ -25,17 +25,17 @@ struct ProfilesCacheEntry {
 	list<SqlCallProfile *> profiles;
 
 	ProfilesCacheEntry(){
-		DBG("%s() this = %p",FUNC_NAME,this);
+		//DBG("%s() this = %p",FUNC_NAME,this);
 	}
 	~ProfilesCacheEntry(){
-		DBG("%s() this = %p",FUNC_NAME,this);
+		//DBG("%s() this = %p",FUNC_NAME,this);
 		list<SqlCallProfile *>::iterator it = profiles.begin();
 		for(;it != profiles.end();++it){
 			delete (*it);
 		}
 	}
 	ProfilesCacheEntry *copy(){	//clone with all internal structures
-		DBG("%s() this = %p",FUNC_NAME,this);
+		//DBG("%s() this = %p",FUNC_NAME,this);
 
 		ProfilesCacheEntry *e = new ProfilesCacheEntry();
 

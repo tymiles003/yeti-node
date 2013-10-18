@@ -1,7 +1,7 @@
 #include "CallCtx.h"
 
 SqlCallProfile *CallCtx::getFirstProfile(){
-	DBG("%s() this = %p",FUNC_NAME,this);
+	//DBG("%s() this = %p",FUNC_NAME,this);
 	if(profiles.empty())
 		return NULL;
 	current_profile = profiles.begin();
@@ -15,7 +15,7 @@ SqlCallProfile *CallCtx::getFirstProfile(){
  */
 SqlCallProfile *CallCtx::getNextProfile(bool early_state){
 	list<SqlCallProfile *>::iterator next_profile;
-	DBG("%s() this = %p",FUNC_NAME,this);
+	DBG("%s()",FUNC_NAME);
 
 	next_profile = current_profile;
 	++next_profile;
@@ -58,11 +58,11 @@ CallCtx::CallCtx(SqlRouter *router):
 	cdr_processed(false)
 {
 	router->inc();
-	DBG("%s() this = %p",FUNC_NAME,this);
+	//DBG("%s() this = %p",FUNC_NAME,this);
 }
 
 CallCtx::~CallCtx(){
-	DBG("%s() this = %p",FUNC_NAME,this);
+	//DBG("%s() this = %p",FUNC_NAME,this);
 	list<SqlCallProfile *>::iterator it = profiles.begin();
 	for(;it != profiles.end();++it){
 		delete (*it);

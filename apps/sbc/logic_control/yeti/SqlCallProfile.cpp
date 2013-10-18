@@ -5,13 +5,13 @@
 
 SqlCallProfile::SqlCallProfile()
 {
-	DBG("SqlCallProfile(%p)",this);
+//	DBG("SqlCallProfile(%p)",this);
 	profile_file = "SQL";
 }
 
 SqlCallProfile::~SqlCallProfile()
 {
-	DBG("~SqlCallProfile(%p)",this);
+//	DBG("~SqlCallProfile(%p)",this);
 }
 
 bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
@@ -55,7 +55,7 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 		return false;
 
 	anonymize_sdp = t["anonymize_sdp"].as<bool>(true);
-	DBG("db: %s, anonymize_sdp = %d",t["anonymize_sdp"].c_str(),anonymize_sdp);
+	//DBG("db: %s, anonymize_sdp = %d",t["anonymize_sdp"].c_str(),anonymize_sdp);
 
 	// SDP alines filter
 	if (!readFilter(t, "sdp_alines_filter", sdpalinesfilter, false))
@@ -448,15 +448,14 @@ bool SqlCallProfile::column_exist(const pqxx::result::tuple &t,string column_nam
 }
 
 bool SqlCallProfile::eval_resources(){
-	DBG("%s()",FUNC_NAME);
 	try {
 		rl = resource_parse(resources);
 		ResourceList::const_iterator i = rl.begin();
 		for(;i!=rl.end();++i){
-			DBG("%p: resource: <%s>",this,resource_print(*i).c_str());
+			INFO("profile[%p]     resource: <%s>",this,resource_print(*i).c_str());
 		}
 	} catch(ResourceParseException &e){
-		DBG("resources parse error:  %s <ctx = '%s'>",e.what.c_str(),e.ctx.c_str());
+		ERROR("resources parse error:  %s <ctx = '%s'>",e.what.c_str(),e.ctx.c_str());
 	}
 	return true;
 }

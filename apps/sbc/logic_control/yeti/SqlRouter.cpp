@@ -87,7 +87,7 @@ try {
 		pqxx::result r = t.exec("SELECT * from "+getprofile_schema+".load_interface_out()");
 		for(pqxx::result::size_type i = 0; i < r.size();++i){
 			const pqxx::result::tuple &t = r[i];
-			DBG("%ld: %s : %s, %s",i,
+			DBG("load_interface_out:     %ld: %s : %s, %s",i,
 				t["varname"].c_str(),t["vartype"].c_str(),t["forcdr"].c_str());
 			if(true==t["forcdr"].as<bool>())
 				dyn_fields.push_back(pair<string,string>(t["varname"].c_str(),t["vartype"].c_str()));
@@ -98,7 +98,7 @@ try {
 		pqxx::result r = t.exec("SELECT * from "+getprofile_schema+".load_interface_in()");
 		for(pqxx::result::size_type i = 0; i < r.size();++i){
 			const pqxx::result::tuple &t = r[i];
-			DBG("%ld: %s : %s",i,
+			DBG("load_interface_in:     %ld: %s : %s",i,
 				t["varname"].c_str(),t["vartype"].c_str());
 			used_header_fields.push_back(t["varname"].c_str());
 		}
@@ -106,8 +106,6 @@ try {
 	c.disconnect();
 
 		//apply them
-	DBG("used_header_fields.size() = %ld",used_header_fields.size());
-
 	sql_query = "SELECT * FROM "+getprofile_schema+"."+getprofile_function+"($1";
 		n = GETPROFILE_STATIC_FIELDS_COUNT+used_header_fields.size();
 		for(int i = 2;i<=n;i++) sql_query.append(",$"+int2str(i));
@@ -202,10 +200,11 @@ int SqlRouter::configure(AmConfigReader &cfg){
   }
   cdr_writer = new CdrWriter;
   if (0==cdr_writer->configure(cdrconfig)){
-    INFO("Cdr writer pool configured. Try to start worker threads");
+	//INFO("Cdr writer pool configured. Try to start worker threads");
     cdr_writer->start();
   } else {
     ERROR("Cdr writer pool configuration error.");
+	return 1;
   }
 
   cache_enabled = cfg.getParameterInt("profiles_cache_enabled",0);
@@ -388,7 +387,7 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req, pqxx::conne
 		throw GetProfileException(FC_NOT_PREPARED,true);
 	}
 
-	DBG("%s() database returned %ld profiles",FUNC_NAME,r.size());
+	//DBG("%s() database returned %ld profiles",FUNC_NAME,r.size());
 
 	if (r.size()==0){
 		throw GetProfileException(FC_DB_EMPTY_RESPONSE,false);
@@ -399,9 +398,9 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req, pqxx::conne
 	if(cache_enabled){
 		//get first callprofile cache_time as cache_time for entire profiles set
 		int cache_time = r[0]["cache_time"].as<int>(0);
-		DBG("%s() cache_time = %d",FUNC_NAME,cache_time);
+		//DBG("%s() cache_time = %d",FUNC_NAME,cache_time);
 		if(cache_time > 0){
-			DBG("SqlRouter: entry lifetime is %d seconds",cache_time);
+			//DBG("SqlRouter: entry lifetime is %d seconds",cache_time);
 			gettimeofday(&entry->expire_time,NULL);
 			entry->expire_time.tv_sec+=cache_time;
 		} else {
@@ -448,14 +447,14 @@ void SqlRouter::align_cdr(Cdr &cdr){
 
 void SqlRouter::write_cdr(Cdr* cdr, bool last)
 {
-  DBG("%s(%p)",FUNC_NAME,cdr);
+  DBG("%s(%p) last = %d",FUNC_NAME,cdr,last);
   if(!cdr->writed){
-    DBG("%s(%p) write now",FUNC_NAME,cdr);
+	//DBG("%s(%p) write now",FUNC_NAME,cdr);
     cdr->update(Write);
 	cdr->is_last = last;
     cdr_writer->postcdr(cdr);
   } else {
-      DBG("%s(%p) trying to write already writed cdr",FUNC_NAME,cdr);
+	  DBG("%s(%p) trying to write already writed cdr",FUNC_NAME,cdr);
   }
 }
 

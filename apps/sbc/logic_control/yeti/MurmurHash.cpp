@@ -6,13 +6,13 @@ MurmurHash<key_type,lookup_key_type,data_type>::MurmurHash(unsigned long buckets
 {
 	l = new struct entry[buckets];
 	bzero(l,sizeof(struct entry)*buckets);
-	DBG("MurmurHash()");
+	//DBG("MurmurHash()");
 }
 
 template<class key_type,class lookup_key_type,class data_type>
 MurmurHash<key_type,lookup_key_type,data_type>::~MurmurHash(){
 	delete []l;
-	DBG("~MurmurHash()");
+	//DBG("~MurmurHash()");
 }
 
 template<class key_type,class lookup_key_type,class data_type>

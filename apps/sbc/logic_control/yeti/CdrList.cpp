@@ -2,11 +2,11 @@
 #include "log.h"
 
 CdrList::CdrList(unsigned long buckets):MurmurHash<string,string,Cdr>(buckets){
-	DBG("CdrList()");
+	//DBG("CdrList()");
 }
 
 CdrList::~CdrList(){
-	DBG("~CdrList()");
+	//DBG("~CdrList()");
 }
 
 uint64_t CdrList::hash_lookup_key(const string *key){
@@ -49,7 +49,7 @@ int CdrList::insert(Cdr *cdr){
 int CdrList::erase(Cdr *cdr){
 	int err = 1;
 	if(cdr){
-		DBG("%s() local_tag = %s",FUNC_NAME,cdr->local_tag.c_str());
+		//DBG("%s() local_tag = %s",FUNC_NAME,cdr->local_tag.c_str());
 		cdr->lock();
 			if(cdr->inserted2list){
 				erase_lookup_key(&cdr->local_tag);
@@ -60,7 +60,7 @@ int CdrList::erase(Cdr *cdr){
 			}
 		cdr->unlock();
 	} else {
-		ERROR("%s() cdr = NULL",FUNC_NAME);
+		ERROR("CdrList::%s() cdr = NULL",FUNC_NAME);
 		log_stacktrace(L_ERR);
 	}
 	return err;

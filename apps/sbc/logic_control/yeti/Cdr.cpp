@@ -2,6 +2,30 @@
 #include "AmUtils.h"
 #include "log.h"
 
+static const char *updateAction2str(UpdateAction act){
+	static const char *aStart = "Start";
+	static const char *aConnect = "Connect";
+	static const char *aEnd = "End";
+	static const char *aWrite = "Write";
+	static const char *aUnknown = "Unknown";
+
+	switch(act){
+		case Start:
+			return aStart;
+			break;
+		case Connect:
+			return aConnect;
+			break;
+		case End:
+			return aEnd;
+			break;
+		case Write:
+			return aWrite;
+			break;
+		default:
+			return aUnknown;
+	}
+}
 
 void Cdr::replace(string& s, const string& from, const string& to){
 	size_t pos = 0;
@@ -61,7 +85,7 @@ void Cdr::update_sbc(const SBCCallProfile &profile){
 }
 
 void Cdr::update(const AmSipRequest &req){
-	DBG("%s(AmSipRequest)",FUNC_NAME);
+	DBG("Cdr::%s(AmSipRequest)",FUNC_NAME);
 	if(writed) return;
 	legA_remote_ip = req.remote_ip;
     legA_remote_port = req.remote_port;
@@ -99,7 +123,7 @@ void Cdr::update(SBCCallLeg &leg){
 }
 
 void Cdr::update(UpdateAction act){
-	DBG("Cdr::%s(act = %d)",FUNC_NAME,act);
+	DBG("Cdr::%s(act = %s)",FUNC_NAME,updateAction2str(act));
     if(writed) return;
     switch(act){
     case Start:
@@ -152,7 +176,7 @@ void Cdr::refuse(const SBCCallProfile &profile){
     if (spos == string::npos || spos == refuse_with.size() ||
         str2i(refuse_with.substr(0, spos), refuse_with_code))
     {
-        DBG("can't parse refuse_with in profile");
+		ERROR("can't parse refuse_with in profile");
         disconnect_reason = refuse_with;
         disconnect_code = 0;
     } else {
@@ -181,8 +205,8 @@ Cdr::Cdr(){
 }
 
 Cdr::Cdr(const Cdr& cdr,const SqlCallProfile &profile){
-	DBG("%s(cdr = %p,profile = %p) = %p",FUNC_NAME,
-		&cdr,&profile,this);
+	//DBG("Cdr::%s(cdr = %p,profile = %p) = %p",FUNC_NAME,
+	//	&cdr,&profile,this);
 
 	init();
 	update_sql(profile);

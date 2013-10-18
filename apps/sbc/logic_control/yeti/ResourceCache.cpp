@@ -46,7 +46,7 @@ void ResourceCache::run(){
 	write_pool.start();
 
 	while(!tostop){
-		DBG("%s() while start",FUNC_NAME);
+//		DBG("%s() while start",FUNC_NAME);
 		data_ready.wait_for();
 
 		put_queue_mutex.lock();
@@ -113,7 +113,7 @@ void ResourceCache::run(){
 						if(r->type!=REDIS_REPLY_INTEGER){
 							throw ReplyDataException("integer expected");
 						}
-						DBG("resource %d:%d %lld/%d",put[i].type,put[i].id,r->integer,put[i].limit);
+						INFO("put_resource %d:%d %lld/%d",put[i].type,put[i].id,r->integer,put[i].limit);
 						i++;
 					}
 				}
@@ -140,7 +140,7 @@ void ResourceCache::run(){
 		}
 		put.clear();
 		data_ready.set(false);
-		DBG("%s() while end",FUNC_NAME);
+		//DBG("%s() while end",FUNC_NAME);
 	}
 }
 
@@ -165,8 +165,6 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 	ResourceResponse ret = RES_ERR;
 	bool resources_grabbed = false;
 	string zero_string = REDIS_STRING_ZERO;
-
-	DBG("%s()",FUNC_NAME);
 
 	resource = rl.begin();
 
@@ -253,7 +251,7 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 								break;
 						}
 						int limit = rl[i].limit;
-						DBG("resource %d:%d %ld/%d",
+						INFO("check_resource %d:%d %ld/%d",
 							rl[i].type,rl[i].id,now,limit);
 						if(limit!=0){ //0 means unlimited resource
 							//check limit
@@ -274,10 +272,9 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 			redis_pool->putConnection(redis_ctx,RedisConnPool::CONN_STATE_OK);
 
 			if(!resources_available){
-				DBG("resources unavailable");
+				WARN("resources unavailable");
 				ret = RES_BUSY;
 			} else {
-				DBG("grab resources");
 				//get write connection
 				redis_pool = &write_pool;
 				redis_ctx = redis_pool->getConnection();
@@ -333,7 +330,7 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 							if(r->type!=REDIS_REPLY_INTEGER){
 								throw ReplyDataException("integer expected");
 							}
-							DBG("resource %d:%d %lld/%d",rl[i].type,rl[i].id,r->integer,rl[i].limit);
+							INFO("grab_resource %d:%d %lld/%d",rl[i].type,rl[i].id,r->integer,rl[i].limit);
 							i++;
 						}
 					}
@@ -369,7 +366,7 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 }
 
 void ResourceCache::put(ResourceList &rl){
-	DBG("%s()",FUNC_NAME);
+	//DBG("%s()",FUNC_NAME);
 	put_queue_mutex.lock();
 		put_resources_queue.insert(
 			put_resources_queue.begin(),
@@ -377,7 +374,7 @@ void ResourceCache::put(ResourceList &rl){
 			rl.end());
 	put_queue_mutex.unlock();
 	data_ready.set(true);
-	DBG("%s() finished ",FUNC_NAME);
+	//DBG("%s() finished ",FUNC_NAME);
 	return;
 }
 

@@ -63,6 +63,9 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
 
   CCChainProcessing onRtpTimeout(SBCCallLeg *call,const AmRtpTimeoutEvent &rtp_event);
   void onServerShutdown(SBCCallLeg *call);
+  CCChainProcessing onControlEvent(SBCCallLeg *call,SBCControlEvent *event);
+  CCChainProcessing onSystemEvent(SBCCallLeg *call,AmSystemEvent* event);
+  CCChainProcessing onTearDown(SBCCallLeg *call);
 
  public:
   Yeti();

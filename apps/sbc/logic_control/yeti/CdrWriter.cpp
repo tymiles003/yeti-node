@@ -53,14 +53,13 @@ int CdrWriter::configure(CdrWriterCfg& cfg)
 	int param_num = 1;
 	//static params
 	for(;param_num<=WRITECDR_STATIC_FIELDS_COUNT;param_num++){
-		DBG("%d: %s : varchar",param_num,static_fields_names[param_num-1]);
+		DBG("CdrWriterArg:     %d: %s : varchar [static]",param_num,static_fields_names[param_num-1]);
 	}
 	//dynamic params
 	DynFieldsT_iterator dit = config.dyn_fields.begin();
 	for(;dit!=config.dyn_fields.end();++dit){
-		DBG("%d: %s : %s",param_num++,dit->first.c_str(),dit->second.c_str());
+		DBG("CdrWriterArg:     %d: %s : %s [dynamic]",param_num++,dit->first.c_str(),dit->second.c_str());
 	}
-
 	return 0;
 }
 
@@ -97,7 +96,7 @@ void CdrWriter::stop()
 
 void CdrWriter::postcdr(Cdr* cdr )
 {
-	DBG("%s(%p)",FUNC_NAME,cdr);
+	//DBG("%s(%p)",FUNC_NAME,cdr);
 	cdrthreadpool_mut.lock();
 		cdrthreadpool[cdr->cdr_born_time.tv_usec%cdrthreadpool.size()]->postcdr(cdr);
 	cdrthreadpool_mut.unlock();
@@ -162,7 +161,7 @@ void CdrWriter::clearStats(){
 
 void CdrThread::postcdr(Cdr* cdr)
 {
-	DBG("%s[%p](%p)",FUNC_NAME,this,cdr);
+	//DBG("%s[%p](%p)",FUNC_NAME,this,cdr);
 	queue_mut.lock();
 		//queue.push_back(newcdr);
 		queue.push_back(cdr);

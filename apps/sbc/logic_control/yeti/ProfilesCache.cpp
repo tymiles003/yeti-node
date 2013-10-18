@@ -4,12 +4,12 @@ ProfilesCache::ProfilesCache(vector<string>	 used_header_fields, unsigned long b
   MurmurHash<ProfilesCacheKey,AmSipRequest,ProfilesCacheEntry>(buckets),
   timeout(timeout),
   used_header_fields(used_header_fields) {
-  DBG("ProfilesCache()");
+  //DBG("ProfilesCache()");
   startTimer();
 }
 
 ProfilesCache::~ProfilesCache(){
-  DBG("~ProfilesCache()");
+  //DBG("~ProfilesCache()");
   stopTimer();
 }
 
@@ -126,7 +126,7 @@ void ProfilesCache::insert_profile(const AmSipRequest *req,ProfilesCacheEntry *e
   if(insert(req,e,false,true)){ //(false, true) eq (external locked,check unique)
 	DBG("ProflesCache: profiles added");
   } else {
-	DBG("ProfilesCache: profiles already in cache. delete cloned entry");
+	ERROR("ProfilesCache: profiles already in cache. delete cloned entry");
 	delete e;
   }
   unlock();
@@ -162,16 +162,16 @@ bool ProfilesCache::is_obsolete(entry *e,struct timeval *now){
 }
   
 void ProfilesCache::startTimer(){
-  DBG("ProfilesCache: start timer");
+  //DBG("ProfilesCache: start timer");
   AmAppTimer::instance()->setTimer(this,timeout);
 }
 
 void ProfilesCache::stopTimer(){
-  DBG("ProfilesCache: stop timer");
+  //DBG("ProfilesCache: stop timer");
   AmAppTimer::instance()->removeTimer(this);
 }
 
 void ProfilesCache::on_clean(){
-  DBG("ProfilesCache: cleanup timer hit");
+  //DBG("ProfilesCache: cleanup timer hit");
   check_obsolete();
 }

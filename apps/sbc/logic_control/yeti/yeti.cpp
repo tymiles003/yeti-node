@@ -12,6 +12,26 @@ struct CallLegCreator;
 
 #include <string.h>
 
+static const char *callStatus2str(const CallLeg::CallStatus state)
+{
+	static const char *disconnected = "Disconnected";
+	static const char *disconnecting = "Disconnecting";
+	static const char *noreply = "NoReply";
+	static const char *ringing = "Ringing";
+	static const char *connected = "Connected";
+	static const char *unknown = "???";
+
+	switch (state) {
+		case CallLeg::Disconnected: return disconnected;
+		case CallLeg::Disconnecting: return disconnecting;
+		case CallLeg::NoReply: return noreply;
+		case CallLeg::Ringing: return ringing;
+		case CallLeg::Connected: return connected;
+	}
+
+	return unknown;
+}
+
 class YetiFactory : public AmDynInvokeFactory
 {
 public:
@@ -19,7 +39,7 @@ public:
 		: AmDynInvokeFactory(name) {}
 
 	~YetiFactory(){
-		DBG("~YetiFactory()");
+		//DBG("~YetiFactory()");
 		delete Yeti::instance();
 	}
 
@@ -49,12 +69,12 @@ Yeti::Yeti():
 	router(new SqlRouter())
 {
 	routers.insert(router);
-	DBG("Yeti()");
+	//DBG("Yeti()");
 }
 
 
 Yeti::~Yeti() {
-	DBG("~Yeti()");
+	//DBG("~Yeti()");
 	router->release(routers);
 	rctl.stop();
 }
@@ -244,7 +264,6 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
 SBCCallProfile& Yeti::getCallProfile(	const AmSipRequest& req,
 										ParamReplacerCtx& ctx )
 {
-	DBG("%s() called",FUNC_NAME);
 	return *profile;
 }
 
@@ -252,7 +271,7 @@ SBCCallLeg *Yeti::getCallLeg(	const AmSipRequest& req,
 								ParamReplacerCtx& ctx,
 								CallLegCreator *leg_creator )
 {
-	DBG("%s() called",FUNC_NAME);
+	DBG("%s()",FUNC_NAME);
 	router_mutex.lock();
 	SqlRouter *r = router;
 	router_mutex.unlock();
@@ -569,19 +588,64 @@ void Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
 }
 
 void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cause){
-	DBG("%s(%p,leg%s,state = %d)",FUNC_NAME,call,call->isALeg()?"A":"B",call->getCallStatus());
+	string reason;
+
+	switch(cause.reason){
+		case CallLeg::StatusChangeCause::SipReply:
+			if(cause.param.reply!=NULL)
+				reason = "SipReply. code = "+int2str(cause.param.reply->code);
+			else
+				reason = "SipReply. empty reply";
+			break;
+		case CallLeg::StatusChangeCause::SipRequest:
+			if(cause.param.request!=NULL)
+				reason = "SipRequest. method = "+cause.param.request->method;
+			else
+				reason = "SipRequest. empty request";
+			break;
+		case CallLeg::StatusChangeCause::Canceled:
+			reason = "Canceled";
+			break;
+		case CallLeg::StatusChangeCause::NoAck:
+			reason = "NoAck";
+			break;
+		case CallLeg::StatusChangeCause::NoPrack:
+			reason = "NoPrack";
+			break;
+		case CallLeg::StatusChangeCause::RtpTimeout:
+			reason = "RtpTimeout";
+			break;
+		case CallLeg::StatusChangeCause::SessionTimeout:
+			reason = "SessionTimeout";
+			break;
+		case CallLeg::StatusChangeCause::InternalError:
+			reason = "InternalError";
+			break;
+		case CallLeg::StatusChangeCause::Other:
+			if(cause.param.desc!=NULL)
+				reason = string("Other. ")+cause.param.desc;
+			else
+				reason = "Other. empty desc";
+			break;
+		default:
+			reason = "???";
+	}
+	INFO("%s(%p,leg%s,state = %s, cause = %s)",FUNC_NAME,call,call->isALeg()?"A":"B",
+		callStatus2str(call->getCallStatus()),
+		reason.c_str());
+
 }
 
 void Yeti::onDestroyLeg(SBCCallLeg *call){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	CallCtx *ctx = getCtx(call);
 	if(ctx->dec_and_test()){
-		DBG("%s(%p,leg%s) ctx->dec_and_test() = true",FUNC_NAME,call,call->isALeg()?"A":"B");
+		//DBG("%s(%p,leg%s) ctx->dec_and_test() = true",FUNC_NAME,call,call->isALeg()?"A":"B");
 		onLastLegDestroy(ctx,call);
 		ctx->router->release(routers);
 		delete ctx;
 	} else {
-		DBG("%s(%p,leg%s) ctx->dec_and_test() = false",FUNC_NAME,call,call->isALeg()?"A":"B");
+		//DBG("%s(%p,leg%s) ctx->dec_and_test() = false",FUNC_NAME,call,call->isALeg()?"A":"B");
 		//release resources
 		if(NULL!=ctx->getCurrentProfile())
 			rctl.put(ctx->getCurrentResourceList());
@@ -762,14 +826,16 @@ CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
 
 	AmSipReplyEvent *reply_event = dynamic_cast<AmSipReplyEvent*>(e);
 	if(reply_event){
+		//!TODO: find appropiate way to avoid hangup in disconnected state
 		if(reply_event->reply.code==408 && call->getCallStatus()==CallLeg::Disconnected){
 			ERROR("received 408 in disconnected state");
 			throw AmSession::Exception(500,SIP_REPLY_SERVER_INTERNAL_ERROR);
 		}
 	}
 
-	if(!call->isALeg())
+	/*if(!call->isALeg())
 		return ContinueProcessing;
+	*/
 
 	AmPluginEvent* plugin_event = dynamic_cast<AmPluginEvent*>(e);
 	if(plugin_event){
@@ -785,22 +851,13 @@ CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
 
 	SBCControlEvent* sbc_event = dynamic_cast<SBCControlEvent*>(e);
 	if(sbc_event){
-		DBG("%s sbc control event. cmd = %s, event_id = %d",FUNC_NAME,
-			sbc_event->cmd.c_str(),
-			sbc_event->event_id);
-		if(sbc_event->cmd == "teardown"){
-			DBG("%s() teardown\n",FUNC_NAME);
-			getCdr(call)->update(DisconnectByTS,"Teardown",200);
-		}
+		onControlEvent(call,sbc_event);
 	}
 
 	if (e->event_id == E_SYSTEM) {
 		AmSystemEvent* sys_ev = dynamic_cast<AmSystemEvent*>(e);
 		if(sys_ev){
-			DBG("Session received system Event");
-			if (sys_ev->sys_event == AmSystemEvent::ServerShutdown) {
-				onServerShutdown(call);
-			}
+			onSystemEvent(call,sys_ev);
 		}
 	}
 	return ContinueProcessing;
@@ -821,12 +878,35 @@ CCChainProcessing Yeti::onRtpTimeout(SBCCallLeg *call,const AmRtpTimeoutEvent &r
 	return ContinueProcessing;
 }
 
+CCChainProcessing Yeti::onSystemEvent(SBCCallLeg *call,AmSystemEvent* event){
+	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+	if (event->sys_event == AmSystemEvent::ServerShutdown) {
+		onServerShutdown(call);
+	}
+	return ContinueProcessing;
+}
+
+CCChainProcessing Yeti::onControlEvent(SBCCallLeg *call,SBCControlEvent *event){
+	DBG("%s(%p,leg%s) cmd = %s, event_id = %d",FUNC_NAME,call,call->isALeg()?"A":"B",
+			event->cmd.c_str(),event->event_id);
+	if(event->cmd=="teardown"){
+		return onTearDown(call);
+	}
+	return ContinueProcessing;
+}
+
 void Yeti::onServerShutdown(SBCCallLeg *call){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	CallCtx *ctx = getCtx(call);
 	getCdr(ctx)->update(DisconnectByTS,"ServerShutdown",200);
 	//may never reach onDestroy callback so free resources here
 	rctl.put(ctx->getCurrentResourceList());
+}
+
+CCChainProcessing Yeti::onTearDown(SBCCallLeg *call){
+	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+	getCdr(call)->update(DisconnectByTS,"Teardown",200);
+	return ContinueProcessing;
 }
 
 CCChainProcessing Yeti::putOnHold(SBCCallLeg *call) {

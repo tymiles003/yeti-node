@@ -116,7 +116,7 @@ void RedisConnPool::on_stop(){
 redisContext *RedisConnPool::getConnection(){
 	redisContext *ctx = NULL;
 
-	DBG("%s()",FUNC_NAME);
+	//DBG("%s()",FUNC_NAME);
 
 	while(ctx==NULL){
 
@@ -133,24 +133,24 @@ redisContext *RedisConnPool::getConnection(){
 			bool all_failed = pool_size == failed_count;
 			conn_mtx.unlock();
 			if (all_failed){
-				DBG("all connections failed");
+				ERROR("all connections failed");
 				break;
 			}
 
 			if(!active_ready.wait_for_to(active_timeout)){
-				DBG("timeout waiting for an active con1ection (waited %ums)",active_timeout);
+				ERROR("timeout waiting for an active con1ection (waited %ums)",active_timeout);
 				break;
 			}
 		} else {
-			DBG("got active connection [%p]",ctx);
+			//DBG("got active connection [%p]",ctx);
 		}
 	}
-	DBG("%s() = %p",FUNC_NAME,ctx);
+	//DBG("%s() = %p",FUNC_NAME,ctx);
 	return ctx;
 }
 
 void RedisConnPool::putConnection(redisContext *ctx,ConnReturnState state){
-	DBG("%s(%p,%d)",FUNC_NAME,ctx,state);
+	//DBG("RedisConnPool::%s(%p,%d)",FUNC_NAME,ctx,state);
 
 	if(state==CONN_STATE_OK){
 		conn_mtx.lock();
@@ -169,16 +169,16 @@ void RedisConnPool::putConnection(redisContext *ctx,ConnReturnState state){
 }
 
 int RedisConnPool::cfg2RedisCfg(const AmConfigReader &cfg, RedisCfg &rcfg,string prefix){
-	DBG("%s()",FUNC_NAME);
+//	DBG("%s()",FUNC_NAME);
 
 	rcfg.server = cfg.getParameter(prefix+"_redis_host");
 	if(rcfg.server.empty()){
-		DBG("no host for %s redis",prefix.c_str());
+		ERROR("no host for %s redis",prefix.c_str());
 		return -1;
 	}
 	rcfg.port = cfg.getParameterInt(prefix+"_redis_port");
 	if(!rcfg.port){
-		DBG("no port for %s redis",prefix.c_str());
+		ERROR("no port for %s redis",prefix.c_str());
 		return -1;
 	}
 	return 0;

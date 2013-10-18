@@ -57,7 +57,6 @@ int CodesTranslator::load_translations_config(){
 		pqxx::connection c(dbc.conn_str());
 		pqxx::work t(c);
 			r = t.exec("SELECT * from "+db_schema+".load_disconnect_code_rerouting()");
-
 			for(pqxx::result::size_type i = 0; i < r.size();++i){
 				const pqxx::result::tuple &row = r[i];
 				int code = row["received_code"].as<int>(0);
