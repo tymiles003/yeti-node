@@ -186,6 +186,15 @@ else
 fi
 
 echo ""
+echo "Create dump & csv_cdrs directories"
+echo ""
+for dir in "/var/spool/sems/cdrs/completed" "/var/spool/sems/dump"
+do
+	mkdir -p $dir 
+done
+chown -R sems:sems "/var/spool/sems"
+
+echo ""
 echo "***"
 echo "don't forget to copy yeti dist config files if needed"
 echo "***"

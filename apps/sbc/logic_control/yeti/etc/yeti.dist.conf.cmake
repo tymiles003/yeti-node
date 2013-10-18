@@ -143,7 +143,7 @@ writecdr_function = writecdr
 #	default: mandatory 
 failover_to_file=1
 cdr_dir = /var/spool/sems/cdrs
-cdr_completed_dir = /var/spool/sems/cdrs/complete
+cdr_completed_dir = /var/spool/sems/cdrs/completed
 
 ### ProfilesCache config ###
 # profiles that obtained from database can be locally cached
