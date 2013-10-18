@@ -184,6 +184,7 @@ void log_stacktrace(int ll);
 /* ...only for C++ */
 class AmLoggingFacility;
 void register_log_hook(AmLoggingFacility*);
+void unregister_log_hook(AmLoggingFacility*);
 #endif
 
 #endif /* !_log_h_ */

@@ -157,3 +157,7 @@ AmLoggingFacility::AmLoggingFacility(const string& name)
   : AmPluginFactory(name) 
 {
 }
+
+void AmLoggingFacility::on_destroy(){
+  unregister_log_hook(this);
+}

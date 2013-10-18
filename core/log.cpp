@@ -28,6 +28,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <algorithm>
 
 #ifndef DISABLE_SYSLOG_LOG
 # include <syslog.h>
@@ -203,6 +204,14 @@ void register_log_hook(AmLoggingFacility* fac)
 {
   AmLock lock(log_hooks_mutex);
   log_hooks.push_back(fac);
+  inc_ref(fac);
+}
+
+void unregister_log_hook(AmLoggingFacility* fac){
+	AmLock lock(log_hooks_mutex);
+	vector<AmLoggingFacility*>::iterator fac_it = std::find(log_hooks.begin(),log_hooks.end(),fac);
+	if(fac_it!=log_hooks.end())
+		log_hooks.erase(fac_it);
 }
 
 /**

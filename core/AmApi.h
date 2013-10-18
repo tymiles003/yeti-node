@@ -222,6 +222,7 @@ class AmLoggingFacility : public AmPluginFactory
    * @param msg   message
    */
   virtual void log(int level, pid_t pid, pthread_t tid, const char* func, const char* file, int line, char* msg) = 0;
+  void on_destroy();
 };
 
 #if  __GNUC__ < 3
