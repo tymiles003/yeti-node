@@ -352,6 +352,7 @@ IF(EXISTS /etc/debian_version) # simple check for debian
 
 	SET(CPACK_DEBIAN_PACKAGE_DEPENDS_LIST
 		"python"
+		"gdb"
 	#	"redis-server"
 	#	"libssl1.0.0 (>= 1.0.1)"
 	#	"libhiredis0.10 (>= 0.10.1)"

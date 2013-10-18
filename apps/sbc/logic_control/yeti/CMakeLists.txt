@@ -36,6 +36,8 @@ INSTALL(PROGRAMS
 	tools/yeti-csv2sql
 	tools/yeti-process-events
 	tools/yeti-dumplog
+	tools/yeti_core_log.gdb
+	tools/yeti-corelog
 	DESTINATION ${SEMS_EXEC_PREFIX}/sbin
 )
 
