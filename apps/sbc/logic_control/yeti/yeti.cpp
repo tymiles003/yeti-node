@@ -551,32 +551,25 @@ void Yeti::oodHandlingTerminated(const AmSipRequest *req,SqlCallProfile *call_pr
 }
 
 void Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
-	DBG("%s(%p,leg%s) LogicData = %p",FUNC_NAME,call,call->isALeg()?"A":"B",call->getLogicData());
+	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	CallCtx *ctx = getCtx(call);
-	SBCCallProfile &profile = call->getCallProfile();
 	Cdr *cdr = getCdr(ctx);
+	SBCCallProfile &profile = call->getCallProfile();
+
 	ctx->inc();
+
 	if(call->isALeg()){
 		string log_path = profile.get_logger_path();
 		replace(log_path,"%ltag",call->getLocalTag());
 		profile.set_logger_path(log_path);
 		cdr->update_sbc(profile);
 	}
+
 	cdr->update(*call);
 }
 
 void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cause){
 	DBG("%s(%p,leg%s,state = %d)",FUNC_NAME,call,call->isALeg()?"A":"B",call->getCallStatus());
-    /*
-    from CallLeg.h
-    enum CallStatus {
-      Disconnected, //< there is no other call leg we are connected to
-      NoReply,      //< there is at least one call leg we are connected to but without any response
-      Ringing,      //< this leg or one of legs we are connected to rings
-      Connected,    //< there is exactly one call leg we are connected to, in this case AmB2BSession::other_id holds the other leg id
-      Disconnecting //< we were connected and now going to be disconnected (waiting for reINVITE reply for example)
-    };
-    */
 }
 
 void Yeti::onDestroyLeg(SBCCallLeg *call){

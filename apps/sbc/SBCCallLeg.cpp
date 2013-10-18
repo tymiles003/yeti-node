@@ -1165,11 +1165,13 @@ bool SBCCallLeg::CCStart(const AmSipRequest& req) {
       return false;
     }
 
-    if (!logger) {
+	/*
+	if (!logger) {
       // open the logger if not already opened
       msg_logger *l = call_profile.get_logger(req);
       if (l) setLogger(l);
-    }
+	}
+	*/
 
     // evaluate ret
     if (isArgArray(ret)) {
