@@ -18,6 +18,12 @@ pop_id = 1
 
 db_schema = switch
 
+# msg_logger_dir
+#	directory for writing pcap dumps
+#	default: mandatory
+
+msg_logger_dir = /var/spool/sems/dump
+
 ### SqlRouter config ###
 
 # database connection settings suffixes. similar for sqlrouter and cdrwriter 

@@ -104,6 +104,23 @@ bool Yeti::read_config(){
 	}
 	config.db_schema = cfg.getParameter("db_schema");
 
+	if(!cfg.hasParameter("msg_logger_dir")){
+		ERROR("Missed parameter 'msg_logger_dir'");
+		return false;
+	}
+	config.msg_logger_dir = cfg.getParameter("msg_logger_dir");
+
+	//check permissions for logger dir
+	ofstream st;
+	string testfile = config.msg_logger_dir + "/test";
+	st.open(testfile.c_str(),std::ofstream::out | std::ofstream::trunc);
+	if(!st.is_open()){
+		ERROR("can't write test file in '%s' directory",config.msg_logger_dir.c_str());
+		return false;
+	}
+	remove(testfile.c_str());
+
+
 	return true;
 }
 
@@ -573,14 +590,16 @@ void Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	CallCtx *ctx = getCtx(call);
 	Cdr *cdr = getCdr(ctx);
-	SBCCallProfile &profile = call->getCallProfile();
 
 	ctx->inc();
 
 	if(call->isALeg()){
-		string log_path = profile.get_logger_path();
-		replace(log_path,"%ltag",call->getLocalTag());
-		profile.set_logger_path(log_path);
+		ostringstream ss;
+		SBCCallProfile &profile = call->getCallProfile();
+		ss <<	config.msg_logger_dir << '/' <<
+				call->getLocalTag() << "_" <<
+				int2str(config.node_id) << ".pcap";
+		profile.set_logger_path(ss.str());
 		cdr->update_sbc(profile);
 	}
 
