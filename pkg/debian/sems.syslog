@@ -1,2 +1,2 @@
-if $programname == 'sems' then /var/log/sems/sems-main.log
-if $programname == 'sems' then ~
+if $programname == 'yeti' then /var/log/sems/sems-main.log
+if $programname == 'yeti' then ~
