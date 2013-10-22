@@ -117,8 +117,7 @@ void Registration::create_registration(RegInfo& ri){
 			di_args.push(ri.display_name.c_str());	// display name
 			di_args.push(ri.auth_user.c_str());		// auth_user
 			di_args.push(ri.passwd.c_str());		// pwd
-			//di_args.push("yeti_reg_agent");			//sess_link
-			di_args.push("");							//sess_link
+			di_args.push("");						//!TODO: implement AmSipRegistration events processing
 			di_args.push(ri.proxy.c_str());
 			di_args.push(ri.contact.c_str());
 			registrar_client_i->invoke("createRegistration", di_args, reg_handle);
@@ -145,8 +144,8 @@ bool Registration::check_registration(RegInfo& ri){
 					return false; // does not exist
 				int state = res.get(1).asInt();
 				int expires = res.get(2).asInt();
-				DBG("Got state %s with expires %us for registration %d.\n",
-					getSIPRegistationStateString(state), expires,ri.id);
+				/*DBG("Got state %s with expires %us for registration %d.\n",
+					getSIPRegistationStateString(state), expires,ri.id);*/
 				ri.state = state;
 				ri.expires = expires;
 				if (state == AmSIPRegistration::RegisterExpired)
