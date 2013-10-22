@@ -24,6 +24,12 @@ db_schema = switch
 
 msg_logger_dir = /var/spool/sems/dump
 
+# reg_check_interval
+#	check interval for registrations on foreign servers in msec
+#	default: 5000
+
+#reg_check_interval = 5000
+
 ### SqlRouter config ###
 
 # database connection settings suffixes. similar for sqlrouter and cdrwriter 

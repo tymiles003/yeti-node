@@ -7,6 +7,7 @@
 #include "CallLeg.h"
 #include "Version.h"
 #include "RegisterDialog.h"
+#include "Registration.h"
 #include "SBC.h"
 struct CallLegCreator;
 
@@ -76,6 +77,7 @@ Yeti::Yeti():
 Yeti::~Yeti() {
 	//DBG("~Yeti()");
 	router->release(routers);
+	Registration::instance()->stop();
 	rctl.stop();
 }
 
@@ -167,6 +169,12 @@ int Yeti::onLoad() {
 		return -1;
 	}
 
+	if(Registration::instance()->configure(cfg)){
+		ERROR("Registration agent configure failed");
+		return -1;
+	}
+	Registration::instance()->start();
+
 	start_time = time(NULL);
 
 	return 0;
@@ -249,6 +257,9 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
 	} else if (method == "clearStats"){
 		INFO ("clearStats received via xmlrpc2di");
 		ClearStats(args,ret);
+	} else if (method == "getRegistrations"){
+		INFO("getRegistrations via xmlrpc2di");
+		GetRegistrations(args,ret);
 	} else if (method == "getConfig"){
 		INFO ("getConfig received via xmlrpc2di");
 		GetConfig(args,ret);
@@ -270,6 +281,7 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
 		ret.push(AmArg("getCall"));
 		ret.push(AmArg("getCalls"));
 		ret.push(AmArg("getCallsCount"));
+		ret.push(AmArg("getRegistrations"));
 		ret.push(AmArg("reload"));
 		ret.push(AmArg("closeCdrFiles"));
 	} else {
@@ -1083,6 +1095,15 @@ void Yeti::GetCalls(const AmArg& args, AmArg& ret) {
 	ret.push(calls);
 }
 
+void Yeti::GetRegistrations(const AmArg& args, AmArg& ret){
+	AmArg regs;
+
+	Registration::instance()->list_registrations(regs);
+
+	ret.push(200);
+	ret.push(regs);
+}
+
 void Yeti::ClearStats(const AmArg& args, AmArg& ret){
 	if(router)
 		router->clearStats();
@@ -1210,6 +1231,7 @@ void Yeti::reload(const AmArg& args, AmArg& ret){
 		ret.push(AmArg());
 		ret[1].push("resources");
 		ret[1].push("translations");
+		ret[1].push("registrations");
 		ret[1].push("router");
 		return;
 	}
@@ -1239,6 +1261,14 @@ void Yeti::reload(const AmArg& args, AmArg& ret){
 		} else {
 			ret.push(500);
 			ret.push("errors during translations config reload. there is empty translation hashes now");
+		}
+	} else if(action == "registrations"){
+		if(0==Registration::instance()->reload(cfg)){
+			ret.push(200);
+			ret.push("OK");
+		} else {
+			ret.push(500);
+			ret.push("errors during registrations config reload. there is empty registrations list now");
 		}
 	} else if(action == "router"){
 		//create & configure & run new instance

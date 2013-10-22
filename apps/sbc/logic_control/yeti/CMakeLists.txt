@@ -17,6 +17,7 @@ set (yeti_SRCS
 	Resource.cpp
 	CallCtx.cpp
 	CodesTranslator.cpp
+	Registration.cpp
 )
 
 SET(yeti_config_files
