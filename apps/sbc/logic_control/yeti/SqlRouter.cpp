@@ -489,6 +489,12 @@ void SqlRouter::clearStats(){
 
 }
 
+void SqlRouter::clearCache(){
+	if(cache_enabled && cache){
+		cache->clear();
+	}
+}
+
 void SqlRouter::getConfig(AmArg &arg){
 	AmArg u;
 	arg["config_db"] = dbc.conn_str();
@@ -554,7 +560,8 @@ void SqlRouter::getStats(AmArg &arg){
   }
       /* SqlRouter ProfilesCache stats */
   if(cache_enabled){
-	underlying_stats["entries"] = (int)cache->get_count();
+	//underlying_stats["entries"] = (int)cache->get_count();
+	cache->getStats(underlying_stats);
 	arg.push("profiles_cache",underlying_stats);
 	underlying_stats.clear();
   }
