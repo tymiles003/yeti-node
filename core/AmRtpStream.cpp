@@ -1217,19 +1217,17 @@ string AmRtpStream::getPayloadName(int payload_type)
 void AmRtpStream::getPayloadsHistory(std::vector<string> &incoming,std::vector<string> &outgoing){
 	std::vector<int>::const_iterator it = incoming_payloads.begin();
 	for(;it!=incoming_payloads.end();++it){
-		std::string pname,lpname;
+		std::string pname;
 		pname = getPayloadName(*it);
-		lpname.resize(pname.size());
-		transform(pname.begin(), pname.end(), lpname.begin(), ::tolower);
-		incoming.push_back(lpname);
+		transform(pname.begin(), pname.end(), pname.begin(), ::tolower);
+		incoming.push_back(pname);
 	}
 	it = outgoing_payloads.begin();
 	for(;it!=outgoing_payloads.end();++it){
-		std::string pname,lpname;
+		std::string pname;
 		pname = getPayloadName(*it);
-		lpname.resize(pname.size());
-		transform(pname.begin(), pname.end(), lpname.begin(), ::tolower);
-		outgoing.push_back(lpname);
+		transform(pname.begin(), pname.end(), pname.begin(), ::tolower);
+		outgoing.push_back(pname);
 	}
 }
 
