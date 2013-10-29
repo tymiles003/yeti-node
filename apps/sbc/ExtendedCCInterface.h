@@ -17,9 +17,9 @@ struct InitialInviteHandlerParams
   AmSipRequest *modified_invite;
 
   InitialInviteHandlerParams(const string &to, const string &ruri, const string &_from,
-      const AmSipRequest *original, AmSipRequest *modified):
-      remote_party(to), remote_uri(ruri), from(_from),
-      original_invite(original), modified_invite(modified) { }
+	  const AmSipRequest *original, AmSipRequest *modified):
+	  remote_party(to), remote_uri(ruri), from(_from),
+	  original_invite(original), modified_invite(modified) { }
 };
 
 enum CCChainProcessing { ContinueProcessing, StopProcessing };
@@ -77,6 +77,9 @@ class ExtendedCCInterface
     virtual CCChainProcessing onBye(SBCCallLeg *call, const AmSipRequest &req) { return ContinueProcessing; }
     virtual CCChainProcessing onOtherBye(SBCCallLeg *call, const AmSipRequest &req) { return ContinueProcessing; }
     virtual void onCallConnected(SBCCallLeg *call, const AmSipReply& reply){ }
+
+	// AmRtpStream callbacks
+	virtual void onRTPStreamDestroy(SBCCallLeg *call,AmRtpStream *stream) {}
 
     /** Possibility to influence messages relayed to the B2B peer leg.
       return value:

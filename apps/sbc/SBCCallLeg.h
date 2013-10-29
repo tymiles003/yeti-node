@@ -104,6 +104,7 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
    */
   virtual bool onBeforeRTPRelay(AmRtpPacket* p, sockaddr_storage* remote_addr);
   virtual void onAfterRTPRelay(AmRtpPacket* p, sockaddr_storage* remote_addr);
+  virtual void onRTPStreamDestroy(AmRtpStream *stream);
 
   void logCallStart(const AmSipReply& reply);
   void logCanceledCall();

@@ -1,6 +1,7 @@
 #include "Cdr.h"
 #include "AmUtils.h"
 #include "log.h"
+#include "RTPParameters.h"
 
 static const char *updateAction2str(UpdateAction act){
 	static const char *aStart = "Start";
@@ -92,6 +93,18 @@ void Cdr::update(const AmSipRequest &req){
     legA_local_ip = req.local_ip;
     legA_local_port = req.local_port;
     orig_call_id=req.callid;
+}
+
+void Cdr::update(SBCCallLeg *call,AmRtpStream *stream){
+	DBG("Cdr::%s(AmSipRequest)",FUNC_NAME);
+	if(writed) return;
+	lock();
+	if(call->isALeg()){
+		stream->getPayloadsHistory(legA_incoming_payloads,legA_outgoing_payloads);
+	} else {
+		stream->getPayloadsHistory(legB_incoming_payloads,legB_outgoing_payloads);
+	}
+	unlock();
 }
 
 void Cdr::update(const AmSipReply &reply){

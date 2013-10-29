@@ -158,6 +158,9 @@ protected:
   // current payload (index into @payloads)
   int payload;
 
+  std::vector<int> incoming_payloads;
+  std::vector<int> outgoing_payloads;
+
   struct PayloadMapping {
     // remote payload type
     int8_t remote_pt;
@@ -416,7 +419,7 @@ public:
   int getPayloadType() { return payload; }
   int getLastPayload() { return last_payload; }
   string getPayloadName(int payload_type);
-
+  void getPayloadsHistory(std::vector<string> &incoming,std::vector<string> &outgoing);
   /**
    * send a DTMF as RTP payload (RFC4733)
    * @param event event ID (e.g. key press), see rfc

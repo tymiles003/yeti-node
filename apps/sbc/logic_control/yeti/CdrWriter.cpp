@@ -32,8 +32,22 @@ static const char *static_fields_names[] = {
 	"local_tag",
 	"msg_logger_path",
 	"log_rtp",
-	"log_sip"
+	"log_sip",
+	"legA_rx_payloads",
+	"legA_tx_payloads",
+	"legB_rx_payloads",
+	"legB_tx_payloads"
 };
+
+static string join_str_vector(const vector<string> v,const string delim){
+	std::stringstream ss;
+	for(vector<string>::const_iterator i = v.begin();i!=v.end();++i){
+		if(i != v.begin())
+			ss << delim;
+		ss << *i;
+	}
+	return string(ss.str());
+}
 
 CdrWriter::CdrWriter()
 {
@@ -487,6 +501,12 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr){
 		invoc(cdr->msg_logger_path);
 		invoc(cdr->log_rtp);
 		invoc(cdr->log_sip);
+
+		invoc(join_str_vector(cdr->legA_incoming_payloads,","));
+		invoc(join_str_vector(cdr->legA_outgoing_payloads,","));
+		invoc(join_str_vector(cdr->legB_incoming_payloads,","));
+		invoc(join_str_vector(cdr->legB_outgoing_payloads,","));
+
 		/* invocate dynamic fields  */
 		list<string>::iterator it = cdr->dyn_fields.begin();
 		for(;it!=cdr->dyn_fields.end();++it){

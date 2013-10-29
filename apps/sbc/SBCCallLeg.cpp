@@ -1404,6 +1404,12 @@ void SBCCallLeg::onAfterRTPRelay(AmRtpPacket* p, sockaddr_storage* remote_addr)
   }
 }
 
+void SBCCallLeg::onRTPStreamDestroy(AmRtpStream *stream){
+	for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
+		(*i)->onRTPStreamDestroy(this, stream);
+	}
+}
+
 void SBCCallLeg::logCallStart(const AmSipReply& reply)
 {
   std::map<int,AmSipRequest>::iterator t_req = recvd_req.find(reply.cseq);

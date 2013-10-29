@@ -619,6 +619,7 @@ public:
   { return true; }
 
   virtual void onAfterRTPRelay(AmRtpPacket* p, sockaddr_storage* remote_addr) {}
+  virtual void onRTPStreamDestroy(AmRtpStream *stream) {}
 
   int getRtpInterface();
 };

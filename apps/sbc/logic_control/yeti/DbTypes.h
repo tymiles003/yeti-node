@@ -6,7 +6,7 @@
 #include <string>
 
 #define GETPROFILE_STATIC_FIELDS_COUNT 17
-#define WRITECDR_STATIC_FIELDS_COUNT 27
+#define WRITECDR_STATIC_FIELDS_COUNT 31
 
 using namespace std;
 

@@ -57,6 +57,9 @@ struct Cdr: public
     list<string> dyn_fields;
     string outbound_proxy;
 
+	vector<string> legA_incoming_payloads,legB_incoming_payloads;
+	vector<string> legA_outgoing_payloads,legB_outgoing_payloads;
+
 	Cdr();
 	Cdr(const Cdr& cdr,const SqlCallProfile &profile);
     Cdr(const SqlCallProfile &profile);
@@ -64,9 +67,10 @@ struct Cdr: public
     void init();
 	void update_sql(const SqlCallProfile &profile);
 	void update_sbc(const SBCCallProfile &profile);
-    void update(const AmSipRequest &req);
+	void update(const AmSipRequest &req);
     void update(const AmSipReply &reply);
     void update(SBCCallLeg &leg);
+	void update(SBCCallLeg *call,AmRtpStream *stream);
     void update(UpdateAction act);
     void update(DisconnectInitiator initiator,string reason, int code);
 	void update_rewrited(string reason, int code);

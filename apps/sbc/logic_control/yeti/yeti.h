@@ -137,6 +137,8 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   CCChainProcessing onOtherBye(SBCCallLeg *call, const AmSipRequest &req);
   void onCallConnected(SBCCallLeg *call, const AmSipReply& reply);
 
+  void onRTPStreamDestroy(SBCCallLeg *call,AmRtpStream *stream);
+
   int relayEvent(SBCCallLeg *call, AmEvent *e);
 
         //!OoD handlers

@@ -63,6 +63,12 @@
 
 #include <set>
 using std::set;
+#include <algorithm>
+
+static inline void add_if_no_exist(std::vector<int> &v,int payload){
+	if(std::find(v.begin(),v.end(),payload)==v.end())
+		v.push_back(payload);
+}
 
 void PayloadMask::clear()
 {
@@ -242,7 +248,7 @@ int AmRtpStream::ping()
     ERROR("while sending RTP packet.\n");
     return -1;
   }
- 
+
   return 2;
 }
 
@@ -291,7 +297,8 @@ int AmRtpStream::compile_and_send(const int payload, bool marker, unsigned int t
     ERROR("while sending RTP packet.\n");
     return -1;
   }
- 
+
+  add_if_no_exist(outgoing_payloads,rp.payload);
   if (logger) rp.logSent(logger, &l_saddr);
  
   return size;
@@ -363,6 +370,8 @@ int AmRtpStream::receive( unsigned char* buffer, unsigned int size,
     mem.freePacket(rp);
     return RTP_EMPTY;
   }
+
+  add_if_no_exist(incoming_payloads,rp->payload);
 
   if (rp->payload == getLocalTelephoneEventPT())
     {
@@ -436,6 +445,7 @@ AmRtpStream::~AmRtpStream()
     close(l_sd);
     close(l_rtcp_sd);
   }
+  if(session) session->onRTPStreamDestroy(this);
   if (logger) dec_ref(logger);
 }
 
@@ -817,6 +827,7 @@ void AmRtpStream::bufferPacket(AmRtpPacket* p)
       handleSymmetricRtp(&p->addr,false);
 
       if (NULL != relay_stream) {
+		add_if_no_exist(incoming_payloads,p->payload);
         relay_stream->relay(p);
       }
       mem.freePacket(p);
@@ -1099,7 +1110,8 @@ void AmRtpStream::relay(AmRtpPacket* p)
   }
   else {
     if (logger) p->logSent(logger, &l_saddr);
-    if(session) session->onAfterRTPRelay(p,&r_saddr);
+	if(session) session->onAfterRTPRelay(p,&r_saddr);
+	add_if_no_exist(outgoing_payloads,p->payload);
   }
 }
 
@@ -1200,6 +1212,25 @@ string AmRtpStream::getPayloadName(int payload_type)
   }
 
   return string("");
+}
+
+void AmRtpStream::getPayloadsHistory(std::vector<string> &incoming,std::vector<string> &outgoing){
+	std::vector<int>::const_iterator it = incoming_payloads.begin();
+	for(;it!=incoming_payloads.end();++it){
+		std::string pname,lpname;
+		pname = getPayloadName(*it);
+		lpname.resize(pname.size());
+		transform(pname.begin(), pname.end(), lpname.begin(), ::tolower);
+		incoming.push_back(lpname);
+	}
+	it = outgoing_payloads.begin();
+	for(;it!=outgoing_payloads.end();++it){
+		std::string pname,lpname;
+		pname = getPayloadName(*it);
+		lpname.resize(pname.size());
+		transform(pname.begin(), pname.end(), lpname.begin(), ::tolower);
+		outgoing.push_back(lpname);
+	}
 }
 
 PacketMem::PacketMem()
