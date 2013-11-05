@@ -23,7 +23,6 @@ set (yeti_SRCS
 SET(yeti_config_files
 	yeti.dist
 	oodprofile.yeti.dist
-	process_events.yeti.dist
 )
 
 INSTALL(PROGRAMS
@@ -35,7 +34,6 @@ INSTALL(PROGRAMS
 	tools/yeti-getcounters
 	tools/yeti-sumcounters
 	tools/yeti-csv2sql
-	tools/yeti-process-events
 	tools/yeti-dumplog
 	tools/yeti_core_log.gdb
 	tools/yeti-corelog
