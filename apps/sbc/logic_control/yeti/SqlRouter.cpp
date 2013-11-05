@@ -7,6 +7,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <exception>
+#include <algorithm>
 #include "SBCCallProfile.h"
 #include "sip/parse_nameaddr.h"
 #include "sip/parse_uri.h"
@@ -355,6 +356,10 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req, pqxx::conne
 		throw GetProfileException(FC_PARSE_FROM_FAILED,false);
 	}
 
+	string from_name = c2stlstr(na.name);
+	//simply remove all double quotes from string
+	from_name.erase(std::remove(from_name.begin(), from_name.end(), '"'),from_name.end());
+
 	if(tnx.prepared("getprofile").exists()){
 		pqxx::prepare::invocation invoc = tnx.prepared("getprofile");
 		invoc(gc.node_id);
@@ -363,7 +368,7 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req, pqxx::conne
 		invoc(req.remote_port);
 		invoc(req.local_ip);
 		invoc(req.local_port);
-		invoc(c2stlstr(na.name));
+		invoc(from_name);
 		invoc(c2stlstr(from_uri.user));
 		invoc(c2stlstr(from_uri.host));
 		invoc(from_uri.port);
