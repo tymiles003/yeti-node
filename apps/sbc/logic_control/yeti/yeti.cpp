@@ -4,6 +4,7 @@
 #include "AmPlugIn.h"
 #include "AmArg.h"
 #include "AmSession.h"
+#include "AmUtils.h"
 #include "CallLeg.h"
 #include "Version.h"
 #include "RegisterDialog.h"
@@ -1254,6 +1255,48 @@ void Yeti::reload(const AmArg& args, AmArg& ret){
 		return;
 	}
 	args.assertArrayFmt("s");
+
+	if(args.size()>1){
+		int event_id;
+		args.assertArrayFmt("ss");
+		if(!str2int(args[1].asCStr(),event_id)){
+			ret.push(500);
+			ret.push(AmArg("invalid event id"));
+			return;
+		} else {
+			DBG("we have event_id = %d",event_id);
+			//check it
+			bool succ = false;
+			try {
+				DbConfig dbc;
+				string prefix("master");
+				dbc.cfg2dbcfg(cfg,prefix);
+				pqxx::connection c(dbc.conn_str());
+				pqxx::prepare::declaration d = c.prepare("check_event","SELECT * from switch.check_event($1)");
+					d("integer",pqxx::prepare::treat_direct);
+				pqxx::nontransaction t(c);
+					pqxx::result r = t.prepared("check_event")(event_id).exec();
+				if(r[0][0].as<bool>(false)){
+					DBG("event_id checking succ");
+					succ = true;
+				} else {
+					WARN("no appropriate id in database");
+					ret.push(503);
+					ret.push(AmArg("no such event_id"));
+				}
+			} catch(pqxx::pqxx_exception &e){
+				DBG("e = %s",e.base().what());
+				ret.push(500);
+				ret.push(AmArg(string("can't check event id in database ")+e.base().what()));
+			} catch(...){
+				ret.push(500);
+				ret.push(AmArg("can't check event id in database"));
+			}
+			if(!succ){
+				return;
+			}
+		}
+	}
 
 	if(!read_config()){
 	  ret.push(500);
