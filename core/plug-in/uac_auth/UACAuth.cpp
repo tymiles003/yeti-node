@@ -229,7 +229,7 @@ bool UACAuth::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
 	    // resend request 
 	    if (dlg->sendRequest(ri->second.method,
 				 &(ri->second.body),
-				 hdrs, SIP_FLAGS_VERBATIM | SIP_FLAGS_NOAUTH) == 0) {
+				 hdrs, ri->second.flags | SIP_FLAGS_VERBATIM | SIP_FLAGS_NOAUTH) == 0) {
 	      processed = true;
               DBG("authenticated request successfully sent.\n");
 	      // undo SIP dialog status change
@@ -271,7 +271,8 @@ bool UACAuth::onSendRequest(AmSipRequest& req, int& flags)
   DBG("adding %d to list of sent requests.\n", req.cseq);
   sent_requests[req.cseq] = SIPRequestInfo(req.method, 
 					   &req.body,
-					   req.hdrs//,
+					   req.hdrs,
+					   flags//,
 					   // TODO: fix this!!!
 					   /*dlg->getOAState()*/);
   return false;
