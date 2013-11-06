@@ -123,6 +123,13 @@ bool AmSIPRegistration::doRegistration()
 
   int flags=0;
   if(!info.contact.empty()) {
+        size_t end = 0;
+        if(!info_contact.parse_contact(info.contact,(size_t)0,end)){
+            ERROR("failed to parse contact field.\n");
+            waiting_result = false;
+            reg_send_begin  = time(NULL);
+            return false;
+        }
     hdrs += SIP_HDR_COLSP(SIP_HDR_CONTACT) "<"
       + info.contact + ">" + CRLF;
     flags = SIP_FLAGS_NOCONTACT;
@@ -310,7 +317,8 @@ void AmSIPRegistration::onSipReply(const AmSipRequest& req,
 	  }
 	  server_contact.dump();
 
-	  if (server_contact.isEqual(local_contact)) {
+	  if (server_contact.isEqual(local_contact) ||
+		  (!info.contact.empty()&&server_contact.isEqual(info_contact))) {
 	    DBG("contact found\n");
 	    found = active = true;
 

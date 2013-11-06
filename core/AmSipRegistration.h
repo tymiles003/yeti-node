@@ -80,6 +80,7 @@ class AmSIPRegistration
 
   AmUriParser server_contact;
   AmUriParser local_contact;
+  AmUriParser info_contact;
 
   time_t reg_begin;	
   unsigned int reg_expires;
