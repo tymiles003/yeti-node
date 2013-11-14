@@ -74,7 +74,7 @@ case "$1" in
 	;;
   stop)
 	log_daemon_msg "Stopping $DESC: $NAME"
-	start-stop-daemon --oknodo --stop --quiet --pidfile $SEMS_PIDFILE \
+	start-stop-daemon --oknodo --stop --retry 60 --quiet --pidfile $SEMS_PIDFILE \
 		--exec $DAEMON
 	log_end_msg $?
 	;;
@@ -92,7 +92,7 @@ case "$1" in
   #;;
   graceful-stop|gstop)
 	log_daemon_msg "Stopping  gracefully $DESC: $NAME"
-	start-stop-daemon --oknodo --stop --signal 2 --quiet --pidfile $SEMS_PIDFILE \
+	start-stop-daemon --oknodo --stop --signal 2 --retry 60 --quiet --pidfile $SEMS_PIDFILE \
 		--exec $DAEMON
 	log_end_msg $?
 	;;
