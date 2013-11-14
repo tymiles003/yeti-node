@@ -261,9 +261,15 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
 	} else if (method == "clearCache"){
 		INFO ("clearCache received via xmlrpc2di");
 		ClearCache(args,ret);
+	} else if (method == "getRegistration"){
+		INFO("getRegistration via xmlrpc2di");
+		GetRegistration(args,ret);
 	} else if (method == "getRegistrations"){
 		INFO("getRegistrations via xmlrpc2di");
 		GetRegistrations(args,ret);
+	} else if (method == "getRegistrationsCount"){
+		INFO("getRegistrationsCount via xmlrpc2di");
+		GetRegistrationsCount(args,ret);
 	} else if (method == "getConfig"){
 		INFO ("getConfig received via xmlrpc2di");
 		GetConfig(args,ret);
@@ -286,7 +292,9 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
 		ret.push(AmArg("getCall"));
 		ret.push(AmArg("getCalls"));
 		ret.push(AmArg("getCallsCount"));
+		ret.push(AmArg("getRegistration"));
 		ret.push(AmArg("getRegistrations"));
+		ret.push(AmArg("getRegistrationsCount"));
 		ret.push(AmArg("reload"));
 		ret.push(AmArg("closeCdrFiles"));
 	} else {
@@ -1105,6 +1113,33 @@ void Yeti::GetCalls(const AmArg& args, AmArg& ret) {
 	ret.push(calls);
 }
 
+void Yeti::GetRegistration(const AmArg& args, AmArg& ret){
+	AmArg reg;
+	string reg_id_str;
+	int reg_id;
+
+	if (!args.size()) {
+		ret.push(500);
+		ret.push(AmArg("Parameters error: expected id of requested registration"));
+		return;
+	}
+
+	reg_id_str = args[0].asCStr();
+	if(!str2int(reg_id_str,reg_id)){
+		ret.push(500);
+		ret.push(AmArg("Non integer value passed as registrations id"));
+		return;
+	}
+
+	if(Registration::instance()->get_registration_info(reg_id,reg)){
+		ret.push(200);
+		ret.push(reg);
+	} else {
+		ret.push(404);
+		ret.push("Have no registration with such id");
+	}
+}
+
 void Yeti::GetRegistrations(const AmArg& args, AmArg& ret){
 	AmArg regs;
 
@@ -1112,6 +1147,11 @@ void Yeti::GetRegistrations(const AmArg& args, AmArg& ret){
 
 	ret.push(200);
 	ret.push(regs);
+}
+
+void Yeti::GetRegistrationsCount(const AmArg& args, AmArg& ret){
+	ret.push(200);
+	ret.push(Registration::instance()->get_registrations_count());
 }
 
 void Yeti::ClearStats(const AmArg& args, AmArg& ret){

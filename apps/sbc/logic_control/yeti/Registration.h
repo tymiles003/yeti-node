@@ -50,6 +50,8 @@ public:
 	int configure(AmConfigReader &cfg);
 	int reload(AmConfigReader &cfg);
 	void list_registrations(AmArg &ret);
+	long get_registrations_count();
+	bool get_registration_info(int reg_id,AmArg &reg);
 };
 
 #endif // REGISTRATION_H

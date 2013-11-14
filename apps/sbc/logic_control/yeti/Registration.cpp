@@ -184,6 +184,28 @@ void Registration::list_registrations(AmArg &ret){
 	cfg_mutex.unlock();
 }
 
+long Registration::get_registrations_count(){
+	long ret;
+	cfg_mutex.lock();
+		ret = registrations.size();
+	cfg_mutex.unlock();
+	return ret;
+}
+
+bool Registration::get_registration_info(int reg_id,AmArg &reg){
+	cfg_mutex.lock();
+	for (vector<RegInfo>::iterator it = registrations.begin();
+			it != registrations.end(); it++) {
+		if(it->id==reg_id){
+			reg2arg(*it,reg);
+			cfg_mutex.unlock();
+			return true;
+		}
+	}
+	cfg_mutex.unlock();
+	return false;
+}
+
 void Registration::clean_registrations(){
 	cfg_mutex.lock();
 	for (vector<RegInfo>::iterator it = registrations.begin(); it != registrations.end(); it++) {
