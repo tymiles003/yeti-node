@@ -74,7 +74,7 @@ class CodesTranslator {
 			unknown_internal_codes = 0;
 		}
 		void get(AmArg &arg){
-			arg["unknown_code_resloves"] = (long)unknown_response_codes;
+			arg["unknown_code_resolves"] = (long)unknown_response_codes;
 			arg["missed_response_configs"] = (long)missed_response_configs;
 			arg["unknown_internal_codes"] = (long)unknown_internal_codes;
 		}
