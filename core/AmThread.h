@@ -32,7 +32,6 @@
 #include <sys/time.h>
 #include <time.h>
 #include <errno.h>
-
 #include <queue>
 
 /**
@@ -219,6 +218,7 @@ public:
   void cancel();
 
   int setRealtime();
+  void setThreadName(const char *thread_name);
 };
 
 /**
