@@ -743,7 +743,6 @@ bool SBCCallProfile::evaluate(ParamReplacerCtx& ctx,
 {
   REPLACE_NONEMPTY_STR(ruri);
   REPLACE_NONEMPTY_STR(ruri_host);
-  REPLACE_NONEMPTY_STR(from);
   REPLACE_NONEMPTY_STR(to);
   REPLACE_NONEMPTY_STR(callid);
 
@@ -752,6 +751,12 @@ bool SBCCallProfile::evaluate(ParamReplacerCtx& ctx,
 
   REPLACE_NONEMPTY_STR(outbound_proxy);
   REPLACE_NONEMPTY_STR(next_hop);
+
+  /*
+   * must be evaluated after outbound_proxy & next_hop
+   * because they are determineoutbound inteface
+   */
+  REPLACE_NONEMPTY_STR(from); //must be evaluated after outbound_proxy
 
   if (!transcoder.evaluate(ctx,req)) return false;
 

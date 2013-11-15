@@ -31,9 +31,96 @@
 #include "log.h"
 #include "AmSipHeaders.h"
 #include "AmUtils.h"
+#include "sip/parse_uri.h"
+#include "sip/parse_header.h"
+#include "sip/parse_route.h"
 #include "SBC.h" // for RegexMapper SBCFactory::regex_mappings
 #include <algorithm>
 #include <stdlib.h>
+
+/*
+ * reimplements AmBasicSipDialog::getOutboundIf() to provide
+ * ability for replaces related to outbound interface
+ */
+int getOutboundInterface(const string &next_hop,
+                         const string &outbound_proxy,bool force_outbound_proxy,
+                         const string &route,
+                         const string &ruri){
+
+    if(AmConfig::SIP_Ifs.size() == 1){
+      return 0;
+    }
+
+    // Destination priority:
+    // 1. next_hop
+    // 2. outbound_proxy (if 1st req or force_outbound_proxy)
+    // 3. first route
+    // 4. remote URI
+
+    string dest_uri;
+    string dest_ip;
+    string local_ip;
+    multimap<string,unsigned short>::iterator if_it;
+
+    list<sip_destination> ip_list;
+    if(!next_hop.empty() &&
+       !parse_next_hop(stl2cstr(next_hop),ip_list) &&
+       !ip_list.empty()) {
+
+      dest_ip = c2stlstr(ip_list.front().host);
+    }
+    else if(!outbound_proxy.empty() && force_outbound_proxy) {
+      dest_uri = outbound_proxy;
+    }
+    else if(!route.empty()){
+      // parse first route
+      sip_header fr;
+      fr.value = stl2cstr(route);
+      sip_uri* route_uri = get_first_route_uri(&fr);
+      if(!route_uri){
+        ERROR("Could not parse route route='%s'",route.c_str());
+        goto error;
+      }
+
+      dest_ip = c2stlstr(route_uri->host);
+    }
+    else {
+      dest_uri = ruri;
+    }
+
+    if(dest_uri.empty() && dest_ip.empty()) {
+      ERROR("No destination found");
+      goto error;
+    }
+
+    if(!dest_uri.empty()){
+      sip_uri d_uri;
+      if(parse_uri(&d_uri,dest_uri.c_str(),dest_uri.length()) < 0){
+        ERROR("Could not parse destination URI dest_uri='%s'",dest_uri.c_str());
+        goto error;
+      }
+
+      dest_ip = c2stlstr(d_uri.host);
+    }
+
+    if(get_local_addr_for_dest(dest_ip,local_ip) < 0){
+      ERROR("No local address for dest '%s'",dest_ip.c_str());
+      goto error;
+    }
+
+    if_it = AmConfig::LocalSIPIP2If.find(local_ip);
+    if(if_it == AmConfig::LocalSIPIP2If.end()){
+      ERROR("Could not find a local interface for resolved local IP local_ip='%s'",
+        local_ip.c_str());
+      goto error;
+    }
+
+    return if_it->second;
+
+   error:
+    WARN("Error while computing outbound interface: default interface will be used instead.");
+    return 0;
+}
 
 int replaceParsedParam(const string& s, size_t p,
 			const AmUriParser& parsed, string& res) {
@@ -129,6 +216,7 @@ string replaceParameters(const string& s,
   size_t p = 0;
   bool is_escaped = false;
   const string& used_hdrs = req.hdrs; //(hdrs == NULL) ? req.hdrs : *hdrs;
+  int outbound_interface = -1;
 
   // char last_char=' ';
   
@@ -333,6 +421,40 @@ string replaceParameters(const string& s,
 	    break;
 	  }
 	  WARN("unknown replacement $R%c\n", s[p+1]);
+	}; break;
+
+	case 'O': { // outbound (after route)
+		if (s.length() < p+1) {
+			WARN("unknown replacement $O\n");
+			break;
+		}
+		if (s[p+1] == 'i') { // $Oi outbound IP address
+			if(outbound_interface == -1)
+				outbound_interface = getOutboundInterface(call_profile->next_hop,
+														  call_profile->outbound_proxy,
+														  call_profile->force_outbound_proxy,
+														  req.route,
+														  call_profile->ruri);
+			res += AmConfig::SIP_Ifs[outbound_interface].LocalIP;
+			break;
+		} else if (s[p+1] == 'I') { // $OI outbound public IP
+			if(outbound_interface == -1)
+				outbound_interface = getOutboundInterface(call_profile->next_hop,
+														  call_profile->outbound_proxy,
+														  call_profile->force_outbound_proxy,
+														  req.route,
+														  call_profile->ruri);
+			AmConfig::SIP_interface &sip_iface = AmConfig::SIP_Ifs[outbound_interface];
+			if(sip_iface.PublicIP.empty()){
+				WARN("no public ip for outbound interface '%s' using localIP instead",
+					 sip_iface.name.c_str());
+				res += sip_iface.LocalIP;
+			} else {
+				res += sip_iface.PublicIP;
+			}
+			break;
+		}
+		WARN("unknown replacement $O%c\n", s[p+1]);
 	}; break;
 
 	case 'u': {// Reg-cached destination user
