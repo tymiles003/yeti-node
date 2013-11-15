@@ -35,6 +35,7 @@ void WorkerThread::wakeup() {
 
 void WorkerThread::run() 
 { 
+  setThreadName("XmlRpcServer");
   running.set(true);
 
   string eventqueue_name = "MT_XMLRPC_SERVER_" + long2str((unsigned long)pthread_self());

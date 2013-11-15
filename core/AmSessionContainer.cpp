@@ -117,6 +117,7 @@ bool AmSessionContainer::clean_sessions() {
 
 void AmSessionContainer::run()
 {
+  setThreadName("AmSessionCntr");
   _MONITORING_INIT;
 
   while(!_container_closed.get()){

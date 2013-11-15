@@ -267,6 +267,7 @@ bool AmSession::is_stopped() {
 // - this is the main processing loop
 void AmSession::run() {
   DBG("startup session\n");
+  setThreadName("AmSession");
   if (!startup())
     return;
 

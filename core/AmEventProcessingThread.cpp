@@ -54,6 +54,7 @@ void AmEventProcessingThread::on_stop() {
 }
 
 void AmEventProcessingThread::run() {
+  setThreadName("AmEvt");
   DBG("AmEventProcessingThread running...\n");
 
   while (processing_events) {

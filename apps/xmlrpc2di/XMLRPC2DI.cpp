@@ -448,7 +448,7 @@ bool XMLRPC2DIServer::initialize() {
 }
 
 void XMLRPC2DIServer::run() {
-
+  setThreadName("xmlrpc2di");
   // register us as SIP event receiver for MOD_NAME
   AmEventDispatcher::instance()->addEventQueue(MOD_NAME, this);
 

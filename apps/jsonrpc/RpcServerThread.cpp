@@ -48,6 +48,7 @@ RpcServerThread::~RpcServerThread() {
 }
 
 void RpcServerThread::run() {
+    setThreadName("RpcServerThread");
   while (true) {
     waitForEvent();
     processEvents();

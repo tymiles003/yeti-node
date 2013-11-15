@@ -220,6 +220,7 @@ void Registration::on_stop(){
 }
 
 void Registration::run(){
+	setThreadName("YetiReg");
 	sleep(2);
 	while (true) {
 		cfg_mutex.lock();

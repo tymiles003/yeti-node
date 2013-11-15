@@ -239,6 +239,7 @@ void CdrThread::on_stop(){
 
 void CdrThread::run(){
 	INFO("Starting CdrWriter thread");
+	setThreadName("YetiCdrWriter");
 	if(!connectdb()){
 		ERROR("can't connect to any DB on startup. give up");
 		throw std::logic_error("CdrWriter can't connect to any DB on startup");

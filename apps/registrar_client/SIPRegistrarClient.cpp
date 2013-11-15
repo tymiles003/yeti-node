@@ -68,6 +68,7 @@ SIPRegistrarClient::SIPRegistrarClient(const string& name)
 }
 
 void SIPRegistrarClient::run() {
+  setThreadName("sipregclient");
   DBG("SIPRegistrarClient starting...\n");
   AmDynInvokeFactory* uac_auth_f = AmPlugIn::instance()->getFactory4Di("uac_auth");
   if (uac_auth_f == NULL) {

@@ -720,6 +720,7 @@ LogBucket& Monitor::getLogBucket(const string& call_id) {
 }
 
 void MonitorGarbageCollector::run() {
+  setThreadName("MonitorGC");
   DBG("running MonitorGarbageCollector thread\n");
   running.set(true);
   while (running.get()) {

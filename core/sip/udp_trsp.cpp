@@ -284,6 +284,8 @@ void udp_trsp::run()
     sockaddr_storage from_addr;
     iovec            iov[1];
 
+    setThreadName("sip_udp_trsp");
+
     iov[0].iov_base = buf;
     iov[0].iov_len  = MAX_UDP_MSGLEN;
 

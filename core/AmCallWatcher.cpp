@@ -44,6 +44,7 @@ AmCallWatcher::~AmCallWatcher()
 }
 
 void AmCallWatcher::run() {
+  setThreadName("AmCW");
   DBG("starting call watcher.\n");
   garbage_collector->start();
   while (true) {
@@ -180,6 +181,7 @@ CallStatus* AmCallWatcher::getStatus(const string& call_id) {
 }
 
 void AmCallWatcherGarbageCollector::run() {
+    setThreadName("AmCWGarbage");
   DBG("AmCallWatcherGarbageCollector started.\n");
   while (true) {
     sleep(2);

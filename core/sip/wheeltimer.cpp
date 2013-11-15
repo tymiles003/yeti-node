@@ -78,6 +78,8 @@ void _wheeltimer::run()
 {
   struct timeval now,next_tick,diff,tick;
 
+  setThreadName("sip_wheeltimer");
+
   tick.tv_sec = 0;
   tick.tv_usec = TIMER_RESOLUTION;
   

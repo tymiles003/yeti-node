@@ -88,7 +88,7 @@ void AmSessionProcessorThread::notify(AmEventQueue* sender) {
 }
 
 void AmSessionProcessorThread::run() {
-
+  setThreadName("AmSess");
   stop_requested = false;
   while(!stop_requested.get()){
 

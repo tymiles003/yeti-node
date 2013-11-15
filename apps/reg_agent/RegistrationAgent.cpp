@@ -178,6 +178,7 @@ bool RegThread::check_registration(const RegInfo& ri) {
 
 
 void RegThread::run() {
+  setThreadName("RegAgent");
   DBG("registrar client started.\n");
   sleep(2); // wait for sems to completely start up
 

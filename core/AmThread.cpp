@@ -180,6 +180,13 @@ int AmThread::setRealtime() {
   return 0;
 }
 
+void AmThread::setThreadName(const char *thread_name){
+  _m_td.lock();
+  if(thread_name != NULL &&
+     (pthread_setname_np(_td, thread_name)!=0))
+    WARN("can't set name '%s' for thread %ld[%p] ",_td,this);
+  _m_td.unlock();
+}
 
 AmThreadWatcher* AmThreadWatcher::_instance=0;
 AmMutex AmThreadWatcher::_inst_mut;
@@ -217,6 +224,7 @@ void AmThreadWatcher::on_stop()
 
 void AmThreadWatcher::run()
 {
+  setThreadName("AmThreadWatcher");
   for(;;){
 
     _run_cond.wait_for();
