@@ -133,6 +133,7 @@ bool Registration::check_registration(RegInfo& ri){
 	AmDynInvokeFactory* di_f = AmPlugIn::instance()->getFactory4Di("registrar_client");
 	if (di_f == NULL) {
 		ERROR("unable to get a registrar_client\n");
+		return true; //avoid create_registration calling
 	} else {
 		AmDynInvoke* registrar_client_i = di_f->getInstance();
 		if (registrar_client_i!=NULL) {
