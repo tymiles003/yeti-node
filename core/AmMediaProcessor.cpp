@@ -225,7 +225,7 @@ void AmMediaProcessorThread::on_stop()
 
 void AmMediaProcessorThread::run()
 {
-  setThreadName("AmMediaProc");
+  setThreadName("media-proc");
   stop_requested = false;
   struct timeval now,next_tick,diff,tick;
 

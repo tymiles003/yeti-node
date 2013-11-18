@@ -32,7 +32,7 @@ void RedisConnPool::run(){
 	list<redisContext *> c;
 
 //	DBG("%s()",FUNC_NAME);
-	setThreadName("YetiRedisCP");
+	setThreadName("yeti-redis-cp");
 
 	conn_mtx.lock();
 		unsigned int active_count = active_ctxs.size();

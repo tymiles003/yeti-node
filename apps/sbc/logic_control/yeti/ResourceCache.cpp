@@ -42,7 +42,7 @@ void ResourceCache::run(){
 //	DBG("%s()",FUNC_NAME);
 	redisContext *write_ctx;
 
-	setThreadName("YetiResCache");
+	setThreadName("yeti-res-wr");
 
 	read_pool.start();
 	write_pool.start();

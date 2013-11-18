@@ -233,7 +233,7 @@ void _RegisterCache::on_stop()
 
 void _RegisterCache::run()
 {
-  setThreadName("RegisterCache");
+  setThreadName("sip-reg-cache");
   struct timespec tick,rem;
   tick.tv_sec  = (REG_CACHE_SINGLE_CYCLE/1000000L);
   tick.tv_nsec = (REG_CACHE_SINGLE_CYCLE - (tick.tv_sec)*1000000L) * 1000L;

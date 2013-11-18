@@ -204,7 +204,7 @@ PgConnection* PgConnectionPool::getActiveConnection(){
 
 void PgConnectionPool::run(){
 	DBG("PgCP %s thread starting\n",pool_name.c_str());
-	setThreadName("YetiPgCP");
+	setThreadName("yeti-pg-cp");
 
 	try_connect.set(true); //for initial connections setup
 

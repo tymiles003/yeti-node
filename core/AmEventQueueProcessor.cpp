@@ -97,7 +97,7 @@ void EventQueueWorker::notify(AmEventQueue* sender)
 
 void EventQueueWorker::run() 
 {
-  setThreadName("AmEventQueue");
+  setThreadName("event-queue");
   stop_requested = false;
   while(!stop_requested.get()){
 

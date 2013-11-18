@@ -735,7 +735,7 @@ int _resolver::str2ip(const char* name,
 
 void _resolver::run()
 {
-    setThreadName("sip_resolver");
+    setThreadName("resolver");
     for(;;) {
 	sleep(10);
 

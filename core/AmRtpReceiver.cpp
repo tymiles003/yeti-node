@@ -114,7 +114,7 @@ void AmRtpReceiverThread::run()
   unsigned int   tmp_nfds = 0;
   struct pollfd* tmp_fds  = new struct pollfd[MAX_RTP_SESSIONS];
 
-  setThreadName("AmRtpReceiver");
+  setThreadName("rtp-rx");
   while(!stop_requested.get()){
 	
     streams_mut.lock();
