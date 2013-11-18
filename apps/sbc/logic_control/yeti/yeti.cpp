@@ -558,6 +558,7 @@ bool Yeti::check_and_refuse(SqlCallProfile *profile,Cdr *cdr,
 	need_reply = (response_code!=NO_REPLY_DISCONNECT_CODE);
 
 	if(write_cdr){
+		cdr->update(Start);
 		cdr->update(DisconnectByDB,internal_reason,internal_code);
 		cdr->update_rewrited(response_reason,response_code);
 	} else {
@@ -565,7 +566,6 @@ bool Yeti::check_and_refuse(SqlCallProfile *profile,Cdr *cdr,
 	}
 	if(send_reply && need_reply){
 		if(write_cdr){
-			cdr->update(Start);
 			cdr->update(req);
 			cdr->update_sbc(*profile);
 		}
@@ -780,7 +780,7 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 
 	ctx->initial_invite = new AmSipRequest(req);
 
-	throw AmSession::Exception(NO_REPLY_DISCONNECT_CODE,"test silent mode");
+	//throw AmSession::Exception(NO_REPLY_DISCONNECT_CODE,"test silent mode");
 
 	try {
 
