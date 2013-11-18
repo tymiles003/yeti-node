@@ -98,7 +98,9 @@ int CodesTranslator::load_translations_config(){
 					response_reason = internal_reason;
 
 				icode ic(internal_code,internal_reason,
-						response_code,response_reason);
+						response_code,response_reason,
+						row["o_store_cdr"].as<bool>(true),
+						row["o_silently_drop"].as<bool>(false));
 				icode2resp.insert(pair<unsigned int,icode>(code,ic));
 
 				DBG("DbTrans:     %d -> <%d:'%s'>, <%d:'%s'>",code,
@@ -157,12 +159,13 @@ bool CodesTranslator::stop_hunting(unsigned int code){
 	return ret;
 }
 
-void CodesTranslator::translate_db_code(unsigned int code,
+bool CodesTranslator::translate_db_code(unsigned int code,
 						 unsigned int &internal_code,
 						 string &internal_reason,
 						 unsigned int &response_code,
 						 string &response_reason)
 {
+	bool write_cdr = true;
 	icode2resp_mutex.lock();
 	map<unsigned int,icode>::const_iterator it = icode2resp.find(code);
 	if(it!=icode2resp.end()){
@@ -170,11 +173,18 @@ void CodesTranslator::translate_db_code(unsigned int code,
 		const icode &c = it->second;
 		internal_code = c.internal_code;
 		internal_reason = c.internal_reason;
-		response_code = c.response_code;
-		response_reason = c.response_reason;
-		DBG("translation result: internal = <%d:'%s'>, response = <%d:'%s'>",
+		if(c.silently_drop){
+			response_code = NO_REPLY_DISCONNECT_CODE;
+			response_reason = "";
+		} else {
+			response_code = c.response_code;
+			response_reason = c.response_reason;
+		}
+		write_cdr = c.store_cdr;
+		DBG("translation result: internal = <%d:'%s'>, response = <%d:'%s'>, silently_drop = %d, store_cdr = %d",
 			internal_code,internal_reason.c_str(),
-			response_code,response_reason.c_str());
+			response_code,response_reason.c_str(),
+			c.silently_drop,c.store_cdr);
 	} else {
 		stat.unknown_internal_codes++;
 		DBG("no translation for db code '%d'. reply with 500",code);
@@ -182,6 +192,7 @@ void CodesTranslator::translate_db_code(unsigned int code,
 		internal_reason = response_reason = SIP_REPLY_SERVER_INTERNAL_ERROR;
 	}
 	icode2resp_mutex.unlock();
+	return write_cdr;
 }
 
 void CodesTranslator::GetConfig(AmArg& ret){

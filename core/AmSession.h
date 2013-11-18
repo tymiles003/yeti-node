@@ -60,6 +60,7 @@ class AmDtmfEvent;
 /* definition imported from Ser parser/msg_parser.h */
 #define FL_FORCE_ACTIVE 2
 
+#define NO_REPLY_DISCONNECT_CODE 0
 
 /**
  * \brief Implements the default behavior of one session
@@ -113,6 +114,7 @@ private:
   void stop();
   void* _pid;
 #endif
+  bool no_reply;
 
   static void session_started();
   static void session_stopped();

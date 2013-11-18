@@ -79,7 +79,8 @@ AmSession::AmSession(AmSipDialog* p_dlg)
     accept_early_session(false),
     rtp_interface(-1),
     refresh_method(REFRESH_UPDATE_FB_REINV),
-    processing_status(SESSION_PROCESSING_EVENTS)
+    processing_status(SESSION_PROCESSING_EVENTS),
+    no_reply(false)
 #ifdef WITH_ZRTP
   ,  zrtp_session(NULL), zrtp_audio(NULL), enable_zrtp(true)
 #endif
@@ -415,7 +416,8 @@ bool AmSession::processingCycle() {
       processing_status = SESSION_WAITING_DISCONNECTED;
       
       if ((dlg_status != AmSipDialog::Disconnected) &&
-	  (dlg_status != AmSipDialog::Cancelling)) {
+      (dlg_status != AmSipDialog::Cancelling)&&
+      !no_reply) {
 	DBG("app did not send BYE - do that for the app\n");
 	if (dlg->bye() != 0) {
 	  processing_status = SESSION_ENDED_DISCONNECTED;
@@ -797,7 +799,13 @@ void AmSession::onSipRequest(const AmSipRequest& req)
     catch(const AmSession::Exception& e) {
       ERROR("%i %s\n",e.code,e.reason.c_str());
       setStopped();
-      dlg->reply(req, e.code, e.reason, NULL, e.hdrs);
+      no_reply = (e.code == NO_REPLY_DISCONNECT_CODE);
+      if(!no_reply)
+        dlg->reply(req, e.code, e.reason, NULL, e.hdrs);
+      else
+          DBG("AmSession::onSipREquest() suspress reply with reason '%s'",
+              e.reason.c_str());
+      setStopped();
     }
   }
   else if(req.method == SIP_METH_ACK){

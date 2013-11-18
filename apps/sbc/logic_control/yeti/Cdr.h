@@ -24,6 +24,7 @@ struct Cdr: public
 	AmMutex
 {
     bool writed;
+    bool suppress;
 	bool inserted2list;
 	int attempt_num;
 	bool is_last;
@@ -74,6 +75,7 @@ struct Cdr: public
     void update(UpdateAction act);
     void update(DisconnectInitiator initiator,string reason, int code);
 	void update_rewrited(string reason, int code);
+	void setSuppress(bool s);
 	void replace(ParamReplacerCtx &ctx,const AmSipRequest &req);
 	void replace(string& s, const string& from, const string& to);
     void refuse(const SBCCallProfile &profile);

@@ -544,22 +544,31 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 bool Yeti::check_and_refuse(SqlCallProfile *profile,Cdr *cdr,
 							const AmSipRequest& req,ParamReplacerCtx& ctx,
 							bool send_reply){
-	if(profile->disconnect_code_id==0)
-		return false;
-	//translation here
+	bool need_reply;
+	bool write_cdr;
 	unsigned int internal_code,response_code;
 	string internal_reason,response_reason;
-	CodesTranslator::instance()->translate_db_code(profile->disconnect_code_id,
+
+	if(profile->disconnect_code_id==0)
+		return false;
+
+	write_cdr = CodesTranslator::instance()->translate_db_code(profile->disconnect_code_id,
 							 internal_code,internal_reason,
 							 response_code,response_reason);
-	//fill && write cdr
-	cdr->update(DisconnectByDB,internal_reason,internal_code);
-	cdr->update_rewrited(response_reason,response_code);
+	need_reply = (response_code!=NO_REPLY_DISCONNECT_CODE);
 
-	if(send_reply){
-		cdr->update(Start);
-		cdr->update(req);
-		cdr->update_sbc(*profile);
+	if(write_cdr){
+		cdr->update(DisconnectByDB,internal_reason,internal_code);
+		cdr->update_rewrited(response_reason,response_code);
+	} else {
+		cdr->setSuppress(true);
+	}
+	if(send_reply && need_reply){
+		if(write_cdr){
+			cdr->update(Start);
+			cdr->update(req);
+			cdr->update_sbc(*profile);
+		}
 		//prepare & send sip response
 		string hdrs = ctx.replaceParameters(profile->append_headers, "append_headers", req);
 		if (hdrs.size()>2)
@@ -770,6 +779,8 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 	cdr->update(req);
 
 	ctx->initial_invite = new AmSipRequest(req);
+
+	throw AmSession::Exception(NO_REPLY_DISCONNECT_CODE,"test silent mode");
 
 	try {
 

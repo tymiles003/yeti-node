@@ -110,7 +110,10 @@ void CdrWriter::stop()
 
 void CdrWriter::postcdr(Cdr* cdr )
 {
-	//DBG("%s(%p)",FUNC_NAME,cdr);
+	if(cdr->suppress){
+		delete cdr;
+		return;
+	}
 	cdrthreadpool_mut.lock();
 		cdrthreadpool[cdr->cdr_born_time.tv_usec%cdrthreadpool.size()]->postcdr(cdr);
 	cdrthreadpool_mut.unlock();

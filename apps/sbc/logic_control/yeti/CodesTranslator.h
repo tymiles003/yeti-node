@@ -52,11 +52,14 @@ class CodesTranslator {
 	struct icode {
 		int internal_code,response_code;
 		string internal_reason,response_reason;
-		icode(int ic,string ir,int rc, string rr):
+		bool store_cdr,silently_drop;
+		icode(int ic,string ir,int rc, string rr,bool sc,bool sd):
 			internal_code(ic),
 			internal_reason(ir),
 			response_code(rc),
-			response_reason(rr){}
+			response_reason(rr),
+			store_cdr(sc),
+			silently_drop(sd){}
 	};
 	map<unsigned int,icode> icode2resp;
 	AmMutex icode2resp_mutex;
@@ -91,7 +94,7 @@ class CodesTranslator {
 	void rewrite_response(unsigned int code,const string &reason,
 						  unsigned int &out_code,string &out_reason);
 	bool stop_hunting(unsigned int code);
-	void translate_db_code(unsigned int icode,
+	bool translate_db_code(unsigned int icode,
 								 unsigned int &internal_code,
 								 string &internal_reason,
 								 unsigned int &response_code,

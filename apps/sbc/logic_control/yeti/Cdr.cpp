@@ -45,6 +45,7 @@ void Cdr::init(){
     gettimeofday(&cdr_born_time, NULL);
 
     writed=false;
+    suppress = false;
 	inserted2list = false;
 
 	disconnect_reason = "Unhandled sequence. report";
@@ -176,6 +177,13 @@ void Cdr::update_rewrited(string reason, int code){
 	lock();
 	disconnect_rewrited_reason = reason;
 	disconnect_rewrited_code = code;
+	unlock();
+}
+
+void Cdr::setSuppress(bool s){
+	if(writed) return;
+	lock();
+	suppress = s;
 	unlock();
 }
 
