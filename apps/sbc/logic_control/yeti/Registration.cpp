@@ -23,6 +23,16 @@ void Registration::reg2arg(const RegInfo &reg,AmArg &arg){
 	arg["passwd"] = reg.passwd;
 	arg["proxy "] = reg.proxy;
 	arg["contact"] = reg.contact;
+	arg["expire_interval"] = reg.expire_interval;
+	if(reg.expire_interval!=0){
+		arg["expire_interval"] = reg.expire_interval;
+		arg["force_reregister"] = reg.force_reregister;
+		if(reg.force_reregister){
+			struct timeval now;
+			gettimeofday(&now,NULL);
+			arg["internal_expire"] = difftime(reg.internal_expire_time.tv_sec,now.tv_sec);
+		}
+	}
 	if(!reg.handle.empty()){
 		if(reg.state==AmSIPRegistration::RegisterActive)
 			arg["expires"] = reg.expires;
@@ -64,6 +74,10 @@ int Registration::load_registrations(){
 			ri.passwd = row["o_auth_password"].c_str();
 			ri.proxy = row["o_proxy"].c_str();
 			ri.contact = row["o_contact"].c_str();
+			ri.expire_interval = row["o_expire"].as<int>(0);
+			ri.force_reregister = (ri.expire_interval!=0)?
+									row["o_force_expire"].as<bool>(false):
+									false;
 			new_registrations.push_back(ri);
 		}
 
@@ -120,9 +134,18 @@ void Registration::create_registration(RegInfo& ri){
 			di_args.push("");						//!TODO: implement AmSipRegistration events processing
 			di_args.push(ri.proxy.c_str());
 			di_args.push(ri.contact.c_str());
+			di_args.push(ri.expire_interval);
+			if(!ri.handle.empty())
+				di_args.push(ri.handle.c_str());
+
 			registrar_client_i->invoke("createRegistration", di_args, reg_handle);
-			if (reg_handle.size())
+			if (reg_handle.size()){
 				ri.handle = reg_handle.get(0).asCStr();
+				if(ri.force_reregister){
+					gettimeofday(&ri.internal_expire_time,NULL);
+					ri.internal_expire_time.tv_sec+=ri.expire_interval;
+				}
+			}
 		}
 	}
 }
@@ -216,6 +239,12 @@ void Registration::clean_registrations(){
 	cfg_mutex.unlock();
 }
 
+bool Registration::time_to_reregister(RegInfo& ri, time_t now_sec){
+	if(!ri.force_reregister)
+		return false;
+	return (difftime(ri.internal_expire_time.tv_sec,now_sec) < 0);
+}
+
 void Registration::on_stop(){
 	stopped.set(true);
 }
@@ -225,10 +254,19 @@ void Registration::run(){
 	sleep(2);
 	while (true) {
 		cfg_mutex.lock();
+		struct timeval now;
+		gettimeofday(&now,NULL);
 		for (vector<RegInfo>::iterator it = registrations.begin(); it != registrations.end(); it++) {
 			if (!check_registration(*it)) {
 				DBG("Registration %d does not exist or timeout. Creating registration.\n",it->id);
 				create_registration(*it);
+			} else {
+				if(time_to_reregister(*it,now.tv_sec)){
+					//registration is obsolete due to internal check
+					INFO("Registration: internal expire time reached for %d and register force enabled. Reregister",
+						it->id);
+					create_registration(*it);
+				}
 			}
 		}
 		cfg_mutex.unlock();

@@ -220,7 +220,8 @@ void SIPRegistrarClient::onNewRegistration(SIPNewRegistrationEvent* new_reg) {
       }
     }
   }
-  
+  if(new_reg->info.expires_interval!=0)
+    reg->setExpiresInterval(new_reg->info.expires_interval);
   add_reg(new_reg->handle, reg);
   reg->doRegistration();
 }
@@ -333,13 +334,14 @@ string SIPRegistrarClient::createRegistration(const string& domain,
 					      const string& sess_link,
 					      const string& proxy,
                                               const string& contact,
+                          const int& expires_interval,
 					      const string& handle) {
 	
   string l_handle = handle.empty() ? AmSession::getNewId() : handle;
   instance()->
     postEvent(new SIPNewRegistrationEvent(SIPRegistrationInfo(domain, user, 
 							      name, auth_user, pwd, 
-							      proxy, contact),
+								  proxy, contact,expires_interval),
 					  l_handle, sess_link));
 
   return l_handle;
@@ -394,12 +396,15 @@ void SIPRegistrarClient::invoke(const string& method, const AmArg& args,
 {
   if(method == "createRegistration"){
     string proxy, contact, handle;
+    int expires_interval;
     if (args.size() > 6)
       proxy = args.get(6).asCStr();
     if (args.size() > 7)
       contact = args.get(7).asCStr();
     if (args.size() > 8)
-      handle = args.get(8).asCStr();
+      expires_interval = args.get(8).asInt();
+    if (args.size() > 9)
+      handle = args.get(9).asCStr();
 
     ret.push(createRegistration(args.get(0).asCStr(),
 				args.get(1).asCStr(),
@@ -407,7 +412,7 @@ void SIPRegistrarClient::invoke(const string& method, const AmArg& args,
 				args.get(3).asCStr(),
 				args.get(4).asCStr(),
 				args.get(5).asCStr(),
-				proxy, contact, handle
+				proxy, contact, expires_interval, handle
 				).c_str());
   }
   else if(method == "removeRegistration"){

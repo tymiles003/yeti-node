@@ -26,6 +26,10 @@ class Registration : public AmThread {
 		string handle;
 		int expires;
 		int state;
+
+		int expire_interval;
+		bool force_reregister;
+		struct timeval internal_expire_time;
 	};
 
 	void reg2arg(const RegInfo &reg,AmArg &arg);
@@ -35,6 +39,8 @@ class Registration : public AmThread {
 	bool check_registration(RegInfo& ri);
 	void remove_registration(RegInfo& ri);
 	void clean_registrations();
+
+	bool time_to_reregister(RegInfo& ri, time_t now_sec);
 
 protected:
 	void run();

@@ -46,6 +46,7 @@ struct SIPRegistrationInfo {
   string pwd;
   string proxy;
   string contact;
+  int expires_interval;
 
   SIPRegistrationInfo(const string& domain,
 		      const string& user,
@@ -53,9 +54,11 @@ struct SIPRegistrationInfo {
 		      const string& auth_user,
 		      const string& pwd,
 		      const string& proxy,
-		      const string& contact)
+			  const string& contact,
+			  const int& expires_interval)
     : domain(domain),user(user),name(name),
-    auth_user(auth_user),pwd(pwd),proxy(proxy),contact(contact)
+    auth_user(auth_user),pwd(pwd),proxy(proxy),contact(contact),
+    expires_interval(expires_interval)
   { }
 };
 
