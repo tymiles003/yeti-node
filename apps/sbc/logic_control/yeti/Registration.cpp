@@ -239,6 +239,22 @@ void Registration::clean_registrations(){
 	cfg_mutex.unlock();
 }
 
+bool Registration::reregister(int reg_id){
+	bool res = false;
+	cfg_mutex.lock();
+	for (vector<RegInfo>::iterator it = registrations.begin(); it != registrations.end(); it++) {
+		if(it->id == reg_id &&
+				it->state == AmSIPRegistration::RegisterActive){
+			//found registration for reg_id in appropriate state
+			create_registration(*it);
+			res = true;
+			break;
+		}
+	}
+	cfg_mutex.unlock();
+	return res;
+}
+
 bool Registration::time_to_reregister(RegInfo& ri, time_t now_sec){
 	if(!ri.force_reregister)
 		return false;

@@ -39,7 +39,6 @@ class Registration : public AmThread {
 	bool check_registration(RegInfo& ri);
 	void remove_registration(RegInfo& ri);
 	void clean_registrations();
-
 	bool time_to_reregister(RegInfo& ri, time_t now_sec);
 
 protected:
@@ -58,6 +57,7 @@ public:
 	void list_registrations(AmArg &ret);
 	long get_registrations_count();
 	bool get_registration_info(int reg_id,AmArg &reg);
+	bool reregister(int reg_id);
 };
 
 #endif // REGISTRATION_H

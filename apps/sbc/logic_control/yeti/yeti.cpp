@@ -264,6 +264,9 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
 	} else if (method == "getRegistration"){
 		INFO("getRegistration via xmlrpc2di");
 		GetRegistration(args,ret);
+	} else if (method == "renewRegistration"){
+		INFO("renewRegistration via xmlrpc2di");
+		RenewRegistration(args,ret);
 	} else if (method == "getRegistrations"){
 		INFO("getRegistrations via xmlrpc2di");
 		GetRegistrations(args,ret);
@@ -293,6 +296,7 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
 		ret.push(AmArg("getCalls"));
 		ret.push(AmArg("getCallsCount"));
 		ret.push(AmArg("getRegistration"));
+		ret.push(AmArg("renewRegistration"));
 		ret.push(AmArg("getRegistrations"));
 		ret.push(AmArg("getRegistrationsCount"));
 		ret.push(AmArg("reload"));
@@ -1148,6 +1152,32 @@ void Yeti::GetRegistration(const AmArg& args, AmArg& ret){
 	} else {
 		ret.push(404);
 		ret.push("Have no registration with such id");
+	}
+}
+
+void Yeti::RenewRegistration(const AmArg& args, AmArg& ret){
+	string reg_id_str;
+	int reg_id;
+
+	if (!args.size()) {
+		ret.push(500);
+		ret.push(AmArg("Parameters error: expected id of active registration"));
+		return;
+	}
+
+	reg_id_str = args[0].asCStr();
+	if(!str2int(reg_id_str,reg_id)){
+		ret.push(500);
+		ret.push(AmArg("Non integer value passed as registrations id"));
+		return;
+	}
+
+	if(Registration::instance()->reregister(reg_id)){
+		ret.push(200);
+		ret.push(AmArg("OK"));
+	} else {
+		ret.push(404);
+		ret.push("Have no registration with such id and in appropriate state");
 	}
 }
 

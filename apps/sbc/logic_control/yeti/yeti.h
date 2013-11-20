@@ -93,6 +93,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   void GetCalls(const AmArg& args, AmArg& ret);
   void GetCallsCount(const AmArg& args, AmArg& ret);
   void GetRegistration(const AmArg& args, AmArg& ret);
+  void RenewRegistration(const AmArg& args, AmArg& ret);
   void GetRegistrations(const AmArg& args, AmArg& ret);
   void GetRegistrationsCount(const AmArg& args, AmArg& ret);
   void showVersion(const AmArg& args, AmArg& ret);
