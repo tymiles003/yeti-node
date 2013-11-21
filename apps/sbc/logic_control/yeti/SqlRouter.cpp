@@ -379,6 +379,7 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req, pqxx::conne
 		invoc(c2stlstr(contact_uri.host));
 		invoc(contact_uri.port);
 		invoc(req.user);
+		invoc(req.domain);
 		//invoc headers from sip request
 		for(vector<string>::const_iterator it = used_header_fields.begin(); it != used_header_fields.end(); ++it){
 			string hdr = getHeader(req.hdrs,*it);
