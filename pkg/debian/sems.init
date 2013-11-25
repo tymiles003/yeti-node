@@ -71,6 +71,12 @@ case "$1" in
 	start-stop-daemon --start --quiet --oknodo --pidfile $SEMS_PIDFILE \
 		--exec $DAEMON -- $PARAMS
 	log_end_msg $?
+	if [ -e /usr/bin/monit ] &&		#monit is installed
+	   [ -e /etc/monit/conf.d/sems ] &&	#we have out config for monit
+	   [ "$2" != "monit" ]			#script is not called from monit
+	then
+		monit monitor sems &> /dev/null
+	fi
 	;;
   stop)
 	log_daemon_msg "Stopping $DESC: $NAME"
