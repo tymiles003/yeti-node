@@ -83,6 +83,8 @@ void SIPRegistrarClient::run() {
       unsigned int cnt = 250;
       while (cnt > 0) {
 	usleep(2000); // every 2 ms
+	if(stop_requested.get())
+		break;
 	processEvents();
 	cnt--;
       }
