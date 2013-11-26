@@ -927,6 +927,12 @@ CCChainProcessing Yeti::onRtpTimeout(SBCCallLeg *call,const AmRtpTimeoutEvent &r
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	unsigned int internal_code,response_code;
 	string internal_reason,response_reason;
+
+	if(call->getCallStatus()!=CallLeg::Connected){
+		WARN("module catched RtpTimeout in no Connected state. ignore it");
+		return StopProcessing;
+	}
+
 	CodesTranslator::instance()->translate_db_code(
 		DC_RTP_TIMEOUT,
 		internal_code,internal_reason,
