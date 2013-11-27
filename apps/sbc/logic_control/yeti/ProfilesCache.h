@@ -6,6 +6,7 @@
 #include "AmArg.h"
 #include "SqlCallProfile.h"
 #include "MurmurHash.h"
+#include "UsedHeaderField.h"
 
 using namespace std;
 
@@ -15,9 +16,9 @@ struct ProfilesCacheKey {
 		to,
 		contact,
 		user;
+	string used_headers_values;
 	unsigned short local_port,
 		remote_port;
-	map<string,string> header_fields;
 };
 
 struct ProfilesCacheEntry {
@@ -51,7 +52,8 @@ public MurmurHash<ProfilesCacheKey,AmSipRequest,ProfilesCacheEntry>,
 public DirectAppTimer
 {
 public:
-	ProfilesCache(vector<string> used_header_fields, unsigned long buckets = 65000,double timeout = 5);
+	ProfilesCache(const vector<UsedHeaderField> &used_header_fields,
+				  unsigned long buckets = 65000,double timeout = 5);
 	~ProfilesCache();
 
 	bool get_profiles(const AmSipRequest *req,list<SqlCallProfile *> &profiles);
@@ -75,7 +77,9 @@ protected:
 
 private:
 	double timeout;
-	vector<string> used_header_fields;
+	vector<UsedHeaderField> used_header_fields;
+
+	void getUsedHeadersValues(const AmSipRequest *key,string &values);
 	bool is_obsolete(entry *e,struct timeval *now);
 	void check_obsolete();
 	void on_clean();

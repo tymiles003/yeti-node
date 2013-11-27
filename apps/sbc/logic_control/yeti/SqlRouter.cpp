@@ -101,7 +101,7 @@ try {
 			const pqxx::result::tuple &t = r[i];
 			DBG("load_interface_in:     %ld: %s : %s",i,
 				t["varname"].c_str(),t["vartype"].c_str());
-			used_header_fields.push_back(t["varname"].c_str());
+			used_header_fields.push_back(UsedHeaderField(t));
 		}
 	}
 	c.disconnect();
@@ -212,7 +212,7 @@ int SqlRouter::configure(AmConfigReader &cfg){
   if(cache_enabled){
     cache_check_interval = cfg.getParameterInt("profiles_cache_check_interval",30);
 	cache_buckets = cfg.getParameterInt("profiles_cache_buckets",65000);
-    cache = new ProfilesCache(used_header_fields,cache_buckets,cache_check_interval);
+	cache = new ProfilesCache(used_header_fields,cache_buckets,cache_check_interval);
   }
   return 0;
 }
@@ -381,12 +381,14 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req, pqxx::conne
 		invoc(req.user);
 		invoc(req.domain);
 		//invoc headers from sip request
-		for(vector<string>::const_iterator it = used_header_fields.begin(); it != used_header_fields.end(); ++it){
-			string hdr = getHeader(req.hdrs,*it);
-			if(hdr.length())
-				invoc(hdr);
-			else
+		for(vector<UsedHeaderField>::const_iterator it = used_header_fields.begin();
+				it != used_header_fields.end(); ++it){
+			string value;
+			if(it->getValue(req,value)){
+				invoc(value);
+			} else {
 				invoc();
+			}
 		}
 		r = invoc.exec();
 	} else {
@@ -521,9 +523,11 @@ void SqlRouter::getConfig(AmArg &arg){
 	arg["getprofile_call"] = getprofile_schema+"."+getprofile_function;
 	arg["writecdr_call"] = writecdr_schema+"."+writecdr_function;
 
-	vector<string>::const_iterator fit = used_header_fields.begin();
+	vector<UsedHeaderField>::const_iterator fit = used_header_fields.begin();
 	for(;fit!=used_header_fields.end();++fit){
-		u.push(*fit);
+		AmArg hf;
+		fit->getInfo(hf);
+		u.push(hf);
 	}
 	arg.push("sipreq_header_fields",u);
 	u.clear();

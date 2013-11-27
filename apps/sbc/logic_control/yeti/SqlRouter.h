@@ -11,6 +11,7 @@
 #include "DbTypes.h"
 #include "Cdr.h"
 #include "CodesTranslator.h"
+#include "UsedHeaderField.h"
 #include "CallCtx.h"
 struct CallCtx;
 
@@ -67,7 +68,7 @@ private:
   CdrWriter *cdr_writer;
   ProfilesCache *cache;
   
-  vector<string> used_header_fields;
+  vector<UsedHeaderField> used_header_fields;
   int failover_to_slave;
   int cache_enabled;
   double cache_check_interval;

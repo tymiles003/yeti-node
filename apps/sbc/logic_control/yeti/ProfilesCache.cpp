@@ -1,6 +1,7 @@
 #include "ProfilesCache.h"
 
-ProfilesCache::ProfilesCache(vector<string>	 used_header_fields, unsigned long buckets,double timeout):
+ProfilesCache::ProfilesCache(const vector<UsedHeaderField> &used_header_fields,
+							 unsigned long buckets, double timeout):
 	MurmurHash<ProfilesCacheKey,AmSipRequest,ProfilesCacheEntry>(buckets),
 	timeout(timeout),
 	used_header_fields(used_header_fields)
@@ -14,7 +15,9 @@ ProfilesCache::~ProfilesCache(){
 
 uint64_t ProfilesCache::hash_lookup_key(const AmSipRequest *key){
 	uint64_t ret;
-	string hdr;
+	string used_hdrs_values;
+
+	getUsedHeadersValues(key,used_hdrs_values);
 	ret =
 		hashfn(key->local_ip.c_str(),key->local_ip.size()) ^
 		hashfn(&key->local_port,sizeof(unsigned short)) ^
@@ -22,52 +25,32 @@ uint64_t ProfilesCache::hash_lookup_key(const AmSipRequest *key){
 		hashfn(key->from_uri.c_str(),key->from_uri.size()) ^
 		hashfn(key->to.c_str(),key->to.size()) ^
 		hashfn(key->contact.c_str(),key->contact.size()) ^
-		hashfn(key->user.c_str(),key->user.size());
+		hashfn(key->user.c_str(),key->user.size()) ^
+		hashfn(used_hdrs_values.c_str(),used_hdrs_values.size());
 
-	for(vector<string>::const_iterator it = used_header_fields.begin(); it != used_header_fields.end(); ++it){
-		hdr = getHeader(key->hdrs,*it);
-		if(hdr.length())
-			ret ^= hashfn(hdr.c_str(),hdr.size());
-	}
 	return ret; 
 }
 
 bool ProfilesCache::cmp_lookup_key(const AmSipRequest *k1,const ProfilesCacheKey *k2){
-	bool ret;
-	string hdr;
-	map<string,string>::const_iterator mit;
-
-	ret =
+	string used_hdrs_values;
+	getUsedHeadersValues(k1,used_hdrs_values);
+	return
 		(k1->local_ip == k2->local_ip) &&
 		(k1->local_port == k2->local_port) &&
 		(k1->remote_port == k2->remote_port) &&
 		(k1->from_uri == k2->from_uri) &&
 		(k1->contact == k2->contact) &&
 		(k1->user == k2->user) &&
-		(k1->to == k2->to);
-
-	if(!ret)
-		return false;
-
-	for(vector<string>::const_iterator it = used_header_fields.begin(); it != used_header_fields.end(); ++it){
-		hdr = getHeader(k1->hdrs,*it);
-		if(hdr.length()){
-			mit = k2->header_fields.find(*it);
-			if(mit != k2->header_fields.end()){
-				if(mit->second != hdr)
-					return false;
-			}else{
-				return false;
-			}
-		}
-	}
-	return true;
+		(k1->to == k2->to) &&
+		(used_hdrs_values == k2->used_headers_values);
 }
 
 void ProfilesCache::init_key(ProfilesCacheKey **dest,const AmSipRequest *src){
-	string hdr;
+	string used_hdrs_values;
 	ProfilesCacheKey *key = new ProfilesCacheKey;
 	*dest = key;
+
+	getUsedHeadersValues(src,used_hdrs_values);
 
 	key->local_ip.assign(src->local_ip);
 	key->local_port = src->local_port;
@@ -76,13 +59,7 @@ void ProfilesCache::init_key(ProfilesCacheKey **dest,const AmSipRequest *src){
 	key->contact.assign(src->contact);
 	key->user.assign(src->user);
 	key->to.assign(src->to);
-
-	for(vector<string>::const_iterator it = used_header_fields.begin(); it != used_header_fields.end(); ++it){
-		hdr = getHeader(src->hdrs,*it);
-		if(hdr.length()){
-			key->header_fields.insert(pair<string,string>(*it,hdr));
-		}
-	}
+	key->used_headers_values.assign(used_hdrs_values);
 }
 
 void ProfilesCache::free_key(ProfilesCacheKey *key){
@@ -198,5 +175,18 @@ void ProfilesCache::clear(){
 		cache_entry = free_entries.front();
 		delete cache_entry;
 		free_entries.pop_front();
+	}
+}
+
+void ProfilesCache::getUsedHeadersValues(const AmSipRequest *key,string &values){
+	string hdr;
+	values.clear();
+	for(vector<UsedHeaderField>::const_iterator it = used_header_fields.begin();
+			it != used_header_fields.end(); ++it){
+		if(it->is_hashkey()){
+			hdr = getHeader(key->hdrs,it->getName());
+			if(!hdr.empty())
+				values += hdr;
+		}
 	}
 }
