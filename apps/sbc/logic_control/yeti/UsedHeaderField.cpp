@@ -102,6 +102,7 @@ succ:
 void UsedHeaderField::getInfo(AmArg &arg) const{
     string s;
     arg["name"] = name;
+    arg["hashkey"] = hashkey;
     switch(type){
         case Raw: s = "Raw"; break;
         case Uri: s = "Uri"; break;
