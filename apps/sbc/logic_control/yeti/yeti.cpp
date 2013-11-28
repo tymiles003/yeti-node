@@ -696,14 +696,17 @@ void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cau
 void Yeti::onDestroyLeg(SBCCallLeg *call){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	CallCtx *ctx = getCtx(call);
+	if(NULL==ctx){
+		ERROR("seems like onDestroyLeg() called once again. skip all actions");
+		log_stacktrace(L_ERR);log_stacktrace(L_ERR);
+		return;
+	}
 	if(ctx->dec_and_test()){
-		//DBG("%s(%p,leg%s) ctx->dec_and_test() = true",FUNC_NAME,call,call->isALeg()?"A":"B");
 		onLastLegDestroy(ctx,call);
 		ctx->router->release(routers);
+		call->setLogicData(NULL);
 		delete ctx;
 	} else {
-		//DBG("%s(%p,leg%s) ctx->dec_and_test() = false",FUNC_NAME,call,call->isALeg()?"A":"B");
-		//release resources
 		if(NULL!=ctx->getCurrentProfile())
 			rctl.put(ctx->getCurrentResourceList());
 	}
