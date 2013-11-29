@@ -119,7 +119,7 @@ int CodesTranslator::load_translations_config(){
 			for(pqxx::result::size_type i = 0; i < r.size();++i){
 				map<unsigned int,override>::iterator it;
 				const pqxx::result::tuple &row = r[i];
-				int override_id = row["override_id"].as<int>();
+				int override_id = row["policy_id"].as<int>();
 
 				int code = row["received_code"].as<int>(0);
 				pref p(row["stop_rerouting"].as<bool>(true));
@@ -137,7 +137,7 @@ int CodesTranslator::load_translations_config(){
 			for(pqxx::result::size_type i = 0; i < r.size();++i){
 				map<unsigned int,override>::iterator it;
 				const pqxx::result::tuple &row = r[i];
-				int override_id = row["override_id"].as<int>();
+				int override_id = row["o_policy_id"].as<int>();
 
 				int code =	row["o_code"].as<int>(0);
 				string rewrited_reason = row["o_rewrited_reason"].c_str();
