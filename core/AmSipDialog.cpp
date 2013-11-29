@@ -361,7 +361,7 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply,
 	  DBG("received 2xx reply without to-tag "
 	      "(callid=%s): sending BYE\n",reply.callid.c_str());
 
-	  sendRequest(SIP_METH_BYE);
+	  bye();
 	}
 	else {
 	  setRemoteTag(reply.to_tag);
@@ -388,7 +388,7 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply,
 	  DBG("received 2xx reply without to-tag "
 	      "(callid=%s): sending BYE\n",reply.callid.c_str());
 
-	  sendRequest(SIP_METH_BYE);
+	  bye();
 	}
 	else {
 	  setRemoteTag(reply.to_tag);
