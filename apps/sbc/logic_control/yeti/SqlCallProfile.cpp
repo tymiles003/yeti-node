@@ -211,6 +211,7 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 	resources = t["resources"].c_str();
 
 	disconnect_code_id =t["disconnect_code_id"].as<int>(0);
+	override_id = t["override_id"].as<int>(0);
 
 	INFO("Yeti: loaded SQL profile\n");
 //	infoPrint();
@@ -343,6 +344,7 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 
 		INFO("SBC:      time_limit: %i\n", time_limit);
 		INFO("SBC:      resources: %s\n", resources.c_str());
+		INFO("SBC:      override_id: %i\n", override_id);
 
 		INFO("SBC:      reg-caching: '%s'\n", reg_caching ? "yes" : "no");
 		INFO("SBC:      min_reg_expires: %i\n", min_reg_expires);

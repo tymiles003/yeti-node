@@ -40,6 +40,12 @@ SqlCallProfile *CallCtx::getCurrentProfile(){
 	return *current_profile;
 }
 
+int CallCtx::getOverrideId(){
+	if(current_profile == profiles.end())
+		return 0;
+	return (*current_profile)->override_id;
+}
+
 SqlRouter *CallCtx::getRouter(){
 	return router;
 }

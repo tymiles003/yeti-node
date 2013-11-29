@@ -63,6 +63,15 @@ class CodesTranslator {
 	};
 	map<unsigned int,icode> icode2resp;
 	AmMutex icode2resp_mutex;
+
+	/*! overrides */
+	struct override {
+		map<int,pref> code2prefs;
+		map<int,trans> code2trans;
+	};
+	map<unsigned int,override> overrides;
+	AmMutex overrides_mutex;
+
 	DbConfig dbc;
 	string db_schema;
 	int load_translations_config();
@@ -92,13 +101,15 @@ class CodesTranslator {
 	bool reload();
 
 	void rewrite_response(unsigned int code,const string &reason,
-						  unsigned int &out_code,string &out_reason);
-	bool stop_hunting(unsigned int code);
+						  unsigned int &out_code,string &out_reason,
+						  int override_id = 0);
+	bool stop_hunting(unsigned int code,int override_id = 0);
 	bool translate_db_code(unsigned int icode,
 								 unsigned int &internal_code,
 								 string &internal_reason,
 								 unsigned int &response_code,
-								 string &response_reason);
+								 string &response_reason,
+								int override_id = 0);
 
 	void GetConfig(AmArg& ret);
 	void clearStats();

@@ -47,15 +47,19 @@ int CodesTranslator::load_translations_config(){
 	code2pref_mutex.lock();
 	code2trans_mutex.lock();
 	icode2resp_mutex.lock();
+	overrides_mutex.lock();
 
 	code2pref.clear();
 	code2trans.clear();
 	icode2resp.clear();
+	overrides.clear();
 
 	try {
 		pqxx::result r;
 		pqxx::connection c(dbc.conn_str());
 		pqxx::work t(c);
+
+			//code2pref
 			r = t.exec("SELECT * from "+db_schema+".load_disconnect_code_rerouting()");
 			for(pqxx::result::size_type i = 0; i < r.size();++i){
 				const pqxx::result::tuple &row = r[i];
@@ -67,6 +71,7 @@ int CodesTranslator::load_translations_config(){
 					code,p.is_stop_hunting);
 			}
 
+			//code2trans
 			r = t.exec("SELECT * from "+db_schema+".load_disconnect_code_rewrite()");
 			for(pqxx::result::size_type i = 0; i < r.size();++i){
 				const pqxx::result::tuple &row = r[i];
@@ -84,6 +89,7 @@ int CodesTranslator::load_translations_config(){
 					code,t.rewrite_code,t.rewrite_reason.c_str(),t.pass_reason_to_originator);
 			}
 
+			//icode2resp
 			r = t.exec("SELECT * from "+db_schema+".load_disconnect_code_refuse()");
 			for(pqxx::result::size_type i = 0; i < r.size();++i){
 				const pqxx::result::tuple &row = r[i];
@@ -108,6 +114,48 @@ int CodesTranslator::load_translations_config(){
 					response_code,response_reason.c_str());
 			}
 
+			//code2pref overrides
+			r = t.exec("SELECT * from "+db_schema+".load_disconnect_code_rerouting_overrides()");
+			for(pqxx::result::size_type i = 0; i < r.size();++i){
+				map<unsigned int,override>::iterator it;
+				const pqxx::result::tuple &row = r[i];
+				int override_id = row["override_id"].as<int>();
+
+				int code = row["received_code"].as<int>(0);
+				pref p(row["stop_rerouting"].as<bool>(true));
+
+				pair<map<unsigned int,override>::iterator,bool> pit = overrides.insert(pair<unsigned int,override>(override_id,override()));
+				it = pit.first;
+				it->second.code2prefs.insert(pair<int,pref>(code,p));
+
+				DBG("Override %d ResponsePref:     %d -> stop_hunting: %d",
+					override_id,code,p.is_stop_hunting);
+			}
+
+			//code2trans overrides
+			r = t.exec("SELECT * from "+db_schema+".load_disconnect_code_rewrite_overrides()");
+			for(pqxx::result::size_type i = 0; i < r.size();++i){
+				map<unsigned int,override>::iterator it;
+				const pqxx::result::tuple &row = r[i];
+				int override_id = row["override_id"].as<int>();
+
+				int code =	row["o_code"].as<int>(0);
+				string rewrited_reason = row["o_rewrited_reason"].c_str();
+				if(rewrited_reason.empty()){
+					rewrited_reason = row["o_reason"].c_str();
+				}
+				trans t(	row["o_pass_reason_to_originator"].as<bool>(false),
+							row["o_rewrited_code"].as<int>(code),
+							rewrited_reason);
+
+				pair<map<unsigned int,override>::iterator,bool> pit = overrides.insert(pair<unsigned int,override>(override_id,override()));
+				it = pit.first;
+				it->second.code2trans.insert(pair<int,trans>(code,t));
+
+				DBG("Override %d ResponseTrans:     %d -> %d:'%s' pass_reason: %d",
+					override_id,code,t.rewrite_code,t.rewrite_reason.c_str(),t.pass_reason_to_originator);
+			}
+
 		t.commit();
 		c.disconnect();
 		ret = 0;
@@ -118,12 +166,43 @@ int CodesTranslator::load_translations_config(){
 	code2pref_mutex.unlock();
 	code2trans_mutex.unlock();
 	icode2resp_mutex.unlock();
+	overrides_mutex.unlock();
 
 	return ret;
 }
 
 void CodesTranslator::rewrite_response(unsigned int code,const string &reason,
-				  unsigned int &out_code,string &out_reason){
+				  unsigned int &out_code,string &out_reason,
+				  int override_id){
+
+
+	if(override_id!=0){
+		overrides_mutex.lock();
+		map<unsigned int,override>::const_iterator oit = overrides.find(override_id);
+		if(oit!=overrides.end()){
+			map<int,trans>::const_iterator tit = oit->second.code2trans.find(code);
+			if(tit!=oit->second.code2trans.end()){
+				const trans &t = tit->second;
+				string treason = reason;
+				out_code = t.rewrite_code;
+				out_reason = t.pass_reason_to_originator?treason:t.rewrite_reason;
+				overrides_mutex.unlock();
+				DBG("translated %d:'%s' -> %d:'%s' with override<%d>",
+					code,treason.c_str(),
+					out_code,out_reason.c_str(),
+					override_id);
+				return;
+			} else {
+				DBG("override<%d> has no translation for code '%d'. use global config",
+					override_id,code);
+			}
+		} else {
+			DBG("unknown override<%d>. use global config",
+				override_id);
+		}
+		overrides_mutex.unlock();
+	}
+
 	code2trans_mutex.lock();
 	map<int,trans>::const_iterator it = code2trans.find(code);
 	if(it!=code2trans.end()){
@@ -143,14 +222,36 @@ void CodesTranslator::rewrite_response(unsigned int code,const string &reason,
 	code2trans_mutex.unlock();
 }
 
-bool CodesTranslator::stop_hunting(unsigned int code){
+bool CodesTranslator::stop_hunting(unsigned int code,int override_id){
 	bool ret = true;
+
+	if(override_id!=0){
+		overrides_mutex.lock();
+		map<unsigned int,override>::const_iterator oit = overrides.find(override_id);
+		if(oit!=overrides.end()){
+			map<int,pref>::const_iterator tit = oit->second.code2prefs.find(code);
+			if(tit!=oit->second.code2prefs.end()){
+				ret = tit->second.is_stop_hunting;
+				overrides_mutex.unlock();
+				DBG("stop_hunting = %d for code '%d' with override<%d>",
+					ret,code,override_id);
+				return ret;
+			} else {
+				DBG("override<%d> has no translation for code '%d'. use global config",
+					override_id,code);
+			}
+		} else {
+			DBG("unknown override<%d>. use global config",
+				override_id);
+		}
+		overrides_mutex.unlock();
+	}
+
 	code2pref_mutex.lock();
 	map<int,pref>::const_iterator it = code2pref.find(code);
 	if(it!=code2pref.end()){
-		bool stop = it->second.is_stop_hunting;
-		DBG("stop_hunting = %d for code '%d'",stop,code);
-		ret = stop;
+		ret = it->second.is_stop_hunting;
+		DBG("stop_hunting = %d for code '%d'",ret,code);
 	} else {
 		stat.missed_response_configs++;
 		DBG("no preference for code '%d', so simply stop hunting",code);
@@ -163,9 +264,11 @@ bool CodesTranslator::translate_db_code(unsigned int code,
 						 unsigned int &internal_code,
 						 string &internal_reason,
 						 unsigned int &response_code,
-						 string &response_reason)
+						 string &response_reason,
+						 int override_id)
 {
 	bool write_cdr = true;
+
 	icode2resp_mutex.lock();
 	map<unsigned int,icode>::const_iterator it = icode2resp.find(code);
 	if(it!=icode2resp.end()){
@@ -219,7 +322,6 @@ void CodesTranslator::GetConfig(AmArg& ret){
 		for(;it!=code2trans.end();++it){
 			AmArg p;
 			const trans &t = it->second;
-			//p["code"] = it->first;
 			p["rewrite_code"] = t.rewrite_code;
 			p["rewrite_reason"] = t.rewrite_reason;
 			p["pass_reason_to_originator"] = t.pass_reason_to_originator;
@@ -245,6 +347,37 @@ void CodesTranslator::GetConfig(AmArg& ret){
 	}
 	icode2resp_mutex.unlock();
 	ret.push("internal_translations",u);
+
+	u.clear();
+	overrides_mutex.lock();
+	{
+		map<unsigned int,override>::const_iterator oit = overrides.begin();
+		for(;oit!=overrides.end();++oit){
+			AmArg am_override,am_response_translations,am_hunting;
+
+			map<int,trans>::const_iterator tit = oit->second.code2trans.begin();
+			for(;tit!=oit->second.code2trans.end();++tit){
+				AmArg p;
+				const trans &t = tit->second;
+				p["rewrite_code"] = t.rewrite_code;
+				p["rewrite_reason"] = t.rewrite_reason;
+				p["pass_reason_to_originator"] = t.pass_reason_to_originator;
+				am_response_translations.push(int2str(tit->first),p);
+			}
+			am_override.push("response_translations",am_response_translations);
+
+			map<int,pref>::const_iterator pit = oit->second.code2prefs.begin();
+			for(;pit!=oit->second.code2prefs.end();++pit){
+				AmArg p;
+				p["is_stop_hunting"] = pit->second.is_stop_hunting;
+				am_hunting.push(int2str(pit->first),p);
+			}
+			am_override.push("hunting",am_hunting);
+			u.push(int2str(oit->first),am_override);
+		}
+	}
+	overrides_mutex.unlock();
+	ret.push("overrides_translations",u);
 }
 
 void CodesTranslator::clearStats(){

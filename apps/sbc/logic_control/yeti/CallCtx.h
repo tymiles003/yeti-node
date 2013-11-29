@@ -26,6 +26,7 @@ struct CallCtx: public
 	SqlCallProfile *getCurrentProfile();
 	SqlRouter *getRouter();
 	ResourceList &getCurrentResourceList();
+	int getOverrideId();
 	void setCdrProcessed();
 
 	CallCtx(SqlRouter *router);

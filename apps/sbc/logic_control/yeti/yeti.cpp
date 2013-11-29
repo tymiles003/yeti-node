@@ -558,7 +558,8 @@ bool Yeti::check_and_refuse(SqlCallProfile *profile,Cdr *cdr,
 
 	write_cdr = CodesTranslator::instance()->translate_db_code(profile->disconnect_code_id,
 							 internal_code,internal_reason,
-							 response_code,response_reason);
+							 response_code,response_reason,
+							 profile->override_id);
 	need_reply = (response_code!=NO_REPLY_DISCONNECT_CODE);
 
 	if(write_cdr){
@@ -734,7 +735,7 @@ CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, AmSipReply& reply) {
 		cdr->update(reply);
 		cdr->update(DisconnectByDST,reply.reason,reply.code);
 
-		if(CodesTranslator::instance()->stop_hunting(reply.code)){
+		if(CodesTranslator::instance()->stop_hunting(reply.code,ctx->getOverrideId())){
 			DBG("stop hunting");
 		} else {
 			DBG("continue hunting");
@@ -762,7 +763,7 @@ CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, AmSipReply& reply) {
 			}
 		}
 		CodesTranslator::instance()->rewrite_response(reply.code,reply.reason,
-													  reply.code,reply.reason);
+													  reply.code,reply.reason,ctx->getOverrideId());
 		cdr->update_rewrited(reply.reason,reply.code);
 	}
 
@@ -930,6 +931,7 @@ CCChainProcessing Yeti::onRtpTimeout(SBCCallLeg *call,const AmRtpTimeoutEvent &r
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	unsigned int internal_code,response_code;
 	string internal_reason,response_reason;
+	CallCtx *ctx = getCtx(call);
 
 	if(call->getCallStatus()!=CallLeg::Connected){
 		WARN("module catched RtpTimeout in no Connected state. ignore it");
@@ -939,8 +941,9 @@ CCChainProcessing Yeti::onRtpTimeout(SBCCallLeg *call,const AmRtpTimeoutEvent &r
 	CodesTranslator::instance()->translate_db_code(
 		DC_RTP_TIMEOUT,
 		internal_code,internal_reason,
-		response_code,response_reason);
-	Cdr *cdr = getCdr(call);
+		response_code,response_reason,
+		ctx->getOverrideId());
+	Cdr *cdr = getCdr(ctx);
 	cdr->update(DisconnectByTS,internal_reason,internal_code);
 	cdr->update_rewrited(response_reason,response_code);
 	return ContinueProcessing;
