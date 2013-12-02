@@ -663,17 +663,24 @@ void Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
 
 void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cause){
 	string reason;
+	getCtx_void();
 	switch(cause.reason){
 		case CallLeg::StatusChangeCause::SipReply:
-			if(cause.param.reply!=NULL)
+			if(cause.param.reply!=NULL){
+				if(!call->isALeg()&&call->getCallStatus()==CallLeg::Disconnected)
+					getCdr(ctx)->update_bleg_reason(cause.param.reply->reason,
+												cause.param.reply->code);
 				reason = "SipReply. code = "+int2str(cause.param.reply->code);
-			else
+			} else
 				reason = "SipReply. empty reply";
 			break;
 		case CallLeg::StatusChangeCause::SipRequest:
-			if(cause.param.request!=NULL)
+			if(cause.param.request!=NULL){
+				if(!call->isALeg()&&call->getCallStatus()==CallLeg::Disconnected)
+					getCdr(ctx)->update_bleg_reason(cause.param.request->method,
+												cause.param.request->method==SIP_METH_BYE?200:500);
 				reason = "SipRequest. method = "+cause.param.request->method;
-			else
+			} else
 				reason = "SipRequest. empty request";
 			break;
 		case CallLeg::StatusChangeCause::Canceled:
@@ -904,20 +911,26 @@ CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
 
 	AmRtpTimeoutEvent *rtp_event = dynamic_cast<AmRtpTimeoutEvent*>(e);
 	if(rtp_event){
+		DBG("rtp event id: %d",rtp_event->event_id);
 		return onRtpTimeout(call,*rtp_event);
+	}
+
+	AmSipRequestEvent *request_event = dynamic_cast<AmSipRequestEvent*>(e);
+	if(request_event){
+		DBG("request event method: %s",
+			request_event->req.method.c_str());
 	}
 
 	AmSipReplyEvent *reply_event = dynamic_cast<AmSipReplyEvent*>(e);
 	if(reply_event){
+		DBG("reply event  code: %d, reason:'%s'",
+			reply_event->reply.code,reply_event->reply.reason.c_str());
 		//!TODO: find appropiate way to avoid hangup in disconnected state
 		if(reply_event->reply.code==408 && call->getCallStatus()==CallLeg::Disconnected){
 			ERROR("received 408 in disconnected state");
 			throw AmSession::Exception(500,SIP_REPLY_SERVER_INTERNAL_ERROR);
 		}
 	}
-	/*if(!call->isALeg())
-		return ContinueProcessing;
-	*/
 
 	AmPluginEvent* plugin_event = dynamic_cast<AmPluginEvent*>(e);
 	if(plugin_event){
@@ -933,12 +946,14 @@ CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
 
 	SBCControlEvent* sbc_event = dynamic_cast<SBCControlEvent*>(e);
 	if(sbc_event){
+		DBG("sbc event id: %d, cmd: %s",sbc_event->event_id,sbc_event->cmd.c_str());
 		onControlEvent(call,sbc_event);
 	}
 
 	if (e->event_id == E_SYSTEM) {
 		AmSystemEvent* sys_ev = dynamic_cast<AmSystemEvent*>(e);
 		if(sys_ev){
+			DBG("sys event type: %d",sys_ev->sys_event);
 			onSystemEvent(call,sys_ev);
 		}
 	}
