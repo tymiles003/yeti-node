@@ -33,9 +33,11 @@ struct Cdr: public
 	bool log_rtp;
 	bool log_sip;
 
+    int disconnect_initiator;
+
     string disconnect_reason;
     int disconnect_code;
-    int disconnect_initiator;
+    bool bleg_reason_writed;
 
 	string disconnect_internal_reason;
 	int disconnect_internal_code;

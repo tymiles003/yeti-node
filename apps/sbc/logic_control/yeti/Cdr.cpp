@@ -48,6 +48,7 @@ void Cdr::init(){
     suppress = false;
 	inserted2list = false;
 
+	bleg_reason_writed = false;
 	disconnect_reason = "";
 	disconnect_code = 0;
 	disconnect_internal_reason = "Unhandled sequence";
@@ -163,8 +164,11 @@ void Cdr::update_bleg_reason(string reason, int code){
 		reason.c_str(),code);    if(writed) return;
 	if(writed) return;
     lock();
-    disconnect_reason = reason;
-    disconnect_code = code;
+    if(!bleg_reason_writed){
+        disconnect_reason = reason;
+        disconnect_code = code;
+        bleg_reason_writed = true;
+    }
     unlock();
 }
 

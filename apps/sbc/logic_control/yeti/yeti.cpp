@@ -663,7 +663,6 @@ void Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
 
 void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cause){
 	string reason;
-
 	switch(cause.reason){
 		case CallLeg::StatusChangeCause::SipReply:
 			if(cause.param.reply!=NULL)
@@ -740,14 +739,25 @@ CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, AmSipReply& reply) {
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	getCtx_chained();
 	Cdr* cdr = getCdr(ctx);
-
+	CodesTranslator *ct = CodesTranslator::instance();
+	unsigned int intermediate_code;
+	string intermediate_reason;
 
 	if(call->isALeg()){
 
 		cdr->update(reply);
 		cdr->update_bleg_reason(reply.reason,reply.code);
 
-		if(CodesTranslator::instance()->stop_hunting(reply.code,ctx->getOverrideId())){
+		ct->rewrite_response(reply.code,reply.reason,
+							 intermediate_code,intermediate_reason,
+							 ctx->getOverrideId(false)); //bleg_override_id
+		ct->rewrite_response(intermediate_code,intermediate_reason,
+							 reply.code,reply.reason,
+							 ctx->getOverrideId(true)); //aleg_override_id
+		cdr->update_internal_reason(DisconnectByDST,intermediate_reason,intermediate_code);
+		cdr->update_aleg_reason(reply.reason,reply.code);
+
+		if(ct->stop_hunting(reply.code,ctx->getOverrideId(false))){
 			DBG("stop hunting");
 		} else {
 			DBG("continue hunting");
@@ -756,15 +766,16 @@ CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, AmSipReply& reply) {
 			rctl.put(ctx->getCurrentResourceList());
 
 			if(ctx->initial_invite!=NULL){
-				AmSipRequest &req = *ctx->initial_invite;
 				if(chooseNextProfile(call)){
 					DBG("%s() has new profile, so create new callee",FUNC_NAME);
 					cdr = getCdr(ctx);
+
 					if(0!=cdr_list.insert(cdr)){
 						ERROR("onBLegRefused(): double insert into active calls list. integrity threat");
 						ERROR("ctx: attempt = %d, cdr.logger_path = %s",
 							ctx->attempt_num,cdr->msg_logger_path.c_str());
 					} else {
+						AmSipRequest &req = *ctx->initial_invite;
 						connectCallee(call,req);
 					}
 				} else {
@@ -773,22 +784,8 @@ CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, AmSipReply& reply) {
 			} else {
 				ERROR("%s() intial_invite == NULL",FUNC_NAME);
 			}
-		}
-
-		string intermediate_reason;
-		unsigned int intermediate_code;
-		CodesTranslator *ct = CodesTranslator::instance();
-
-		ct->rewrite_response(reply.code,reply.reason,
-							 intermediate_code,intermediate_reason,
-							 ctx->getOverrideId(false)); //bleg_override_id
-		ct->rewrite_response(intermediate_code,intermediate_reason,
-							 reply.code,reply.reason,
-							 ctx->getOverrideId(true)); //aleg_override_id
-
-		cdr->update_internal_reason(DisconnectByDST,intermediate_reason,intermediate_code);
-		cdr->update_aleg_reason(reply.reason,reply.code);
-	}
+		} //stop_hunting
+	} //call->isALeg()
 
 	return ContinueProcessing;
 }
@@ -918,7 +915,6 @@ CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
 			throw AmSession::Exception(500,SIP_REPLY_SERVER_INTERNAL_ERROR);
 		}
 	}
-
 	/*if(!call->isALeg())
 		return ContinueProcessing;
 	*/
@@ -1043,8 +1039,12 @@ CCChainProcessing Yeti::onRemoteDisappeared(SBCCallLeg *call, const AmSipReply &
 CCChainProcessing Yeti::onBye(SBCCallLeg *call, const AmSipRequest &req){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	getCtx_chained();
+	Cdr *cdr = getCdr(ctx);
+	cdr->update_bleg_reason("onBye",200); //set bleg_reason anyway to onBye
 	if(call->isALeg()){
-		getCdr(ctx)->update_internal_reason(DisconnectByORG,"onBye",200);
+		cdr->update_internal_reason(DisconnectByORG,"onBye",200);
+	} else {
+		cdr->update_internal_reason(DisconnectByDST,"onOtherBye",200);
 	}
 	return ContinueProcessing;
 }
@@ -1054,6 +1054,7 @@ CCChainProcessing Yeti::onOtherBye(SBCCallLeg *call, const AmSipRequest &req){
 	getCtx_chained();
 	if(call->isALeg()){
 		if(call->getCallStatus()==CallLeg::NoReply){
+			//avoid considering of bye in early state as succ call
 			ERROR("received OtherBye in NoReply state");
 			Cdr *cdr = getCdr(ctx);
 			cdr->update_internal_reason(DisconnectByDST,"onEarlyOtherBye",500);
@@ -1061,8 +1062,6 @@ CCChainProcessing Yeti::onOtherBye(SBCCallLeg *call, const AmSipRequest &req){
 			cdr_list.erase(cdr);
 			ctx->cdr_processed = true;
 			router->write_cdr(cdr,true);
-		} else {
-			getCdr(call)->update_internal_reason(DisconnectByDST,"onOtherBye",200);
 		}
 	}
 	return ContinueProcessing;
