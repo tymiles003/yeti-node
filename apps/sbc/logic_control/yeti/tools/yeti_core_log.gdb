@@ -1,8 +1,14 @@
+set height 0
+set print null-stop on
+
 set $l = DILog::ring_buf[0]
+set $n = DILog::pos
 set $i = 0
-while $l[0] != '\0' && $i < DILog::pos
-	printf "%s\n", $l
-	set $l = $l+sizeof(DILog::ring_buf[0])
-	set $i = $i+1
+
+while $i < $n
+        #x/s DILog::ring_buf[$i]
+        printf "%s", DILog::ring_buf[$i]
+        set $i = $i+1
 end
+
 quit
