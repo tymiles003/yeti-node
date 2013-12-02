@@ -51,8 +51,8 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
 
   void onLastLegDestroy(CallCtx *ctx,SBCCallLeg *call);
   /*! create new B leg (serial fork)*/
-  bool connectCallee(SBCCallLeg *call,const AmSipRequest &orig_req);
   /*! choose next profile, create cdr and check resources */
+  bool connectCallee(SBCCallLeg *call,const AmSipRequest &orig_req);
   bool chooseNextProfile(SBCCallLeg *call);
   /*! return true if call refused */
   bool check_and_refuse(SqlCallProfile *profile,Cdr *cdr,

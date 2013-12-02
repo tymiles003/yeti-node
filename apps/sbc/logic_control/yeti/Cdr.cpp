@@ -48,8 +48,10 @@ void Cdr::init(){
     suppress = false;
 	inserted2list = false;
 
-	disconnect_reason = "Unhandled sequence. report";
+	disconnect_reason = "";
 	disconnect_code = 0;
+	disconnect_internal_reason = "Unhandled sequence";
+	disconnect_internal_code = 0;
 	disconnect_rewrited_reason = "";
 	disconnect_rewrited_code = 0;
 
@@ -156,25 +158,36 @@ void Cdr::update(UpdateAction act){
     }
 }
 
-void Cdr::update(DisconnectInitiator initiator,string reason, int code){
-	DBG("Cdr::%s(initiator = %d,reason = '%s',code = %d)",FUNC_NAME,
-		initiator,reason.c_str(),code);
-    if(writed) return;
+void Cdr::update_bleg_reason(string reason, int code){
+	DBG("Cdr::%s(reason = '%s',code = %d)",FUNC_NAME,
+		reason.c_str(),code);    if(writed) return;
+	if(writed) return;
     lock();
-    gettimeofday(&end_time, NULL);
-    disconnect_initiator = initiator;
     disconnect_reason = reason;
     disconnect_code = code;
-	disconnect_rewrited_reason = disconnect_reason;
-	disconnect_rewrited_code = disconnect_code;
     unlock();
 }
 
-void Cdr::update_rewrited(string reason, int code){
+void Cdr::update_aleg_reason(string reason, int code){
 	DBG("Cdr::%s(reason = '%s',code = %d)",FUNC_NAME,
 		reason.c_str(),code);
 	if(writed) return;
 	lock();
+	disconnect_rewrited_reason = reason;
+	disconnect_rewrited_code = code;
+	unlock();
+}
+
+void Cdr::update_internal_reason(DisconnectInitiator initiator,string reason, int code){
+	DBG("Cdr::%s(initiator = %d,reason = '%s',code = %d)",FUNC_NAME,
+		initiator,reason.c_str(),code);
+
+	if(writed) return;
+	lock();
+	gettimeofday(&end_time, NULL);
+	disconnect_initiator = initiator;
+	disconnect_internal_reason = reason;
+	disconnect_internal_code = code;
 	disconnect_rewrited_reason = reason;
 	disconnect_rewrited_code = code;
 	unlock();

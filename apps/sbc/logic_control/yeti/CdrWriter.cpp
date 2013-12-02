@@ -25,6 +25,8 @@ static const char *static_fields_names[] = {
 	"disconnect_code",
 	"disconnect_reason",
 	"disconnect_initiator",
+	"disconnect_intermediate_code",
+	"disconnect_intermediate_reason",
 	"disconnect_rewrited_code",
 	"disconnect_rewrited_reason",
 	"orig_call_id",
@@ -492,6 +494,8 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr){
 		invoc(cdr->disconnect_code);
 		invoc(cdr->disconnect_reason);
 		invoc(cdr->disconnect_initiator);
+		invoc(cdr->disconnect_internal_code);
+		invoc(cdr->disconnect_internal_reason);
 		if(cdr->is_last){
 			invoc(cdr->disconnect_rewrited_code);
 			invoc(cdr->disconnect_rewrited_reason);

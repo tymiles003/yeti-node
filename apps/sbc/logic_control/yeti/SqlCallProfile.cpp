@@ -3,16 +3,12 @@
 #include "SBC.h"
 #include <algorithm>
 
-SqlCallProfile::SqlCallProfile()
-{
-//	DBG("SqlCallProfile(%p)",this);
-	profile_file = "SQL";
-}
+SqlCallProfile::SqlCallProfile():
+	aleg_override_id(0),
+	bleg_override_id(0)
+{ }
 
-SqlCallProfile::~SqlCallProfile()
-{
-//	DBG("~SqlCallProfile(%p)",this);
-}
+SqlCallProfile::~SqlCallProfile(){ }
 
 bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 
@@ -211,10 +207,11 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 	resources = t["resources"].c_str();
 
 	disconnect_code_id =t["disconnect_code_id"].as<int>(0);
-	override_id = t["override_id"].as<int>(0);
+
+	aleg_override_id = t["aleg_policy_id"].as<int>(0);
+	bleg_override_id = t["bleg_policy_id"].as<int>(0);
 
 	INFO("Yeti: loaded SQL profile\n");
-//	infoPrint();
 
 	return true;
 }
@@ -344,7 +341,8 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 
 		INFO("SBC:      time_limit: %i\n", time_limit);
 		INFO("SBC:      resources: %s\n", resources.c_str());
-		INFO("SBC:      override_id: %i\n", override_id);
+		INFO("SBC:      aleg_override_id: %i\n", aleg_override_id);
+		INFO("SBC:      bleg_override_id: %i\n", bleg_override_id);
 
 		INFO("SBC:      reg-caching: '%s'\n", reg_caching ? "yes" : "no");
 		INFO("SBC:      min_reg_expires: %i\n", min_reg_expires);

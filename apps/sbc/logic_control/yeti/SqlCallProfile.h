@@ -25,7 +25,7 @@ struct SqlCallProfile
 	int disconnect_code_id;
 	int session_refresh_method_id;
 	int aleg_session_refresh_method_id;
-	int override_id;
+	int aleg_override_id,bleg_override_id;
 
 	list<string> dyn_fields;
 	string resources;

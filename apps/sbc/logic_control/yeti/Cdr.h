@@ -37,6 +37,9 @@ struct Cdr: public
     int disconnect_code;
     int disconnect_initiator;
 
+	string disconnect_internal_reason;
+	int disconnect_internal_code;
+
 	string disconnect_rewrited_reason;
 	int disconnect_rewrited_code;
 
@@ -73,9 +76,10 @@ struct Cdr: public
     void update(SBCCallLeg &leg);
 	void update(SBCCallLeg *call,AmRtpStream *stream);
     void update(UpdateAction act);
-    void update(DisconnectInitiator initiator,string reason, int code);
-	void update_rewrited(string reason, int code);
-	void setSuppress(bool s);
+    void update_bleg_reason(string reason, int code);
+    void update_aleg_reason(string reason, int code);
+    void update_internal_reason(DisconnectInitiator initiator,string reason, int code);
+    void setSuppress(bool s);
 	void replace(ParamReplacerCtx &ctx,const AmSipRequest &req);
 	void replace(string& s, const string& from, const string& to);
     void refuse(const SBCCallProfile &profile);
