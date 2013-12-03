@@ -302,6 +302,8 @@ ADD_SUBDIRECTORY (tools)
 # debian package build options:
 IF(EXISTS /etc/debian_version) # simple check for debian
 
+	ADD_SUBDIRECTORY (pkg/debian)
+
 	SET(DEB_NAME sems-yeti)
 	SET(DEB_VENDOR yeti)
 	EXECUTE_PROCESS(COMMAND dpkg --print-architecture OUTPUT_VARIABLE DEB_ARCH)

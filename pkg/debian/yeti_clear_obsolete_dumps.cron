@@ -1,0 +1,4 @@
+# /etc/cron.d/yeti-clear-obsolete-dumps : crontab fragment for yeti-clear-obsolete-dumps
+
+# checking for event in database every day at 4am
+# 0 4 * * * root [ -x /usr/sbin/yeti-clear-obsolete-dumps ] && /usr/sbin/yeti-clear-obsolete-dumps clear
