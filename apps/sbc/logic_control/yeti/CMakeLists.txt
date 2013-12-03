@@ -38,6 +38,7 @@ INSTALL(PROGRAMS
 	tools/yeti-dumplog
 	tools/yeti_core_log.gdb
 	tools/yeti-corelog
+	tools/yeti-remove-obsolete-dumps
 	DESTINATION ${SEMS_EXEC_PREFIX}/sbin
 )
 
