@@ -1,5 +1,5 @@
 INSTALL(FILES
-	yeti-remove-obsolete-dumps.cron
+	yeti_clear_obsolete_dumps.cron
 	DESTINATION /etc/cron.d
-	RENAME yeti-remove-obsolete-dumps
+	RENAME yeti_clear_obsolete_dumps
 ) 
