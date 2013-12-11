@@ -19,7 +19,12 @@
 #define FC_DB_BROKEN_EXCEPTION		122
 #define FC_DB_CONVERSION_EXCEPTION	123
 #define FC_DB_BASE_EXCEPTION		124
+
 #define DC_RTP_TIMEOUT				125
+#define DC_NO_ACK					126
+#define DC_NO_PRACK					127
+#define DC_SESSION_TIMEOUT			128
+#define DC_INTERNAL_ERROR			129
 
 using namespace std;
 

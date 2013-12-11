@@ -292,7 +292,8 @@ bool CodesTranslator::translate_db_code(unsigned int code,
 		stat.unknown_internal_codes++;
 		DBG("no translation for db code '%d'. reply with 500",code);
 		internal_code = response_code = 500;
-		internal_reason = response_reason = SIP_REPLY_SERVER_INTERNAL_ERROR;
+		internal_reason = "Internal code "+int2str(code);
+		response_reason = SIP_REPLY_SERVER_INTERNAL_ERROR;
 	}
 	icode2resp_mutex.unlock();
 	return write_cdr;

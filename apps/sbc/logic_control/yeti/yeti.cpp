@@ -664,11 +664,14 @@ void Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
 void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cause){
 	string reason;
 	getCtx_void();
+	SBCCallLeg::CallStatus status = call->getCallStatus();
+	Cdr *cdr = getCdr(ctx);
+	int internal_disconnect_code = 0;
 	switch(cause.reason){
 		case CallLeg::StatusChangeCause::SipReply:
 			if(cause.param.reply!=NULL){
 				if(!call->isALeg()&&call->getCallStatus()==CallLeg::Disconnected)
-					getCdr(ctx)->update_bleg_reason(cause.param.reply->reason,
+					cdr->update_bleg_reason(cause.param.reply->reason,
 												cause.param.reply->code);
 				reason = "SipReply. code = "+int2str(cause.param.reply->code);
 			} else
@@ -677,7 +680,7 @@ void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cau
 		case CallLeg::StatusChangeCause::SipRequest:
 			if(cause.param.request!=NULL){
 				if(!call->isALeg()&&call->getCallStatus()==CallLeg::Disconnected)
-					getCdr(ctx)->update_bleg_reason(cause.param.request->method,
+					cdr->update_bleg_reason(cause.param.request->method,
 												cause.param.request->method==SIP_METH_BYE?200:500);
 				reason = "SipRequest. method = "+cause.param.request->method;
 			} else
@@ -688,28 +691,46 @@ void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cau
 			break;
 		case CallLeg::StatusChangeCause::NoAck:
 			reason = "NoAck";
+			internal_disconnect_code = DC_NO_ACK;
 			break;
 		case CallLeg::StatusChangeCause::NoPrack:
 			reason = "NoPrack";
+			internal_disconnect_code = DC_NO_PRACK;
 			break;
 		case CallLeg::StatusChangeCause::RtpTimeout:
 			reason = "RtpTimeout";
 			break;
 		case CallLeg::StatusChangeCause::SessionTimeout:
 			reason = "SessionTimeout";
+			internal_disconnect_code = DC_SESSION_TIMEOUT;
 			break;
 		case CallLeg::StatusChangeCause::InternalError:
 			reason = "InternalError";
+			internal_disconnect_code = DC_INTERNAL_ERROR;
 			break;
 		case CallLeg::StatusChangeCause::Other:
 			if(cause.param.desc!=NULL)
 				reason = string("Other. ")+cause.param.desc;
 			else
 				reason = "Other. empty desc";
+			internal_disconnect_code = DC_INTERNAL_ERROR;
 			break;
 		default:
 			reason = "???";
 	}
+
+	if(call->isALeg() && internal_disconnect_code && status==CallLeg::Disconnected){
+		unsigned int internal_code,response_code;
+		string internal_reason,response_reason;
+
+		CodesTranslator::instance()->translate_db_code(
+			internal_disconnect_code,
+			internal_code,internal_reason,
+			response_code,response_reason,
+			ctx->getOverrideId());
+		cdr->update_internal_reason(DisconnectByTS,internal_reason,internal_code);
+	}
+
 	INFO("%s(%p,leg%s,state = %s, cause = %s)",FUNC_NAME,call,call->isALeg()?"A":"B",
 		callStatus2str(call->getCallStatus()),
 		reason.c_str());
