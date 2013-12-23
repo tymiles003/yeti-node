@@ -274,6 +274,9 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
 	} else if (method == "clearStats"){
 		INFO ("clearStats received via xmlrpc2di");
 		ClearStats(args,ret);
+	} else if (method == "showCache"){
+		INFO ("showCache received via xmlrpc2di");
+		ShowCache(args,ret);
 	} else if (method == "clearCache"){
 		INFO ("clearCache received via xmlrpc2di");
 		ClearCache(args,ret);
@@ -307,6 +310,7 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
 		ret.push(AmArg("getStats"));
 		ret.push(AmArg("clearStats"));
 		ret.push(AmArg("clearCache"));
+		ret.push(AmArg("showCache"));
 		ret.push(AmArg("dropCall"));
 		ret.push(AmArg("getCall"));
 		ret.push(AmArg("getCalls"));
@@ -1284,6 +1288,12 @@ void Yeti::ClearCache(const AmArg& args, AmArg& ret){
 		router->clearCache();
 	ret.push(200);
 	ret.push("OK");
+}
+
+void Yeti::ShowCache(const AmArg& args, AmArg& ret){
+	AmLock l(router_mutex);
+	if(router)
+		router->showCache(ret);
 }
 
 void Yeti::GetStats(const AmArg& args, AmArg& ret){

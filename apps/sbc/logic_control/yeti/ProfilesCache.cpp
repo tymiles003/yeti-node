@@ -1,4 +1,5 @@
 #include "ProfilesCache.h"
+#include "AmUtils.h"
 
 ProfilesCache::ProfilesCache(const vector<UsedHeaderField> &used_header_fields,
 							 unsigned long buckets, double timeout):
@@ -35,8 +36,7 @@ bool ProfilesCache::cmp_lookup_key(const AmSipRequest *k1,const ProfilesCacheKey
 	string used_hdrs_values;
 	getUsedHeadersValues(k1,used_hdrs_values);
 	return
-		(k1->local_ip == k2->local_ip) &&
-		(k1->local_port == k2->local_port) &&
+		(k1->remote_ip == k2->remote_ip) &&
 		(k1->remote_port == k2->remote_port) &&
 		(k1->from_uri == k2->from_uri) &&
 		(k1->contact == k2->contact) &&
@@ -52,8 +52,7 @@ void ProfilesCache::init_key(ProfilesCacheKey **dest,const AmSipRequest *src){
 
 	getUsedHeadersValues(src,used_hdrs_values);
 
-	key->local_ip.assign(src->local_ip);
-	key->local_port = src->local_port;
+	key->remote_ip.assign(src->remote_ip);
 	key->remote_port = src->remote_port;
 	key->from_uri.assign(src->from_uri);
 	key->contact.assign(src->contact);
@@ -156,6 +155,43 @@ void ProfilesCache::on_clean(){
 
 void ProfilesCache::getStats(AmArg &arg){
 	arg["entries"] = (int)get_count();
+}
+
+void ProfilesCache::dump(AmArg &arg){
+	AmArg a,profiles,profile;
+	ProfilesCacheEntry *cache_entry;
+	ProfilesCacheKey *cache_key;
+	lock();
+	entry *e = first;
+	while(e){
+		cache_entry = e->data;
+		cache_key = e->key;
+
+		a.clear();
+		profiles.clear();
+		a["expire_time"] = cache_entry->expire_time.tv_sec;
+		a["profiles_count"] = (long)cache_entry->profiles.size();
+		a["contact"] = cache_key->contact;
+		a["from_uri"] = cache_key->from_uri;
+		a["to"] = cache_key->to;
+		a["user"] = cache_key->user;
+		a["remote"] = cache_key->remote_ip + ":" + int2str(cache_key->remote_port);
+		for(list<SqlCallProfile *>::const_iterator it = cache_entry->profiles.begin();
+			it!=cache_entry->profiles.end();++it)
+		{
+			profile.clear();
+			if((*it)->disconnect_code_id){
+				profile["disconnect_code_id"] = (*it)->disconnect_code_id;
+			} else {
+				profile["ruri"] = (*it)->ruri;
+			}
+			profiles.push(profile);
+		}
+		a["profiles"] = profiles;
+		arg.push(a);
+		e = e->next;
+	}
+	unlock();
 }
 
 void ProfilesCache::clear(){

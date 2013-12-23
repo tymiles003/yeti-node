@@ -11,14 +11,13 @@
 using namespace std;
 
 struct ProfilesCacheKey {
-	string local_ip,
+	string remote_ip,
 		from_uri,
 		to,
 		contact,
 		user;
 	string used_headers_values;
-	unsigned short local_port,
-		remote_port;
+	unsigned short remote_port;
 };
 
 struct ProfilesCacheEntry {
@@ -67,6 +66,7 @@ public:
 	void stopTimer();
 
 	void getStats(AmArg &arg);
+	void dump(AmArg &arg);
 	void clear();
 
 protected:

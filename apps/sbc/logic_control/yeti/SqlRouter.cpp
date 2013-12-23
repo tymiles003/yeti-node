@@ -503,6 +503,18 @@ void SqlRouter::clearCache(){
 	}
 }
 
+void SqlRouter::showCache(AmArg& ret){
+	if(cache_enabled && cache){
+		AmArg cache_info;
+		cache->dump(cache_info);
+		ret.push(200);
+		ret.push(cache_info);
+	} else {
+		ret.push(404);
+		ret.push("profiles cache is not used");
+	}
+}
+
 void SqlRouter::getConfig(AmArg &arg){
 	AmArg u;
 	arg["config_db"] = dbc.conn_str();

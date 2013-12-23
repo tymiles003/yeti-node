@@ -37,6 +37,7 @@ public:
   void dump_config();
   void clearStats();
   void clearCache();
+  void showCache(AmArg& ret);
   void closeCdrFiles();
   void getStats(AmArg &arg);
   void getConfig(AmArg &arg);
