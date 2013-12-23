@@ -828,7 +828,7 @@ void AmRtpStream::bufferPacket(AmRtpPacket* p)
 
       if (NULL != relay_stream) {
 		add_if_no_exist(incoming_payloads,p->payload);
-        relay_stream->relay(p);
+		relay_stream->relay(p);
       }
       mem.freePacket(p);
       return;
@@ -1219,6 +1219,8 @@ void AmRtpStream::getPayloadsHistory(std::vector<string> &incoming,std::vector<s
 	for(;it!=incoming_payloads.end();++it){
 		std::string pname;
 		pname = getPayloadName(*it);
+		if(pname.empty())
+			pname = "unmapped"+int2str(*it);
 		transform(pname.begin(), pname.end(), pname.begin(), ::tolower);
 		incoming.push_back(pname);
 	}
@@ -1226,6 +1228,8 @@ void AmRtpStream::getPayloadsHistory(std::vector<string> &incoming,std::vector<s
 	for(;it!=outgoing_payloads.end();++it){
 		std::string pname;
 		pname = getPayloadName(*it);
+		if(pname.empty())
+			pname = "unmapped"+int2str(*it);
 		transform(pname.begin(), pname.end(), pname.begin(), ::tolower);
 		outgoing.push_back(pname);
 	}
