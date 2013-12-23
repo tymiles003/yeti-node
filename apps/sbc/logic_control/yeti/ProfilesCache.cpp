@@ -122,7 +122,7 @@ void ProfilesCache::check_obsolete(){
 	gettimeofday(&now,NULL);
 	e = first;
 	while(e){
-		next = e->next;
+		next = e->list_next;
 		if(is_obsolete(e,&now)){
 			free_entries.push_back(e->data);
 			erase(e,false);
@@ -189,7 +189,7 @@ void ProfilesCache::dump(AmArg &arg){
 		}
 		a["profiles"] = profiles;
 		arg.push(a);
-		e = e->next;
+		e = e->list_next;
 	}
 	unlock();
 }
