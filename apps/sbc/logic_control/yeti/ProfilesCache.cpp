@@ -201,7 +201,7 @@ void ProfilesCache::clear(){
 	lock();
 	e = first;
 	while(e){
-		next = e->next;
+		next = e->list_next;
 		free_entries.push_back(e->data);
 		erase(e,false);
 		e = next;
