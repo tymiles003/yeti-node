@@ -55,6 +55,7 @@ class ExtendedCCInterface
      *
      * can be used for forking or handling INVITE with Replaces header */
     virtual CCChainProcessing onInitialInvite(SBCCallLeg *call, InitialInviteHandlerParams &params) { return ContinueProcessing; }
+	virtual void onInviteException(SBCCallLeg *call,int code,string reason,bool no_reply) {}
 
     /** called from A/B leg when in-dialog request comes in */
     virtual CCChainProcessing onInDialogRequest(SBCCallLeg *call, const AmSipRequest &req) { return ContinueProcessing; }

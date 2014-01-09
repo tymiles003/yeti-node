@@ -121,6 +121,7 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
 
   void process(AmEvent* ev);
   void onInvite(const AmSipRequest& req);
+  void onInviteException(int code,string reason,bool no_reply);
 
   void onDtmf(int event, int duration);
 

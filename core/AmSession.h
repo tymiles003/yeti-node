@@ -555,6 +555,8 @@ public:
    */
   virtual void onZRTPEvent(zrtp_event_t event, zrtp_stream_ctx_t *stream_ctx);
 #endif
+  /** This callback is called on exception during onInvite() execution */
+  virtual void onInviteException(int code,string reason,bool no_reply) {}
 
   /** This callback is called if RTP timeout encountered */
   virtual void onRtpTimeout();

@@ -1007,6 +1007,12 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
   }
 }
 
+void SBCCallLeg::onInviteException(int code,string reason,bool no_reply){
+	for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
+		(*i)->onInviteException(this,code,reason,no_reply);
+	}
+}
+
 void SBCCallLeg::connectCallee(const string& remote_party, 
 			       const string& remote_uri,
 			       const string &from, 

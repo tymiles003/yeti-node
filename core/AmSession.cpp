@@ -794,18 +794,19 @@ void AmSession::onSipRequest(const AmSipRequest& req)
     catch(const string& s) {
       ERROR("%s\n",s.c_str());
       setStopped();
-      dlg->reply(req, 500, SIP_REPLY_SERVER_INTERNAL_ERROR);
+	  onInviteException(500,SIP_REPLY_SERVER_INTERNAL_ERROR,false);
+	  dlg->reply(req, 500, SIP_REPLY_SERVER_INTERNAL_ERROR);
     }
     catch(const AmSession::Exception& e) {
       ERROR("%i %s\n",e.code,e.reason.c_str());
       setStopped();
       no_reply = (e.code == NO_REPLY_DISCONNECT_CODE);
+	  onInviteException(e.code,e.reason,no_reply);
       if(!no_reply)
         dlg->reply(req, e.code, e.reason, NULL, e.hdrs);
       else
           DBG("AmSession::onSipREquest() suspress reply with reason '%s'",
               e.reason.c_str());
-      setStopped();
     }
   }
   else if(req.method == SIP_METH_ACK){

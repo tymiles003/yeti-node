@@ -913,6 +913,24 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 	return ContinueProcessing;
 }
 
+void Yeti::onInviteException(SBCCallLeg *call,int code,string reason,bool no_reply){
+	DBG("%s(%p,leg%s) %d:'%s' no_reply = %d",FUNC_NAME,call,call->isALeg()?"A":"B",
+		code,reason.c_str(),no_reply);
+	getCtx_void();
+	Cdr *cdr = getCdr(ctx);
+	cdr->lock();
+	cdr->disconnect_initiator = DisconnectByTS;
+	if(cdr->disconnect_internal_code==0){ //update only if not previously was setted
+		cdr->disconnect_internal_code = code;
+		cdr->disconnect_internal_reason = reason;
+	}
+	if(!no_reply){
+		cdr->disconnect_rewrited_code = code;
+		cdr->disconnect_rewrited_reason = reason;
+	}
+	cdr->unlock();
+}
+
 CCChainProcessing Yeti::onInDialogRequest(SBCCallLeg *call, const AmSipRequest &req) {
 	DBG("%s(%p,leg%s) '%s'",FUNC_NAME,call,call->isALeg()?"A":"B",req.method.c_str());
 	if(call->isALeg()){
