@@ -982,8 +982,8 @@ CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
 			plugin_event->event_id);
 		if(plugin_event->name=="timer_timeout"){
 			int timer_id = plugin_event->data.get(0).asInt();
-			DBG("%s() timer %d timeout, stopping call\n",FUNC_NAME,timer_id);
-			getCdr(call)->update_internal_reason(DisconnectByTS,"Balance timer",200);
+			DBG("%s() timer %d fired.\n",FUNC_NAME,timer_id);
+			getCdr(call)->update_internal_reason(DisconnectByTS,"Timer "+int2str(timer_id)+" fired",200);
 		}
 	}
 
