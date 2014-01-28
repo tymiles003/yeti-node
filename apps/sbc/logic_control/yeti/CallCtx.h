@@ -18,6 +18,7 @@ struct CallCtx: public
 	list<SqlCallProfile *>::iterator current_profile;
 	int attempt_num;
 	AmSipRequest *initial_invite;
+	vector<SdpMedia> invite_negotiated_media;
 	SqlRouter *router;
 	bool SQLexception;
 
@@ -32,5 +33,7 @@ struct CallCtx: public
 	CallCtx(SqlRouter *router);
 	~CallCtx();
 };
+
+CallCtx *getCtx(SBCCallLeg *call);
 
 #endif // CALLCTX_H

@@ -1,5 +1,9 @@
 #include "CallCtx.h"
 
+CallCtx *getCtx(SBCCallLeg *call){
+	return reinterpret_cast<CallCtx *>(call->getLogicData());
+}
+
 SqlCallProfile *CallCtx::getFirstProfile(){
 	//DBG("%s() this = %p",FUNC_NAME,this);
 	if(profiles.empty())

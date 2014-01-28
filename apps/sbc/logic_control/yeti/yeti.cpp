@@ -1,18 +1,20 @@
 #include "yeti.h"
+#include "sdp_filter.h"
+
+#include <string.h>
 
 #include "log.h"
 #include "AmPlugIn.h"
 #include "AmArg.h"
 #include "AmSession.h"
 #include "AmUtils.h"
+#include "SDPFilter.h"
 #include "CallLeg.h"
 #include "Version.h"
 #include "RegisterDialog.h"
 #include "Registration.h"
 #include "SBC.h"
 struct CallLegCreator;
-
-#include <string.h>
 
 #define getCtx_void()\
 	CallCtx *ctx = getCtx(call);\
@@ -29,6 +31,12 @@ struct CallLegCreator;
 		log_stacktrace(L_ERR);\
 		return ContinueProcessing;\
 	}
+
+
+//CallCtx *getCtx(SBCCallLeg *call){ return reinterpret_cast<CallCtx *>(call->getLogicData()); }
+Cdr *getCdr(CallCtx *ctx) { return ctx->cdr; }
+Cdr *getCdr(SBCCallLeg *call) { return getCdr(getCtx(call)); }
+
 
 static const char *callStatus2str(const CallLeg::CallStatus state)
 {
@@ -476,12 +484,14 @@ bool Yeti::connectCallee(SBCCallLeg *call,const AmSipRequest &orig_req){
 		invite_req.hdrs+=append_headers;
 	}
 
+	/*
 	int res = call->filterSdp(invite_req.body, invite_req.method);
 	if (res < 0) {
 		// FIXME: quick hack, throw the exception from the filtering function for
 		// requests
 		throw AmSession::Exception(488, SIP_REPLY_NOT_ACCEPTABLE_HERE);
 	}
+	*/
 
 	call->connectCallee(to, ruri, from, orig_req, invite_req);
 
@@ -671,6 +681,10 @@ void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cau
 	SBCCallLeg::CallStatus status = call->getCallStatus();
 	Cdr *cdr = getCdr(ctx);
 	int internal_disconnect_code = 0;
+
+	DBG("Yeti::onStateChange(%p) a_leg = %d",
+		call,call->isALeg());
+
 	switch(cause.reason){
 		case CallLeg::StatusChangeCause::SipReply:
 			if(cause.param.reply!=NULL){
@@ -713,11 +727,12 @@ void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cau
 			internal_disconnect_code = DC_INTERNAL_ERROR;
 			break;
 		case CallLeg::StatusChangeCause::Other:
-			if(cause.param.desc!=NULL)
+			/*if(cause.param.desc!=NULL)
 				reason = string("Other. ")+cause.param.desc;
 			else
 				reason = "Other. empty desc";
 			internal_disconnect_code = DC_INTERNAL_ERROR;
+			*/
 			break;
 		default:
 			reason = "???";
@@ -827,6 +842,7 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 
 	SqlCallProfile *profile = NULL;
 	const AmSipRequest &req = *params.original_invite;
+	AmSipRequest &b_req = *params.modified_invite;
 
 	CallCtx *ctx = getCtx(call);
 	Cdr *cdr = getCdr(ctx);
@@ -879,20 +895,46 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 
 	if(rctl_ret != RES_CTL_OK){
 		throw AmSession::Exception(refuse_code,refuse_reason);
-	} else {
-		if(attempt != 0){
+	}
+
+	if(attempt != 0){
 			//profile changed
 			//we must update profile for leg
 			DBG("%s() update call profile for leg",FUNC_NAME);
 			call->getCallProfile() = *profile;
-		}
 	}
+
+	if(!call->getCallProfile().evaluate_static_codecs()){
+		ERROR("can't evaluate static_codecs in profile");
+		throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
+	}
+	//filterSDP
+	AmSipRequest orig_invite_req(req);
+	int res = filterInviteSdp(call->getCallProfile(),
+							  orig_invite_req.body,
+							  ctx->invite_negotiated_media,
+							  orig_invite_req.method);
+	if(res < 0){
+		INFO("onInitialInvite() Not acceptable codecs");
+		throw AmSession::Exception(488, SIP_REPLY_NOT_ACCEPTABLE_HERE);
+	}
+	DBG("ctx->invite_negotiated_media.size() = %ld",
+		ctx->invite_negotiated_media.size());
+
+	//next we should filter request for legB
+	res = filterRequestSdp(call,b_req.body,b_req.method);
+	if(res < 0){
+		INFO("onInitialInvite() Not acceptable codecs for legB");
+		throw AmSession::Exception(488, SIP_REPLY_NOT_ACCEPTABLE_HERE);
+	}
+
 	if(cdr->time_limit){
 		DBG("%s() save timer %d with timeout %d",FUNC_NAME,
 			SBC_TIMER_ID_CALL_TIMERS_START,
 			cdr->time_limit);
 		call->saveCallTimer(SBC_TIMER_ID_CALL_TIMERS_START,cdr->time_limit);
 	}
+
 	if(0!=cdr_list.insert(cdr)){
 		ERROR("onInitialInvite(): double insert into active calls list. integrity threat");
 		ERROR("ctx: attempt = %d, cdr.logger_path = %s",
@@ -1054,7 +1096,11 @@ void Yeti::onServerShutdown(SBCCallLeg *call){
 
 CCChainProcessing Yeti::onTearDown(SBCCallLeg *call){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
-	getCdr(call)->update_internal_reason(DisconnectByTS,"Teardown",200);
+	getCtx_chained();
+	Cdr *cdr = getCdr(ctx);
+	cdr->update_internal_reason(DisconnectByTS,"Teardown",200);
+	cdr->update_aleg_reason("Bye",200);
+	cdr->update_bleg_reason("Bye",200);
 	return ContinueProcessing;
 }
 
@@ -1142,6 +1188,37 @@ void Yeti::onRTPStreamDestroy(SBCCallLeg *call,AmRtpStream *stream){
 
 int Yeti::relayEvent(SBCCallLeg *call, AmEvent *e){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+
+	CallCtx *ctx = getCtx(call);
+	if(NULL==ctx) {
+		ERROR("Yeti::relayEvent(%p) zero ctx. ignore event",call);
+		delete e;
+		return 1;
+	}
+
+	switch (e->event_id) {
+		case B2BSipRequest: {
+			B2BSipRequestEvent* req_ev = dynamic_cast<B2BSipRequestEvent*>(e);
+			assert(req_ev);
+
+			DBG("Yeti::relayEvent(%p) filtering body for request '%s' (c/t '%s')\n",
+				call,req_ev->req.method.c_str(), req_ev->req.body.getCTStr().c_str());
+			int res = filterRequestSdp(call,req_ev->req.body, req_ev->req.method);
+			if (res < 0) {
+				delete e;
+				return res;
+			}
+		} break;
+
+		case B2BSipReply: {
+			B2BSipReplyEvent* reply_ev = dynamic_cast<B2BSipReplyEvent*>(e);
+			assert(reply_ev);
+
+			DBG("Yeti::relayEvent(%p) filtering body for reply '%s' (c/t '%s')\n",
+				call,reply_ev->trans_method.c_str(), reply_ev->reply.body.getCTStr().c_str());
+			filterReplySdp(call, reply_ev->reply.body, reply_ev->reply.cseq_method);
+		} break;
+	} //switch(e->event_id)
 	return 0;
 }
 	//!Ood handlers

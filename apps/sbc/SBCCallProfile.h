@@ -154,6 +154,12 @@ struct SBCCallProfile
   vector<FilterEntry> sdpalinesfilter;
   vector<FilterEntry> mediafilter;
 
+  FilterEntry static_codecs_filter_aleg;
+  string static_codecs_aleg_str;
+  FilterEntry static_codecs_filter_bleg;
+  string static_codecs_bleg_str;
+
+
   string sst_enabled;
   bool sst_enabled_value;
   string sst_aleg_enabled;
@@ -216,13 +222,16 @@ struct SBCCallProfile
     std::vector<SdpPayload> audio_codecs_norelay;
     std::vector<SdpPayload> audio_codecs_norelay_aleg;
     std::vector<SdpPayload> lowfi_codecs;
+
+	std::vector<SdpPayload> static_codecs_aleg;
+	std::vector<SdpPayload> static_codecs_bleg;
+
     enum { Always, OnMissingCompatible, Never } transcoder_mode;
     enum { DTMFAlways, DTMFLowFiCodecs, DTMFNever } dtmf_mode;
     bool readTranscoderMode(const std::string &src);
     bool readDTMFMode(const std::string &src);
   
     bool enabled;
-    
     bool evaluate(ParamReplacerCtx& ctx, const AmSipRequest& req);
 
     bool readConfig(AmConfigReader &cfg);
@@ -342,6 +351,7 @@ struct SBCCallProfile
   int apply_common_fields(ParamReplacerCtx& ctx,
 			  AmSipRequest& req) const;
 
+  bool evaluate_static_codecs(void);
   bool evaluate(ParamReplacerCtx& ctx,
 		const AmSipRequest& req);
 

@@ -19,6 +19,7 @@ set (yeti_SRCS
 	CodesTranslator.cpp
 	Registration.cpp
 	UsedHeaderField.cpp
+	sdp_filter.cpp
 )
 
 SET(yeti_config_files

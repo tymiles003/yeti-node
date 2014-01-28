@@ -1514,7 +1514,15 @@ string SBCCallProfile::TranscoderSettings::print() const
   
   return res;
 }
-  
+
+bool SBCCallProfile::evaluate_static_codecs(void){
+	if (!read(static_codecs_aleg_str, transcoder.static_codecs_aleg))
+		return false;
+	if (!read(static_codecs_bleg_str, transcoder.static_codecs_bleg))
+		return false;
+	return true;
+}
+
 bool SBCCallProfile::TranscoderSettings::evaluate(ParamReplacerCtx& ctx,
 						  const AmSipRequest& req)
 {

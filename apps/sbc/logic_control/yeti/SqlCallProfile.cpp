@@ -2,6 +2,7 @@
 #include "AmUtils.h"
 #include "SBC.h"
 #include <algorithm>
+#include "RTPParameters.h"
 
 SqlCallProfile::SqlCallProfile():
 	aleg_override_id(0),
@@ -49,6 +50,26 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 
 	if (!readFilter(t, "sdp_filter", sdpfilter, true))
 		return false;
+
+	//!TODO: remove this hardcode after tests
+	static_codecs_aleg_str = "PCMU,telephone-event";
+	static_codecs_bleg_str = "PCMA,telephone-event";
+
+	static_codecs_filter_aleg.filter_type = Whitelist;
+	{vector<string> elems = explode(static_codecs_aleg_str,",");
+	for (vector<string>::iterator it=elems.begin(); it != elems.end(); it++) {
+		string c = *it;
+		std::transform(c.begin(), c.end(), c.begin(), ::tolower);
+		static_codecs_filter_aleg.filter_list.insert(c);
+	}}
+
+	static_codecs_filter_bleg.filter_type = Whitelist;
+	{vector<string> elems = explode(static_codecs_bleg_str,",");
+	for (vector<string>::iterator it=elems.begin(); it != elems.end(); it++) {
+		string c = *it;
+		std::transform(c.begin(), c.end(), c.begin(), ::tolower);
+		static_codecs_filter_bleg.filter_list.insert(c);
+	}}
 
 	anonymize_sdp = t["anonymize_sdp"].as<bool>(true);
 	//DBG("db: %s, anonymize_sdp = %d",t["anonymize_sdp"].c_str(),anonymize_sdp);
@@ -366,19 +387,6 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 
 bool SqlCallProfile::readFilter(const pqxx::result::tuple &t, const char* cfg_key_filter,
 		vector<FilterEntry>& filter_list, bool keep_transparent_entry){
-/*
-	string filter = t[cfg_key_filter].c_str();
-	if (filter.empty())
-		return true;
-
-	FilterEntry hf;
-	hf.filter_type = String2FilterType(filter.c_str());
-	if (Undefined == hf.filter_type) {
-		ERROR("invalid %s mode '%s'\n", cfg_key_filter, filter.c_str());
-		return false;
-	}
-
-*/
 	FilterEntry hf;
 	string filter_key = cfg_key_filter;
 

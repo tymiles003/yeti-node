@@ -160,6 +160,8 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
   SBCCallProfile &getCallProfile() { return call_profile; }
   CallStatus getCallStatus() { return CallLeg::getCallStatus(); }
 
+  PayloadIdMapping &getTranscoderMapping() { return  transcoder_payload_mapping; }
+
   void *getLogicData() { return LogicData; }
   void setLogicData(void *p) { LogicData = p; }
 

@@ -44,9 +44,6 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   AmConfigReader cfg;
   //config values
   int calls_show_limit;
-  CallCtx *getCtx(SBCCallLeg *call){ return reinterpret_cast<CallCtx *>(call->getLogicData()); }
-  Cdr *getCdr(CallCtx *ctx) { return ctx->cdr; }
-  Cdr *getCdr(SBCCallLeg *call) { return getCdr(getCtx(call)); }
   void replace(string& s, const string& from, const string& to);
 
   void onLastLegDestroy(CallCtx *ctx,SBCCallLeg *call);

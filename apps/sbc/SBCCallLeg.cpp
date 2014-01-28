@@ -425,16 +425,6 @@ int SBCCallLeg::relayEvent(AmEvent* ev)
             inplaceHeaderFilter(req_ev->req.hdrs, call_profile.headerfilter);
           }
 
-          DBG("filtering body for request '%s' (c/t '%s')\n",
-              req_ev->req.method.c_str(), req_ev->req.body.getCTStr().c_str());
-          // todo: handle filtering errors
-
-          int res = filterSdp(req_ev->req.body, req_ev->req.method);
-          if (res < 0) {
-            delete ev; // failed relayEvent should destroy the event
-            return res;
-          }
-
 	  if((a_leg && call_profile.keep_vias)
 	     || (!a_leg && call_profile.bleg_keep_vias)) {
 	    req_ev->req.hdrs = req_ev->req.vias + req_ev->req.hdrs;
@@ -470,11 +460,6 @@ int SBCCallLeg::relayEvent(AmEvent* ev)
               reply_ev->reply.reason = it->second.second;
             }
           }
-
-          DBG("filtering body for reply '%s' (c/t '%s')\n",
-              reply_ev->trans_method.c_str(), reply_ev->reply.body.getCTStr().c_str());
-
-          filterSdp(reply_ev->reply.body, reply_ev->reply.cseq_method);
         }
 
         break;
@@ -982,7 +967,7 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
 	assertEndCRLF(append_headers);
 	invite_req.hdrs+=append_headers;
   }
-  
+
   int res = filterSdp(invite_req.body, invite_req.method);
   if (res < 0) {
     // FIXME: quick hack, throw the exception from the filtering function for
