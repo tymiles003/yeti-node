@@ -867,24 +867,26 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
 	throw AmSession::Exception(400,"Failed to parse R-URI");
   }
 
+  //Modified request for A leg
+  AmSipRequest aleg_invite_req(req);
   // call extend call controls
-  InitialInviteHandlerParams params(to, ruri, from, &req, &invite_req);
+  InitialInviteHandlerParams params(to, ruri, from, &req, &aleg_invite_req, &invite_req);
   for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
 	(*i)->onInitialInvite(this, params);
   }
 
   call_profile.sst_aleg_enabled = 
     ctx.replaceParameters(call_profile.sst_aleg_enabled,
-			  "enable_aleg_session_timer", req);
+              "enable_aleg_session_timer", aleg_invite_req);
 
   call_profile.sst_enabled = ctx.replaceParameters(call_profile.sst_enabled, 
-						   "enable_session_timer", req);
+                           "enable_session_timer", aleg_invite_req);
 
   if ((call_profile.sst_aleg_enabled == "yes") ||
       (call_profile.sst_enabled == "yes")) {
 
-    call_profile.eval_sst_config(ctx,req,call_profile.sst_a_cfg);
-    if(applySSTCfg(call_profile.sst_a_cfg,&req) < 0) {
+    call_profile.eval_sst_config(ctx,aleg_invite_req,call_profile.sst_a_cfg);
+    if(applySSTCfg(call_profile.sst_a_cfg,&aleg_invite_req) < 0) {
       throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
     }
   }
@@ -893,19 +895,19 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
     throw AmSession::Exception(500,"Failed to reply 100");
   }
 
-  if (!call_profile.evaluate(ctx, req)) {
+  if (!call_profile.evaluate(ctx, aleg_invite_req)) {
     ERROR("call profile evaluation failed\n");
     throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
   }
 
   if(call_profile.contact_hiding) { 
-    if(RegisterDialog::decodeUsername(req.user,uac_ruri)) {
+    if(RegisterDialog::decodeUsername(aleg_invite_req.user,uac_ruri)) {
       uac_req.r_uri = uac_ruri.uri_str();
     }
   }
   else if(call_profile.reg_caching) {
     // REG-Cache lookup
-    uac_req.r_uri = call_profile.retarget(req.user,*dlg);
+    uac_req.r_uri = call_profile.retarget(aleg_invite_req.user,*dlg);
   }
 
   ruri = call_profile.ruri.empty() ? uac_req.r_uri : call_profile.ruri;
@@ -920,11 +922,11 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
       ruri = ctx.ruri_parser.uri_str();
     }
   }
-  from = call_profile.from.empty() ? req.from : call_profile.from;
-  to = call_profile.to.empty() ? req.to : call_profile.to;
+  from = call_profile.from.empty() ? aleg_invite_req.from : call_profile.from;
+  to = call_profile.to.empty() ? aleg_invite_req.to : call_profile.to;
 
   applyAProfile();
-  call_profile.apply_a_routing(ctx,req,*dlg);
+  call_profile.apply_a_routing(ctx,aleg_invite_req,*dlg);
 
   m_state = BB_Dialing;
 
@@ -968,12 +970,12 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
 	invite_req.hdrs+=append_headers;
   }
 
-  int res = filterSdp(invite_req.body, invite_req.method);
+  /*int res = filterSdp(invite_req.body, invite_req.method);
   if (res < 0) {
     // FIXME: quick hack, throw the exception from the filtering function for
     // requests
     throw AmSession::Exception(488, SIP_REPLY_NOT_ACCEPTABLE_HERE);
-  }
+  }*/
 
 #undef REPLACE_VALS
 
@@ -984,11 +986,11 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
   // we evaluated the settings, now we can initialize internals (like RTP relay)
   // we have to use original request (not the altered one) because for example
   // codecs filtered out might be used in direction to caller
-  CallLeg::onInvite(req);
+  CallLeg::onInvite(aleg_invite_req);
 
   if (getCallStatus() == Disconnected) {
     // no CC module connected a callee yet
-    connectCallee(to, ruri, from, req, invite_req); // connect to the B leg(s) using modified request
+    connectCallee(to, ruri, from, aleg_invite_req, invite_req); // connect to the B leg(s) using modified request
   }
 }
 

@@ -841,7 +841,7 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 
 	SqlCallProfile *profile = NULL;
-	const AmSipRequest &req = *params.original_invite;
+	AmSipRequest &req = *params.aleg_modified_invite;
 	AmSipRequest &b_req = *params.modified_invite;
 
 	CallCtx *ctx = getCtx(call);
@@ -909,17 +909,14 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 		throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
 	}
 	//filterSDP
-	AmSipRequest orig_invite_req(req);
 	int res = filterInviteSdp(call->getCallProfile(),
-							  orig_invite_req.body,
+							  req,
 							  ctx->invite_negotiated_media,
-							  orig_invite_req.method);
+							  req.method);
 	if(res < 0){
 		INFO("onInitialInvite() Not acceptable codecs");
 		throw AmSession::Exception(488, SIP_REPLY_NOT_ACCEPTABLE_HERE);
 	}
-	DBG("ctx->invite_negotiated_media.size() = %ld",
-		ctx->invite_negotiated_media.size());
 
 	//next we should filter request for legB
 	res = filterRequestSdp(call,b_req.body,b_req.method);

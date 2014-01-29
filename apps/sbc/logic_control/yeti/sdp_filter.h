@@ -37,7 +37,7 @@ int filter_arrange_SDP(AmSdp& sdp,
  * @return 0 if succ. negative value with error code on errors
  */
 int filterInviteSdp(SBCCallProfile &call_profile,
-					AmMimeBody &body, vector<SdpMedia> &negotiated_media,
+					AmSipRequest &req, vector<SdpMedia> &negotiated_media,
 					const string &method);
 
 /**

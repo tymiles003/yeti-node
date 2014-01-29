@@ -123,11 +123,11 @@ int filter_arrange_SDP(AmSdp& sdp,
 
 
 int filterInviteSdp(SBCCallProfile &call_profile,
-					AmMimeBody &body, vector<SdpMedia> &negotiated_media,
+					AmSipRequest &req, vector<SdpMedia> &negotiated_media,
 					const string &method)
 {
 	DBG("filterInviteSdp() method = %s\n",method.c_str());
-
+	AmMimeBody &body = req.body;
 	AmMimeBody* sdp_body = body.hasContentType(SIP_APPLICATION_SDP);
 	if (!sdp_body) return 0;
 
@@ -258,11 +258,14 @@ int filterReplySdp(SBCCallLeg *call,
 			return -488;
 		}
 
+		//remove all unknown attributes
+		m.attributes.clear();
+
 		if(m.type!=MT_AUDIO)
 			continue;
 
 		m.payloads = aleg_m.payloads;
-		m.attributes.clear();
+		//m.attributes.clear();
 
 		stream_idx++;
 	}
