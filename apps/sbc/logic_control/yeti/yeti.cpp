@@ -909,10 +909,6 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 			call->getCallProfile() = *profile;
 	}
 
-	/*if(!call->getCallProfile().evaluate_static_codecs()){
-		ERROR("can't evaluate static_codecs in profile");
-		throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
-	}*/
 	//filterSDP
 	int res = filterInviteSdp(call->getCallProfile(),
 							  req,
@@ -920,7 +916,8 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 							  req.method);
 	if(res < 0){
 		INFO("onInitialInvite() Not acceptable codecs");
-		throw AmSession::Exception(488, SIP_REPLY_NOT_ACCEPTABLE_HERE);
+		throw InternalException(FC_CODECS_NOT_MATCHED);
+		//throw AmSession::Exception(488, SIP_REPLY_NOT_ACCEPTABLE_HERE);
 	}
 
 	//next we should filter request for legB
@@ -945,10 +942,15 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 		throw AmSession::Exception(500,SIP_REPLY_SERVER_INTERNAL_ERROR);
 	}
 
-
+	} catch(InternalException &e) {
+		DBG("onInitialInvite() catched InternalException(%d)",e.icode);
+		rctl.put(ctx->getCurrentResourceList());
+		cdr->update_internal_reason(DisconnectByTS,e.internal_reason,e.internal_code);
+		throw AmSession::Exception(e.response_code,e.response_reason);
 	} catch(AmSession::Exception &e) {
 		DBG("onInitialInvite() catched AmSession::Exception(%d,%s)",
 			e.code,e.reason.c_str());
+		rctl.put(ctx->getCurrentResourceList());
 		//!TODO: rewrite response here
 		cdr->update_internal_reason(DisconnectByTS,e.reason,e.code);
 		throw e;

@@ -5,6 +5,17 @@
 
 CodesTranslator* CodesTranslator::_instance=0;
 
+
+InternalException::InternalException(unsigned int code):
+	icode(code)
+{
+	CodesTranslator::instance()->translate_db_code(
+		icode,
+		internal_code,internal_reason,
+		response_code,response_reason
+	);
+}
+
 CodesTranslator::CodesTranslator(){
 	stat.clear();
 }

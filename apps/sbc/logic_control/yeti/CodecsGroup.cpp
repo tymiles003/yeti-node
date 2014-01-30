@@ -11,6 +11,22 @@
 
 CodecsGroups* CodecsGroups::_instance=0;
 
+static void replace(string& s, const string& from, const string& to){
+	size_t pos = 0;
+	while ((pos = s.find(from, pos)) != string::npos) {
+		s.replace(pos, from.length(), to);
+		pos += s.length();
+	}
+}
+
+CodecsGroupException::CodecsGroupException(unsigned int code, unsigned int codecs_group)
+	: InternalException(code)
+{
+	string s = int2str(codecs_group);
+	replace(internal_reason,"$cg",s);
+	replace(response_reason,"$cg",s);
+}
+
 //copied from SBCCallProfile.cpp
 static bool readPayload(SdpPayload &p, const string &src)
 {

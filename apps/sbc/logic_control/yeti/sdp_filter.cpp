@@ -145,13 +145,8 @@ int filterInviteSdp(SBCCallProfile &call_profile,
 	}
 
 	CodecsGroupEntry codecs_group;
-	if(!CodecsGroups::instance()->get(call_profile.static_codecs_aleg_id,
-								  codecs_group))
-	{
-		ERROR("filterInviteSdp() can't find codecs group %d",
-			  call_profile.static_codecs_aleg_id);
-		return -488;
-	}
+	CodecsGroups::instance()->get(call_profile.static_codecs_aleg_id, codecs_group);
+
 	vector<SdpPayload> static_codecs_filter = codecs_group.get_payloads();
 
 	res = filter_arrange_SDP(sdp,static_codecs_filter,false);
@@ -198,14 +193,17 @@ int filterRequestSdp(SBCCallLeg *call,
 	normalizeSDP(sdp, false, "");
 
 	CodecsGroupEntry codecs_group;
-	if(!CodecsGroups::instance()->get(
-		!a_leg ? call_profile.static_codecs_aleg_id : call_profile.static_codecs_bleg_id,
-		 codecs_group))
-	{
+	try {
+		CodecsGroups::instance()->get(
+			!a_leg ? call_profile.static_codecs_aleg_id : call_profile.static_codecs_bleg_id,
+			codecs_group);
+	} catch(...){
+		//!TODO: replace with correct InternalException throw
 		ERROR("filterInviteSdp() can't find codecs group %d",
 			  call_profile.static_codecs_aleg_id);
 		return -488;
 	}
+
 	std::vector<SdpPayload> &static_codecs = codecs_group.get_payloads();
 
 	filter_arrange_SDP(sdp,static_codecs,true);

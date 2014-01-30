@@ -5,11 +5,17 @@
 #include <AmSdp.h>
 #include <HeaderFilter.h>
 #include "DbConfig.h"
+#include "CodesTranslator.h"
 
 #include <string>
 #include <vector>
 #include <map>
 using namespace std;
+
+
+struct CodecsGroupException : public InternalException {
+	CodecsGroupException(unsigned int code,unsigned int codecs_group);
+};
 
 class CodecsGroupEntry {
 	vector<SdpPayload> codecs_payloads;
@@ -42,12 +48,11 @@ class CodecsGroups {
 	int load_codecs_groups();
 	bool reload();
 
-	bool get(int group_id,CodecsGroupEntry &e) {
+	void get(int group_id,CodecsGroupEntry &e) {
 		map<unsigned int,CodecsGroupEntry>::iterator i = m.find(group_id);
 		if(i==m.end())
-			return false;
+			throw CodecsGroupException(FC_CG_GROUP_NOT_FOUND,group_id);
 		e = i->second;
-		return true;
 	}
 
 	bool insert(unsigned int group_id, string codec) {

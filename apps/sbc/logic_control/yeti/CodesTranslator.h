@@ -20,6 +20,9 @@
 #define FC_DB_CONVERSION_EXCEPTION	123
 #define FC_DB_BASE_EXCEPTION		124
 
+#define FC_CG_GROUP_NOT_FOUND		140
+#define FC_CODECS_NOT_MATCHED		141
+
 #define DC_RTP_TIMEOUT				125
 #define DC_NO_ACK					126
 #define DC_NO_PRACK					127
@@ -27,6 +30,12 @@
 #define DC_INTERNAL_ERROR			129
 
 using namespace std;
+
+struct InternalException {
+	unsigned int icode, internal_code, response_code;
+	string internal_reason, response_reason;
+	InternalException(unsigned int code);
+};
 
 class CodesTranslator {
 	static CodesTranslator* _instance;
