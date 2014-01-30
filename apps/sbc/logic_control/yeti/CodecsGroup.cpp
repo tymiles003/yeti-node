@@ -106,6 +106,7 @@ bool CodecsGroups::reload(){
 }
 
 int CodecsGroups::load_codecs_groups(){
+	m.clear();
 	int ret = 1;
 	try {
 		pqxx::result r;
