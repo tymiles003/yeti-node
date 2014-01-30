@@ -199,9 +199,9 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 	if (!readCodecPrefs(t)) return false;
 	if (!readTranscoder(t)) return false;
 
-	//set_logger_path(t["msg_logger_path"].c_str());
-	log_rtp = t["log_rtp"].as<bool>(false);
-	log_sip = t["log_sip"].as<bool>(false);
+	int dump_level_id = t["dump_level_id"].as<int>(0);
+	log_rtp = dump_level_id&LOG_SIP_MASK;
+	log_sip = dump_level_id&LOG_RTP_MASK;
 
 	reg_caching = t["enable_reg_caching"].as<bool>(false);
 	min_reg_expires = t["min_reg_expires"].as<int>(0);

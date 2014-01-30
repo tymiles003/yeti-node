@@ -8,6 +8,10 @@
 #include "Resource.h"
 #include "DbTypes.h"
 
+#define LOG_SIP_MASK	0x1
+#define LOG_RTP_MASK	0x2
+#define LOG_FULL_MASK	(LOG_SIP_MASK|LOG_RTP_MASK)
+
 #define REFRESH_METHOD_INVITE					1
 #define REFRESH_METHOD_UPDATE					2
 #define REFRESH_METHOD_UPDATE_FALLBACK_INVITE	3
