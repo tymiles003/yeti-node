@@ -51,25 +51,8 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 	if (!readFilter(t, "sdp_filter", sdpfilter, true))
 		return false;
 
-	//!TODO: remove this hardcode after tests
-	static_codecs_aleg_str = "PCMU,telephone-event";
-	static_codecs_bleg_str = "PCMA,telephone-event";
-
-	static_codecs_filter_aleg.filter_type = Whitelist;
-	{vector<string> elems = explode(static_codecs_aleg_str,",");
-	for (vector<string>::iterator it=elems.begin(); it != elems.end(); it++) {
-		string c = *it;
-		std::transform(c.begin(), c.end(), c.begin(), ::tolower);
-		static_codecs_filter_aleg.filter_list.insert(c);
-	}}
-
-	static_codecs_filter_bleg.filter_type = Whitelist;
-	{vector<string> elems = explode(static_codecs_bleg_str,",");
-	for (vector<string>::iterator it=elems.begin(); it != elems.end(); it++) {
-		string c = *it;
-		std::transform(c.begin(), c.end(), c.begin(), ::tolower);
-		static_codecs_filter_bleg.filter_list.insert(c);
-	}}
+	static_codecs_aleg_id = t["aleg_codecs_group_id"].as<int>(0);
+	static_codecs_bleg_id = t["bleg_codecs_group_id"].as<int>(0);
 
 	anonymize_sdp = t["anonymize_sdp"].as<bool>(true);
 	//DBG("db: %s, anonymize_sdp = %d",t["anonymize_sdp"].c_str(),anonymize_sdp);
@@ -368,6 +351,9 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 		INFO("SBC:      reg-caching: '%s'\n", reg_caching ? "yes" : "no");
 		INFO("SBC:      min_reg_expires: %i\n", min_reg_expires);
 		INFO("SBC:      max_ua_expires: %i\n", max_ua_expires);
+
+		INFO("SBC:      static_codecs_aleg_id: %i\n", static_codecs_aleg_id);
+		INFO("SBC:      static_codecs_bleg_id: %i\n", static_codecs_bleg_id);
 
 		list<string>::const_iterator dit = dyn_fields.begin();
 		DynFieldsT::const_iterator dfit = df.begin();

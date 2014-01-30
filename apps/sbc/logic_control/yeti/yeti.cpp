@@ -179,6 +179,11 @@ int Yeti::onLoad() {
 	}
 	rctl.start();
 
+	if(CodecsGroups::instance()->configure(cfg)){
+		ERROR("CodecsGroups configure failed");
+		return -1;
+	}
+
 	if (CodesTranslator::instance()->configure(cfg)){
 		ERROR("CodesTranslator configure failed");
 		return -1;
@@ -904,10 +909,10 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 			call->getCallProfile() = *profile;
 	}
 
-	if(!call->getCallProfile().evaluate_static_codecs()){
+	/*if(!call->getCallProfile().evaluate_static_codecs()){
 		ERROR("can't evaluate static_codecs in profile");
 		throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
-	}
+	}*/
 	//filterSDP
 	int res = filterInviteSdp(call->getCallProfile(),
 							  req,
@@ -1466,6 +1471,10 @@ void Yeti::GetConfig(const AmArg& args, AmArg& ret) {
 	rctl.GetConfig(u);
 	s.push("resources_control",u);
 
+	u.clear();
+	CodecsGroups::instance()->GetConfig(u);
+	s.push("codecs_groups",u);
+
 	ret.push(s);
 }
 
@@ -1508,6 +1517,7 @@ void Yeti::reload(const AmArg& args, AmArg& ret){
 		ret[1].push("resources");
 		ret[1].push("translations");
 		ret[1].push("registrations");
+		ret[1].push("codecs_groups");
 		ret[1].push("router");
 		return;
 	}
@@ -1555,6 +1565,7 @@ void Yeti::reload(const AmArg& args, AmArg& ret){
 		}
 	}
 
+	cfg = AmConfigReader();
 	if(!read_config()){
 	  ret.push(500);
 	  ret.push("config file reload failed");
@@ -1587,6 +1598,15 @@ void Yeti::reload(const AmArg& args, AmArg& ret){
 		} else {
 			ret.push(500);
 			ret.push("errors during registrations config reload. there is empty registrations list now");
+		}
+	} else if(action=="codecs_groups"){
+		CodecsGroups::instance()->configure_db(cfg);
+		if(CodecsGroups::instance()->reload()){
+			ret.push(200);
+			ret.push("OK");
+		} else {
+			ret.push(500);
+			ret.push("errors during codecs groups reload. there is empty resources config now");
 		}
 	} else if(action == "router"){
 		//create & configure & run new instance

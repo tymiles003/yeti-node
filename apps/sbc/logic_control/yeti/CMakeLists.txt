@@ -19,6 +19,7 @@ set (yeti_SRCS
 	CodesTranslator.cpp
 	Registration.cpp
 	UsedHeaderField.cpp
+	CodecsGroup.cpp
 	sdp_filter.cpp
 )
 

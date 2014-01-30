@@ -4,6 +4,7 @@
 #include <algorithm>
 #include "SDPFilter.h"
 #include "CallCtx.h"
+#include "CodecsGroup.h"
 
 void dump_SdpPayload(const vector<SdpPayload> &p,string prefix){
 	if(!prefix.empty())
@@ -143,8 +144,15 @@ int filterInviteSdp(SBCCallProfile &call_profile,
 		return res;
 	}
 
-	vector<SdpPayload> &static_codecs_filter =
-		call_profile.transcoder.static_codecs_aleg;
+	CodecsGroupEntry codecs_group;
+	if(!CodecsGroups::instance()->get(call_profile.static_codecs_aleg_id,
+								  codecs_group))
+	{
+		ERROR("filterInviteSdp() can't find codecs group %d",
+			  call_profile.static_codecs_aleg_id);
+		return -488;
+	}
+	vector<SdpPayload> static_codecs_filter = codecs_group.get_payloads();
 
 	res = filter_arrange_SDP(sdp,static_codecs_filter,false);
 	filterSDPalines(sdp, call_profile.sdpalinesfilter);
@@ -189,9 +197,16 @@ int filterRequestSdp(SBCCallLeg *call,
 
 	normalizeSDP(sdp, false, "");
 
-	std::vector<SdpPayload> &static_codecs = !a_leg ?
-			call_profile.transcoder.static_codecs_aleg :
-			call_profile.transcoder.static_codecs_bleg;
+	CodecsGroupEntry codecs_group;
+	if(!CodecsGroups::instance()->get(
+		!a_leg ? call_profile.static_codecs_aleg_id : call_profile.static_codecs_bleg_id,
+		 codecs_group))
+	{
+		ERROR("filterInviteSdp() can't find codecs group %d",
+			  call_profile.static_codecs_aleg_id);
+		return -488;
+	}
+	std::vector<SdpPayload> &static_codecs = codecs_group.get_payloads();
 
 	filter_arrange_SDP(sdp,static_codecs,true);
 	fix_dynamic_payloads(sdp,call->getTranscoderMapping());

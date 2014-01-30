@@ -18,6 +18,7 @@
 #include "ResourceControl.h"
 #include "CallCtx.h"
 #include "CodesTranslator.h"
+#include "CodecsGroup.h"
 
 #include <ctime>
 
