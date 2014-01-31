@@ -177,6 +177,8 @@ int SBCFactory::onLoad()
       return -1;
   }
 
+  registrations_enabled = cfg.getParameter("registrations_enabled","yes")=="yes";
+
   string load_cc_plugins = cfg.getParameter("load_cc_plugins");
   if (!load_cc_plugins.empty()) {
     INFO("loading call control plugins '%s' from '%s'\n",
@@ -220,7 +222,8 @@ int SBCFactory::onLoad()
 
   // TODO: add config param for the number of threads
   subnot_processor.addThreads(1);
-  RegisterCache::instance()->start();
+  if(registrations_enabled)
+	RegisterCache::instance()->start();
 
   return 0;
 }
@@ -359,7 +362,7 @@ void SBCFactory::onOoDRequest(const AmSipRequest& req)
     //ERROR("routing failed\n");
     return;
   }
-
+//405 Method Not Allowed
   if (!call_profile.refuse_with.empty()) {
     if (logger) delete logger;
     if(call_profile.refuse(ctx, req) < 0) {
@@ -378,7 +381,12 @@ void SBCFactory::onOoDRequest(const AmSipRequest& req)
 
   SimpleRelayCreator::Relay relay(NULL,NULL);
   if(req.method == SIP_METH_REGISTER) {
-    relay = simpleRelayCreator->createRegisterRelay(call_profile, cc_modules);
+	if(registrations_enabled) {
+		relay = simpleRelayCreator->createRegisterRelay(call_profile, cc_modules);
+	} else {
+		AmSipDialog::reply_error(req,405,"Method Not Allowed");
+		return;
+	}
   }
   else if((req.method == SIP_METH_SUBSCRIBE) ||
 	  (req.method == SIP_METH_REFER)){

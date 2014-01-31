@@ -71,6 +71,7 @@ class SBCFactory: public AmSessionFactory,
 {
 
   SBCLogicInterface *logic;
+  bool registrations_enabled;
   int LoadLogicModule();
 
   auto_ptr<CallLegCreator> callLegCreator;
