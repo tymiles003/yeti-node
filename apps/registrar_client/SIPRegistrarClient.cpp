@@ -63,7 +63,8 @@ SIPRegistrarClient::SIPRegistrarClient(const string& name)
   : AmEventQueue(this),
     uac_auth_i(NULL),
     AmDynInvokeFactory(MOD_NAME),
-    stop_requested(false)
+	stop_requested(false),
+	stopped(false)
 { 
 }
 
@@ -94,6 +95,8 @@ void SIPRegistrarClient::run() {
       processEvents();
     }
   }
+  sleep(5);
+  stopped.set(true);
 }
 
 void SIPRegistrarClient::checkTimeouts() {
@@ -235,7 +238,10 @@ void SIPRegistrarClient::onRemoveRegistration(SIPRemoveRegistrationEvent* new_re
 }
 
 
-void SIPRegistrarClient::on_stop() { }
+void SIPRegistrarClient::on_stop() {
+	onServerShutdown();
+	stopped.wait_for();
+}
 
 
 bool SIPRegistrarClient::onSipReply(const AmSipReply& rep, AmSipDialog::Status old_dlg_status) {
