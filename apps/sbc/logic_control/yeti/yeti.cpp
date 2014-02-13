@@ -489,14 +489,11 @@ bool Yeti::connectCallee(SBCCallLeg *call,const AmSipRequest &orig_req){
 		invite_req.hdrs+=append_headers;
 	}
 
-	/*
-	int res = call->filterSdp(invite_req.body, invite_req.method);
-	if (res < 0) {
-		// FIXME: quick hack, throw the exception from the filtering function for
-		// requests
+	int res = filterRequestSdp(call,invite_req.body,invite_req.method);
+	if(res < 0){
+		INFO("onInitialInvite() Not acceptable codecs for legB");
 		throw AmSession::Exception(488, SIP_REPLY_NOT_ACCEPTABLE_HERE);
 	}
-	*/
 
 	call->connectCallee(to, ruri, from, orig_req, invite_req);
 
