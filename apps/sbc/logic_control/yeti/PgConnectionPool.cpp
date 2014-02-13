@@ -209,14 +209,12 @@ void PgConnectionPool::run(){
 	try_connect.set(true); //for initial connections setup
 
 	while (!gotostop) {
-		//DBG("PgCP: %s: Check cycle started.",pool_name.c_str());
 		try_connect.wait_for_to(PG_CONN_POOL_CHECK_TIMER_RATE);
 
 		if(gotostop)
 			break;
 
 		if (try_connect.get()){
-
 			connections_mut.lock();
 				unsigned int m_failed_connections = failed_connections;
 			connections_mut.unlock();
@@ -230,7 +228,7 @@ void PgConnectionPool::run(){
 				DBG("PgCP: %s: start connection",pool_name.c_str());
 
 			// add connections until error occurs
-			while(m_failed_connections--){
+			while(m_failed_connections){
 				try {
 					PgConnection* conn = new PgConnection(conn_str);
 					if(conn->is_open()){
@@ -255,22 +253,22 @@ void PgConnectionPool::run(){
 						break;
 					}
 				}
+				m_failed_connections--;
 			}
 
 			connections_mut.lock();
 				m_failed_connections = failed_connections;
 			connections_mut.unlock();
+
 			if (0==m_failed_connections){
 				WARN("PCP: %s: All sql connected.",pool_name.c_str());
 				try_connect.set(false);
-				//continue;
 			}
 
-			//attempt_interval = reconnect_failed_alarm?
-			//					PG_CONN_POOL_ATTEMPT_INTERVAl_FAILED:
-			//					PG_CONN_POOL_ATTEMPT_INTERVAl_NORMAL;
-			//DBG("PgCP: %s: Wait %dms for next attempt.",pool_name.c_str(),attempt_interval);
-			//usleep(attempt_interval); //TODO: reasonably to use condition variable waiting with timeout for proper shutdown
+			if(cfg.size==m_failed_connections){
+				usleep(PG_CONN_POOL_RECONNECT_DELAY);
+			}
+
 		} else {
 			PgConnection* c = NULL;
 

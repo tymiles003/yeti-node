@@ -17,7 +17,8 @@ using std::string;
 using std::list;
 using std::vector;
 
-#define PG_CONN_POOL_CHECK_TIMER_RATE 20e3
+#define PG_CONN_POOL_CHECK_TIMER_RATE 20e3	//20 seconds
+#define PG_CONN_POOL_RECONNECT_DELAY  5e6	//5 seconds
 
 class PgConnection:
 	public pqxx::connection
