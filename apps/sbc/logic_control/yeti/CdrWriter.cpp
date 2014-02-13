@@ -231,13 +231,12 @@ void CdrThread::on_stop(){
 	gotostop=true;
 	queue_run.set(true); // we must switch thread to run state for exit.
 	stopped.wait_for();
-
-	int pid=masterconn->backendpid();
-	DBG("CdrWriter: Disconnect master SQL. Backend pid: %d.",pid);
-	masterconn->disconnect();
+	if(masterconn){
+		DBG("CdrWriter: Disconnect master SQL. Backend pid: %d.",masterconn->backendpid());
+		masterconn->disconnect();
+	}
 	if(slaveconn){
-		pid=slaveconn->backendpid();
-		DBG("CdrWriter: Disconnect slave SQL. Backend pid: %d.",pid);
+		DBG("CdrWriter: Disconnect slave SQL. Backend pid: %d.",slaveconn->backendpid());
 		slaveconn->disconnect();
 	}
 }
