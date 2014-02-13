@@ -9,6 +9,8 @@ using std::vector;
 #include <AmSdp.h>
 #include "SBCCallLeg.h"
 
+#define DTMF_ENCODING_NAME "telephone-event"
+
 void dump_SdpPayload(const vector<SdpPayload> &p,string prefix="");
 void fix_dynamic_payloads(AmSdp &sdp,PayloadIdMapping &mapping);
 
@@ -24,7 +26,8 @@ void fix_dynamic_payloads(AmSdp &sdp,PayloadIdMapping &mapping);
  */
 int filter_arrange_SDP(AmSdp& sdp,
 					   const std::vector<SdpPayload> static_payloads,
-					   bool add_codecs);
+					   bool add_codecs,
+					   bool single_codec);
 
 
 /**

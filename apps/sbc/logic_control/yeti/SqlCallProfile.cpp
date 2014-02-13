@@ -53,6 +53,7 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 
 	static_codecs_aleg_id = t["aleg_codecs_group_id"].as<int>(0);
 	static_codecs_bleg_id = t["bleg_codecs_group_id"].as<int>(0);
+	aleg_single_codec = t["aleg_single_codec_in_200ok"].as<bool>(false);
 
 	anonymize_sdp = t["anonymize_sdp"].as<bool>(true);
 	//DBG("db: %s, anonymize_sdp = %d",t["anonymize_sdp"].c_str(),anonymize_sdp);
@@ -354,6 +355,7 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 
 		INFO("SBC:      static_codecs_aleg_id: %i\n", static_codecs_aleg_id);
 		INFO("SBC:      static_codecs_bleg_id: %i\n", static_codecs_bleg_id);
+		INFO("SBC:      aleg_single_codec: '%s'\n", aleg_single_codec?"yes":"no");
 
 		list<string>::const_iterator dit = dyn_fields.begin();
 		DynFieldsT::const_iterator dfit = df.begin();

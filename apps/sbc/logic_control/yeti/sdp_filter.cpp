@@ -54,9 +54,11 @@ void fix_dynamic_payloads(AmSdp &sdp,PayloadIdMapping &mapping){
 
 int filter_arrange_SDP(AmSdp& sdp,
 							  const std::vector<SdpPayload> static_payloads,
-							  bool add_codecs)
+							  bool add_codecs,
+							  bool single_codec)
 {
-	DBG("filter_arrange_SDP() add_codecs = %s",add_codecs?"yes":"no");
+	DBG("filter_arrange_SDP() add_codecs = %s, single_codec = %s",
+		add_codecs?"yes":"no",single_codec?"yes":"no");
 
 	bool media_line_filtered_out = false;
 	bool media_line_left = false;
@@ -78,27 +80,42 @@ int filter_arrange_SDP(AmSdp& sdp,
 			f_it != static_payloads.end(); ++f_it)
 		{ //iterate over arranged(!) filter entries
 			const SdpPayload &sp = *f_it;
-			string p = sp.encoding_name;
+			string p = sp.encoding_name,c;
 			std::transform(p.begin(), p.end(), p.begin(), ::tolower);
 			bool matched = false;
-			for (std::vector<SdpPayload>::iterator p_it =
-				media.payloads.begin();p_it != media.payloads.end(); p_it++)
+			std::vector<SdpPayload>::iterator p_it = media.payloads.begin();
+			for (;p_it != media.payloads.end(); p_it++)
 			{ //iterate over Sdp entries of certain SdpMedia
-				string c = p_it->encoding_name;
+				c = p_it->encoding_name;
 				std::transform(c.begin(), c.end(), c.begin(), ::tolower);
 				if(c==p){
 					//DBG("filter_arrange_SDP() matched %s. add to new payload",c.c_str());
-					new_pl.push_back(*p_it);
+					//new_pl.push_back(*p_it);
 					matched = true;
 					break; //each codec occurs in sdp only once, huh ?
 				}
 			}
 
-			if(add_codecs && !matched) {
+			if(matched){	//is codec founded in original SDP ?
+				//add matched codec from sdp
+				if(!single_codec ||
+					(single_codec &&
+						(new_pl.empty()||c==DTMF_ENCODING_NAME)
+					 )
+				) new_pl.push_back(*p_it);
+			} else if(add_codecs) {
+				//add codec from static list anyway
+				if(!single_codec ||
+					(single_codec &&
+						(new_pl.empty()||f_it->encoding_name==DTMF_ENCODING_NAME)
+					 )
+				) new_pl.push_back(*f_it);
+			}
+			/*if(add_codecs && !matched) {
 				//we should add new codecs if it not matched in sdp
 				//DBG("filter_arrange_SDP() add nonexistent payload '%s'",p.c_str());
 				new_pl.push_back(*f_it);
-			}
+			}*/
 		}
 		dump_SdpPayload(new_pl);
 
@@ -149,7 +166,8 @@ int filterInviteSdp(SBCCallProfile &call_profile,
 
 	vector<SdpPayload> static_codecs_filter = codecs_group.get_payloads();
 
-	res = filter_arrange_SDP(sdp,static_codecs_filter,false);
+	res = filter_arrange_SDP(sdp,static_codecs_filter,
+							 false,call_profile.aleg_single_codec);
 	filterSDPalines(sdp, call_profile.sdpalinesfilter);
 
 	//save negotiated result for the future usage
@@ -193,20 +211,20 @@ int filterRequestSdp(SBCCallLeg *call,
 	normalizeSDP(sdp, false, "");
 
 	CodecsGroupEntry codecs_group;
+	int group_id = !a_leg ? call_profile.static_codecs_aleg_id : call_profile.static_codecs_bleg_id;
 	try {
-		CodecsGroups::instance()->get(
-			!a_leg ? call_profile.static_codecs_aleg_id : call_profile.static_codecs_bleg_id,
-			codecs_group);
+		CodecsGroups::instance()->get(group_id,codecs_group);
 	} catch(...){
 		//!TODO: replace with correct InternalException throw
-		ERROR("filterInviteSdp() can't find codecs group %d",
-			  call_profile.static_codecs_aleg_id);
+		ERROR("filterRequestSdp() can't find codecs group %d",
+			  group_id);
 		return -488;
 	}
 
 	std::vector<SdpPayload> &static_codecs = codecs_group.get_payloads();
 
-	filter_arrange_SDP(sdp,static_codecs,true);
+	filter_arrange_SDP(sdp,static_codecs,
+					   true,false/*TODO: implement 'bleg_single_codec processing*/);
 	fix_dynamic_payloads(sdp,call->getTranscoderMapping());
 
 	filterSDPalines(sdp, call_profile.sdpalinesfilter);
