@@ -32,7 +32,11 @@
 #include "atomic_types.h"
 #include "singleton.h"
 
+#ifdef USE_EPOLL
+#include <sys/epoll.h>
+#else
 #include <sys/select.h>
+#endif
 
 #include <map>
 using std::greater;
@@ -49,6 +53,16 @@ class _AmRtpReceiver;
  */
 class AmRtpReceiverThread: public AmThread {
 
+#ifdef USE_EPOLL
+  struct StreamInfo {
+    int fd;
+    AmRtpStream* stream;
+
+    StreamInfo(int f, AmRtpStream* s)
+      : fd(f), stream(s) {}
+  };
+  typedef std::map<int, StreamInfo *, greater<int> > Streams;
+#else
   struct StreamInfo {
     unsigned int index; // index into fds table
     AmRtpStream* stream;
@@ -56,15 +70,19 @@ class AmRtpReceiverThread: public AmThread {
     StreamInfo(unsigned int i, AmRtpStream* s)
       : index(i), stream(s) {}
   };
-
   typedef std::map<int, StreamInfo, greater<int> > Streams;
+#endif
 
   Streams  streams;
   AmMutex  streams_mut;
 
+#ifdef USE_EPOLL
+  int poll_fd;
+#else
   struct pollfd* fds;
-  unsigned int   nfds;
-    
+#endif
+  unsigned int nfds;
+
   AmRtpReceiverThread();
   ~AmRtpReceiverThread();
     
@@ -82,8 +100,6 @@ class AmRtpReceiverThread: public AmThread {
 
 class _AmRtpReceiver
 {
-  // static AmRtpReceiver* _instance;
-
   AmRtpReceiverThread* receivers;
   unsigned int         n_receivers;
 
@@ -96,10 +112,6 @@ protected:
   void dispose();
 
 public:
-  // static AmRtpReceiver* instance();
-  // static bool haveInstance();
-  // static void dispose();
-
   void start();
 
   void addStream(int sd, AmRtpStream* stream);

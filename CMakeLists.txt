@@ -55,6 +55,7 @@ OPTION(SEMS_USE_TTS           "Build with Text-to-speech support (requires Flite
 OPTION(SEMS_USE_OPENSSL       "Build with OpenSSL" ON)
 OPTION(SEMS_USE_MONITORING    "Build with monitoring support" ON)
 OPTION(SEMS_USE_IPV6          "Build with IPv6 support" OFF)
+OPTION(SEMS_USE_EPOLL         "Build with epoll support" ON)
 OPTION(MAX_RTP_SESSIONS:int   "How many rtp sessions SEMS will handle simultaneously? (default 2048)" 2048)
 
 # Fix weird static libs handling in old CMake
@@ -158,6 +159,17 @@ IF(SEMS_USE_IPV6)
 ELSE(SEMS_USE_IPV6)
 	MESSAGE(STATUS "Enable IPv6 support: NO (default)")
 ENDIF(SEMS_USE_IPV6)
+
+IF(SEMS_USE_EPOLL)
+	IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+		ADD_DEFINITIONS(-DUSE_EPOLL)
+		MESSAGE(STATUS "Enable epoll support: YES (default)")
+	ELSE(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+		MESSAGE(STATUS "Enable epoll support: NO (not supported)")
+	ENDIF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+ELSE(SEMS_USE_EPOLL)
+	MESSAGE(STATUS "Enable epoll support: NO")
+ENDIF(SEMS_USE_EPOLL)
 
 # Let's try to find GSM library and header files
 FIND_PACKAGE(Gsm)
