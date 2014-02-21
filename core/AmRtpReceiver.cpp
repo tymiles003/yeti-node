@@ -136,7 +136,6 @@ void AmRtpReceiverThread::run()
       continue;
 
     streams_mut.lock();
-    ERROR("%d",ret);
     for (int n = 0; n < ret; ++n) {
       struct epoll_event &e = events[n];
       if(!(e.events & EPOLLIN)){
