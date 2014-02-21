@@ -62,69 +62,6 @@ static bool containsPayload(const std::vector<SdpPayload>& payloads, const SdpPa
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-class SBCRelayController: public RelayController {
-  private:
-    SBCCallProfile::TranscoderSettings *transcoder_settings;
-    bool aleg;
-
-  public:
-    SBCRelayController(SBCCallProfile::TranscoderSettings *t, bool _aleg): transcoder_settings(t), aleg(_aleg) { }
-
-    virtual void computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &mask);
-};
-
-void SBCRelayController::computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &mask)
-{
-  TRACE("entering SBCRelayController::computeRelayMask(%s)\n", aleg ? "A leg" : "B leg");
-
-  PayloadMask m1, m2;
-  bool use_m1 = false;
-
-  /* if "m" contains only "norelay" codecs, relay is enabled for them (main idea
-   * of these codecs is to limit network bandwidth and it makes not much sense
-   * to transcode between codecs 'which are better to avoid', right?)
-   *
-   * if "m" contains other codecs, relay is enabled as well
-   *
-   * => if m contains at least some codecs, relay is enabled */
-  enable = !m.payloads.empty();
-
-  vector<SdpPayload> &norelay_payloads =
-    aleg ? transcoder_settings->audio_codecs_norelay_aleg : transcoder_settings->audio_codecs_norelay;
-
-  vector<SdpPayload>::const_iterator p;
-  for (p = m.payloads.begin(); p != m.payloads.end(); ++p) {
-
-    // do not mark telephone-event payload for relay (and do not use it for
-    // transcoding as well)
-    if(strcasecmp("telephone-event",p->encoding_name.c_str()) == 0) continue;
-
-    // mark every codec for relay in m2
-    TRACE("m2: marking payload %d for relay\n", p->payload_type);
-    m2.set(p->payload_type);
-
-    if (!containsPayload(norelay_payloads, *p, m.transport)) {
-      // this payload can be relayed
-
-      TRACE("m1: marking payload %d for relay\n", p->payload_type);
-      m1.set(p->payload_type);
-
-      if (!use_m1 && containsPayload(transcoder_settings->audio_codecs, *p, m.transport)) {
-        // the remote SDP contains transcodable codec which can be relayed (i.e.
-        // the one with higher "priority" so we want to disable relaying of the
-        // payloads which should not be ralyed if possible)
-        use_m1 = true;
-      }
-    }
-  }
-
-  TRACE("using %s\n", use_m1 ? "m1" : "m2");
-  if (use_m1) mask = m1;
-  else mask = m2;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////
-
 // map stream index and transcoder payload index (two dimensions) into one under
 // presumption that there will be less than 128 payloads for transcoding
 // (might be handy to remember mapping only for dynamic ones (96-127)
@@ -167,10 +104,6 @@ SBCCallLeg::SBCCallLeg(const SBCCallProfile& call_profile, AmSipDialog* p_dlg,
   set_sip_relay_only(false);
   dlg->setRel100State(Am100rel::REL100_IGNORED);
 
-  // better here than in onInvite
-  // or do we really want to start with OA when handling initial INVITE?
-  dlg->setOAEnabled(false);
-
   memset(&call_start_ts, 0, sizeof(struct timeval));
   memset(&call_connect_ts, 0, sizeof(struct timeval));
   memset(&call_end_ts, 0, sizeof(struct timeval));
@@ -191,6 +124,7 @@ SBCCallLeg::SBCCallLeg(SBCCallLeg* caller, AmSipDialog* p_dlg,
   : auth(NULL),
     call_profile(caller->getCallProfile()),
     CallLeg(caller,p_dlg,p_subs),
+    ext_cc_timer_id(SBC_TIMER_ID_CALL_TIMERS_END + 1),
     cc_started(false),
     logger(NULL),
 	LogicData(caller->getLogicData())
@@ -202,7 +136,6 @@ SBCCallLeg::SBCCallLeg(SBCCallLeg* caller, AmSipDialog* p_dlg,
   // call_profile.cc_vars.clear();
 
   dlg->setRel100State(Am100rel::REL100_IGNORED);
-  dlg->setOAEnabled(false);
 
   // we need to apply it here instead of in applyBProfile because we have caller
   // here (FIXME: do it on better place and better way than accessing internals
@@ -210,6 +143,7 @@ SBCCallLeg::SBCCallLeg(SBCCallLeg* caller, AmSipDialog* p_dlg,
   if (call_profile.transparent_dlg_id && caller) {
     dlg->setCallid(caller->dlg->getCallid());
     dlg->setExtLocalTag(caller->dlg->getRemoteTag());
+    dlg->cseq = caller->dlg->r_cseq;
   }
 
   // copy RTP rate limit from caller leg
@@ -224,7 +158,10 @@ SBCCallLeg::SBCCallLeg(SBCCallLeg* caller, AmSipDialog* p_dlg,
     throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
   }
 
-  initCCExtModules();
+  if (!initCCExtModules()) {
+    ERROR("initializing extended call control modules\n");
+    throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
+  }
 
   setLogger(caller->getLogger());
 }
@@ -247,6 +184,14 @@ void SBCCallLeg::onStart()
   // this should be the first thing called in session's thread
   CallLeg::onStart();
   if (!a_leg) applyBProfile(); // A leg needs to evaluate profile first
+  else if (!getOtherId().empty()) {
+    // A leg but we already have a peer, what means that this call leg was
+    // created as an A leg for already existing B leg (for example call
+    // transfer)
+    // we need to apply a profile, we use B profile and understand it as an
+    // "outbound" profile though we are in A leg
+    applyBProfile();
+  }
 }
 
 void SBCCallLeg::applyAProfile()
@@ -269,6 +214,8 @@ void SBCCallLeg::applyAProfile()
 
     setRtpRelayTransparentSeqno(call_profile.rtprelay_transparent_seqno);
     setRtpRelayTransparentSSRC(call_profile.rtprelay_transparent_ssrc);
+    setEnableDtmfRtpFiltering(call_profile.rtprelay_dtmf_filtering);
+    setEnableDtmfRtpDetection(call_profile.rtprelay_dtmf_detection);
 
     if(call_profile.transcoder.isActive()) {
       setRtpRelayMode(RTP_Transcoding);
@@ -368,8 +315,12 @@ void SBCCallLeg::applyBProfile()
   }
 
   if (!call_profile.next_hop.empty()) {
+    DBG("set next hop to '%s' (1st_req=%s,fixed=%s)\n",
+	call_profile.next_hop.c_str(), call_profile.next_hop_1st_req?"true":"false",
+	call_profile.next_hop_fixed?"true":"false");
     dlg->setNextHop(call_profile.next_hop);
     dlg->setNextHop1stReq(call_profile.next_hop_1st_req);
+    dlg->setNextHopFixed(call_profile.next_hop_fixed);
   }
 
   DBG("patch_ruri_next_hop = %i",call_profile.patch_ruri_next_hop);
@@ -392,6 +343,8 @@ void SBCCallLeg::applyBProfile()
 
     setRtpRelayTransparentSeqno(call_profile.rtprelay_transparent_seqno);
     setRtpRelayTransparentSSRC(call_profile.rtprelay_transparent_ssrc);
+    setEnableDtmfRtpFiltering(call_profile.rtprelay_dtmf_filtering);
+    setEnableDtmfRtpDetection(call_profile.rtprelay_dtmf_detection);
 
     // copy stats counters
     rtp_pegs = call_profile.bleg_rtp_counters;
@@ -537,7 +490,8 @@ void SBCCallLeg::setOtherId(const AmSipReply& reply)
 
 void SBCCallLeg::onInitialReply(B2BSipReplyEvent *e)
 {
-  if (call_profile.transparent_dlg_id && !e->reply.to_tag.empty()) {
+  if (call_profile.transparent_dlg_id && !e->reply.to_tag.empty()
+      && dlg->getStatus() != AmBasicSipDialog::Connected) {
     dlg->setExtLocalTag(e->reply.to_tag);
   }
   CallLeg::onInitialReply(e);
@@ -674,15 +628,21 @@ void SBCCallLeg::onOtherBye(const AmSipRequest& req)
 
 void SBCCallLeg::onDtmf(int event, int duration)
 {
+  DBG("received DTMF on %c-leg (%i;%i)\n", a_leg ? 'A': 'B', event, duration);
+
+  for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
+    if ((*i)->onDtmf(this, event, duration)  == StopProcessing)
+      return;
+  }
+
   AmB2BMedia *ms = getMediaSession();
   if(ms) {
-    DBG("received DTMF on %c-leg (%i;%i)\n",
-	a_leg ? 'A': 'B', event, duration);
+    DBG("sending DTMF (%i;%i)\n", event, duration);
     ms->sendDtmf(!a_leg,event,duration);
   }
 }
 
-bool SBCCallLeg::updateLocalSdp(AmSdp &sdp)
+void SBCCallLeg::updateLocalSdp(AmSdp &sdp)
 {
   // anonymize SDP if configured to do so (we need to have our local media IP,
   // not the media IP of our peer leg there)
@@ -690,20 +650,7 @@ bool SBCCallLeg::updateLocalSdp(AmSdp &sdp)
 
   // remember transcodable payload IDs
   if (call_profile.transcoder.isActive()) savePayloadIDs(sdp);
-  return CallLeg::updateLocalSdp(sdp);
-}
-
-
-bool SBCCallLeg::updateRemoteSdp(AmSdp &sdp)
-{
-  SBCRelayController rc(&call_profile.transcoder, a_leg);
-  if (call_profile.transcoder.isActive()) {
-    AmB2BMedia *ms = getMediaSession();
-    if (ms) return ms->updateRemoteSdp(a_leg, sdp, &rc);
-  }
-
-  // call original implementation because our special conditions above are not met
-  return CallLeg::updateRemoteSdp(sdp);
+  CallLeg::updateLocalSdp(sdp);
 }
 
 void SBCCallLeg::onControlCmd(string& cmd, AmArg& params) {
@@ -899,6 +846,7 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
     ERROR("call profile evaluation failed\n");
     throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
   }
+
 
   if(call_profile.contact_hiding) { 
     if(RegisterDialog::decodeUsername(aleg_invite_req.user,uac_ruri)) {
@@ -1413,7 +1361,7 @@ void SBCCallLeg::logCallStart(const AmSipReply& reply)
 					  (int)reply.code,reply.reason);
   }
   else {
-    ERROR("could not log call-start/call-attempt (ci='%s';lt='%s')",
+    DBG("could not log call-start/call-attempt (ci='%s';lt='%s')",
 	  getCallID().c_str(),getLocalTag().c_str());
   }
 }
@@ -1644,7 +1592,7 @@ bool SBCCallLeg::reinvite(const AmSdp &sdp, unsigned &request_cseq)
   return true;
 }
 
-void SBCCallLeg::initCCExtModules()
+bool SBCCallLeg::initCCExtModules()
 {
   // init extended call control modules
   vector<AmDynInvoke*>::iterator cc_mod = cc_modules.begin();
@@ -1661,51 +1609,166 @@ void SBCCallLeg::initCCExtModules()
       ExtendedCCInterface *iface = reinterpret_cast<ExtendedCCInterface*>(ret[0].asObject());
       if (iface) {
         DBG("extended CC interface offered by cc_module '%s'\n", cc_module.c_str());
-        cc_ext.push_back(iface);
-
         // module initialization
-        iface->init(this, cc_if.cc_values);
+        if (!iface->init(this, cc_if.cc_values)) {
+	  ERROR("initializing extended call control interface\n");
+	  return false;
+	}
+
+        cc_ext.push_back(iface);
       }
       else WARN("BUG: returned invalid extended CC interface by cc_module '%s'\n", cc_module.c_str());
     }
+    catch (const string& s) {
+      DBG("initialization error '%s' or extended CC interface "
+	  "not supported by cc_module '%s'\n", s.c_str(), cc_module.c_str());
+    }
     catch (...) {
-      DBG("extended CC interface not supported by cc_module '%s'\n", cc_module.c_str());
+      DBG("initialization error or extended CC interface not "
+	  "supported by cc_module '%s'\n", cc_module.c_str());
     }
 
     ++cc_mod;
   }
+  return true; // success
 }
 
-void SBCCallLeg::putOnHold()
+#define CALL_EXT_CC_MODULES(method) \
+  do { \
+    for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) { \
+      (*i)->method(this); \
+    } \
+  } while (0)
+
+void SBCCallLeg::holdRequested()
 {
-  for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
-    if ((*i)->putOnHold(this) == StopProcessing) return;
-  }
-  CallLeg::putOnHold();
+  TRACE("%s: hold requested\n", getLocalTag().c_str());
+  CALL_EXT_CC_MODULES(holdRequested);
+  CallLeg::holdRequested();
 }
 
-void SBCCallLeg::resumeHeld(bool send_reinvite)
+void SBCCallLeg::holdAccepted()
 {
-  for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
-    if ((*i)->resumeHeld(this, send_reinvite) == StopProcessing) return;
-  }
-  CallLeg::resumeHeld(send_reinvite);
+  TRACE("%s: hold accepted\n", getLocalTag().c_str());
+  CALL_EXT_CC_MODULES(holdAccepted);
+  CallLeg::holdAccepted();
 }
 
-void SBCCallLeg::handleHoldReply(bool succeeded)
+void SBCCallLeg::holdRejected()
 {
-  for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
-    if ((*i)->handleHoldReply(this, succeeded) == StopProcessing) return;
+  TRACE("%s: hold rejected\n", getLocalTag().c_str());
+  CALL_EXT_CC_MODULES(holdRejected);
+  CallLeg::holdRejected();
+}
+
+void SBCCallLeg::resumeRequested()
+{
+  TRACE("%s: resume requested\n", getLocalTag().c_str());
+  CALL_EXT_CC_MODULES(resumeRequested);
+  CallLeg::resumeRequested();
+}
+
+void SBCCallLeg::resumeAccepted()
+{
+  TRACE("%s: resume accepted\n", getLocalTag().c_str());
+  CALL_EXT_CC_MODULES(resumeAccepted);
+  CallLeg::resumeAccepted();
+}
+
+void SBCCallLeg::resumeRejected()
+{
+  TRACE("%s: resume rejected\n", getLocalTag().c_str());
+  CALL_EXT_CC_MODULES(resumeRejected);
+  CallLeg::resumeRejected();
+}
+
+static void replace_address(SdpConnection &c, const string &ip)
+{
+  if (!c.address.empty()) {
+    if (c.addrType == AT_V4) {
+      c.address = ip;
+      return;
+    }
+    // TODO: IPv6?
+    DBG("unsupported address type for replacing IP");
   }
-  CallLeg::handleHoldReply(succeeded);
+}
+
+static void alterHoldRequest(AmSdp &sdp, SBCCallProfile::HoldSettings::Activity a, const string &ip)
+{
+  if (!ip.empty()) replace_address(sdp.conn, ip);
+  for (vector<SdpMedia>::iterator m = sdp.media.begin(); m != sdp.media.end(); ++m) {
+    if (!ip.empty()) replace_address(m->conn, ip);
+    m->recv = (a == SBCCallProfile::HoldSettings::sendrecv || a == SBCCallProfile::HoldSettings::recvonly);
+    m->send = (a == SBCCallProfile::HoldSettings::sendrecv || a == SBCCallProfile::HoldSettings::sendonly);
+  }
+}
+
+void SBCCallLeg::alterHoldRequestImpl(AmSdp &sdp)
+{
+  if (call_profile.hold_settings.mark_zero_connection(a_leg)) {
+    static const string zero("0.0.0.0");
+    ::alterHoldRequest(sdp, call_profile.hold_settings.activity(a_leg), zero);
+  }
+  else {
+    if (getRtpRelayMode() == RTP_Direct) {
+      // we can not put our IP there if not relaying, using empty not to
+      // overwrite existing addresses
+      static const string empty;
+      ::alterHoldRequest(sdp, call_profile.hold_settings.activity(a_leg), empty);
+    }
+    else {
+      // use public IP to be put into connection addresses (overwrite 0.0.0.0
+      // there)
+      ::alterHoldRequest(sdp, call_profile.hold_settings.activity(a_leg), advertisedIP());
+    }
+  }
+}
+
+void SBCCallLeg::alterHoldRequest(AmSdp &sdp)
+{
+  TRACE("altering B2B hold request(%s, %s, %s)\n",
+      call_profile.hold_settings.alter_b2b(a_leg) ? "alter B2B" : "do not alter B2B",
+      call_profile.hold_settings.mark_zero_connection(a_leg) ? "0.0.0.0" : "own IP",
+      call_profile.hold_settings.activity_str(a_leg).c_str()
+      );
+
+  if (!call_profile.hold_settings.alter_b2b(a_leg)) return;
+
+  alterHoldRequestImpl(sdp);
 }
 
 void SBCCallLeg::createHoldRequest(AmSdp &sdp)
 {
-  for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
-    if ((*i)->createHoldRequest(this, sdp) == StopProcessing) return;
+  // hack: we need to have other side SDP (if the stream is hold already
+  // it should be marked as inactive)
+  // FIXME: fix SDP versioning! (remember generated versions and increase the
+  // version number in every SDP passing through?)
+
+  AmMimeBody *s = established_body.hasContentType(SIP_APPLICATION_SDP);
+  if (s) sdp.parse((const char*)s->getPayload());
+  if (sdp.media.empty()) {
+    // established SDP is not valid! generate complete fake
+    sdp.version = 0;
+    sdp.origin.user = "sems";
+    sdp.sessionName = "sems";
+    sdp.conn.network = NT_IN;
+    sdp.conn.addrType = AT_V4;
+    sdp.conn.address = "0.0.0.0";
+
+    sdp.media.push_back(SdpMedia());
+    SdpMedia &m = sdp.media.back();
+    m.type = MT_AUDIO;
+    m.transport = TP_RTPAVP;
+    m.send = false;
+    m.recv = false;
+    m.payloads.push_back(SdpPayload(0));
   }
-  CallLeg::createHoldRequest(sdp);
+
+  AmB2BMedia *ms = getMediaSession();
+  if (ms) ms->replaceOffer(sdp, a_leg);
+
+  alterHoldRequestImpl(sdp);
 }
 
 void SBCCallLeg::setMediaSession(AmB2BMedia *new_session)
@@ -1745,5 +1808,62 @@ void SBCCallLeg::setLogger(msg_logger *_logger)
   if (m) {
     if (call_profile.log_rtp) m->setRtpLogger(logger);
     else m->setRtpLogger(NULL);
+  }
+}
+
+void SBCCallLeg::computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &mask)
+{
+  if (call_profile.transcoder.isActive()) {
+    TRACE("entering transcoder's computeRelayMask(%s)\n", a_leg ? "A leg" : "B leg");
+
+    SBCCallProfile::TranscoderSettings &transcoder_settings = call_profile.transcoder;
+    PayloadMask m1, m2;
+    bool use_m1 = false;
+
+    /* if "m" contains only "norelay" codecs, relay is enabled for them (main idea
+     * of these codecs is to limit network bandwidth and it makes not much sense
+     * to transcode between codecs 'which are better to avoid', right?)
+     *
+     * if "m" contains other codecs, relay is enabled as well
+     *
+     * => if m contains at least some codecs, relay is enabled */
+    enable = !m.payloads.empty();
+
+    vector<SdpPayload> &norelay_payloads =
+      a_leg ? transcoder_settings.audio_codecs_norelay_aleg : transcoder_settings.audio_codecs_norelay;
+
+    vector<SdpPayload>::const_iterator p;
+    for (p = m.payloads.begin(); p != m.payloads.end(); ++p) {
+
+      // do not mark telephone-event payload for relay (and do not use it for
+      // transcoding as well)
+      if(strcasecmp("telephone-event",p->encoding_name.c_str()) == 0) continue;
+
+      // mark every codec for relay in m2
+      TRACE("m2: marking payload %d for relay\n", p->payload_type);
+      m2.set(p->payload_type);
+
+      if (!containsPayload(norelay_payloads, *p, m.transport)) {
+        // this payload can be relayed
+
+        TRACE("m1: marking payload %d for relay\n", p->payload_type);
+        m1.set(p->payload_type);
+
+        if (!use_m1 && containsPayload(transcoder_settings.audio_codecs, *p, m.transport)) {
+          // the remote SDP contains transcodable codec which can be relayed (i.e.
+          // the one with higher "priority" so we want to disable relaying of the
+          // payloads which should not be ralyed if possible)
+          use_m1 = true;
+        }
+      }
+    }
+
+    TRACE("using %s\n", use_m1 ? "m1" : "m2");
+    if (use_m1) mask = m1;
+    else mask = m2;
+  }
+  else {
+    // for non-transcoding modes use default
+    CallLeg::computeRelayMask(m, enable, mask);
   }
 }

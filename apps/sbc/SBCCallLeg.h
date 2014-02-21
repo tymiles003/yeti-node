@@ -109,6 +109,7 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
   void logCallStart(const AmSipReply& reply);
   void logCanceledCall();
 
+  void alterHoldRequestImpl(AmSdp &sdp); // do the SDP update (called by alterHoldRequest)
 
  public:
 
@@ -138,7 +139,7 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
   UACAuthCred* getCredentials();
 
   void setAuthHandler(AmSessionEventHandler* h) { auth = h; }
-  void initCCExtModules();
+  bool initCCExtModules();
 
   /** save call timer; only effective before call is connected */
   void saveCallTimer(int timer, double timeout);
@@ -171,8 +172,7 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
 
   // media interface must be accessible from CC modules
   AmB2BMedia *getMediaSession() { return AmB2BSession::getMediaSession(); }
-  virtual bool updateLocalSdp(AmSdp &sdp);
-  virtual bool updateRemoteSdp(AmSdp &sdp);
+  virtual void updateLocalSdp(AmSdp &sdp);
   void changeRtpMode(RTPRelayMode new_mode) { CallLeg::changeRtpMode(new_mode); }
 
   bool reinvite(const AmSdp &sdp, unsigned &request_cseq);
@@ -181,13 +181,11 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
   void onSipRequest(const AmSipRequest& req);
   bool isALeg() { return a_leg; }
 
-  virtual void putOnHold();
-  virtual void resumeHeld(bool send_reinvite);
-
   // timers accessible from CC modules
   int startTimer(double timeout) { setTimer(ext_cc_timer_id, timeout); return ext_cc_timer_id++; }
 
   virtual void setMediaSession(AmB2BMedia *new_session);
+  virtual void computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &mask);
 
  protected:
   /** set to true once CCStart passed to call CCEnd implicitly (from onStop)
@@ -226,8 +224,14 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
   bool getCCInterfaces();
   vector<AmDynInvoke*>& getCCModules() { return cc_modules; }
 
-  virtual void handleHoldReply(bool succeeded);
   virtual void createHoldRequest(AmSdp &sdp);
+  virtual void alterHoldRequest(AmSdp &sdp);
+  virtual void holdRequested();
+  virtual void holdAccepted();
+  virtual void holdRejected();
+  virtual void resumeRequested();
+  virtual void resumeAccepted();
+  virtual void resumeRejected();
 
   //int applySSTCfg(AmConfigReader& sst_cfg, const AmSipRequest* p_req);
 

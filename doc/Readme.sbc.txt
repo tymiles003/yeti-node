@@ -6,16 +6,18 @@ Overview
 --------
 The SBC application is a highly flexible high-performance Back-to-Back
 User Agent (B2BUA). It can be employed for a variety of uses, for example 
-topology hiding, From/To modification, enforcing SIP Session Timers, 
-identity change, SIP authentication, RTP relaying. Future uses include
-accounting, transcoding, call distribution.
+topology hiding, NAT handling, From/To modification, enforcing SIP Session Timers, 
+identity change, SIP authentication, RTP relaying, transcoding, accounting,
+registration cache, RTP bandwidth limits.
 
 Features
 --------
- o B2BUA
+ o B2BUA with topo hiding or transparent modes
  o flexible call profile based configuration
  o online reload of call profiles
  o From, To, RURI, Contact, Call-ID update
+ o Registration caching
+ o SIP NAT handling
  o RTP bridging
  o Header and message filter
  o adding arbitrary headers
@@ -26,6 +28,8 @@ Features
  o prepaid accounting
  o CDR generation
  o call teardown from external control through RPC
+ o transcoding
+ o ...
 
 SBC Profiles
 ------------ 
@@ -296,6 +300,30 @@ next_hop or determined otherwise).
 These settings apply only for the UAC side, i.e. the outgoing side of
 the initial INVITE.
 
+Registration caching
+--------------------
+If registration caching is activated, SEMS SBC saves the contact of REGISTER
+messages in a local registration cache (in-memory) along with information of
+where the registration was received from and over which transport, interface
+etc. SEMS SBC then replaces the contact with a locally generated alias that
+points to itself, and sends it to the upstream registrar. When a message comes
+from the registrar, SEMS SBC looks up the alias, retargets it from the
+registration cache (sets RURI), and sends it over the saved transport to the
+proper remote address where the client is (e.g. behind NAT) by setting next_hop
+etc properly.
+
+To activate the registration cache, use the option
+ enable_reg_caching=yes
+(for both REGISTER and other messages). With the parameters
+ min_reg_expires and max_ua_expires
+it can be controlled how long the registration to the upstream registrar should
+persist and how short it should be to the UA. E.g. if the UA should periodicly
+re-REGISTER every 60 seconds, but to the upstream registrar the registration should
+persist 1h, min_reg_expires=3600 and max_ua_expires=60 should be set.
+
+For a local registrar (i.e. operation without an upstream registrar), see the 'registrar'
+call control module.
+
 Filters
 -------
 Headers and messages may be filtered. A filter can be set to 
@@ -374,6 +402,11 @@ Call profile options for choosing codec preferences:
     List of codec preferences describing how to reorder codecs in SDP sent from
     callee to caller.
 
+SIP NAT handling
+----------------
+dlg_nat_handling=yes makes SEMS SBC learn the proper remote address (port, transport,
+...) from the received message and use that in following in-dialog requests. Enable
+this option when handling far end NATs.
 
 RTP relay
 ---------
@@ -403,7 +436,16 @@ rtprelay_msgflags_symmetric_rtp=yes
 
 the SBC honors this and sets symmetric RTP accordingly.
 
+With the option rtprelay_dtmf_filtering=yes the SBC filters out RTP DTMF
+(RFC2833 / RFC4733) packets in relayed streams.
 
+If rtprelay_dtmf_detection=yes is set, DTMF from RTP packets is detected
+and can be used to control applications, e.g. special call flows, implemented with
+the extended call control API. Note that the call needs to be added to
+the media processor in order for DTMF events to be processed.
+
+Transcoding
+-----------
 The SBC is able to do transcoding together with relaying. 
 
 To trigger transcoding you have to configure transcoder_codecs to a set
@@ -594,6 +636,36 @@ enable_aleg_session_timer=no.  If enable_session_timer=yes and
 enable_aleg_session_timer not set, SST is enabled for both
 legs. Likewise, if aleg_session_expires etc. is not set, the SST
 configuration of the B leg is used (session_expires, minimum_timer etc).
+
+
+Call hold configuration
+-----------------------
+
+SBC detects hold offer in SDP and according to configured parameters it can
+alter the hold requests passing through. (this may be handy for example if there
+is need to change "sendonly" to "sendrecv" for correct passing hold music
+through NATs)
+
+hold_alter_b2b_aleg / hold_alter_b2b_bleg
+
+  If set to "yes" SBC alters B2B hold requests according to hold settings.
+
+  If set to "no" hold settings is used for locally generated hold requests only.
+
+hold_zero_connection_aleg / hold_zero_connection_bleg
+
+  If set to "yes" all connections within SDP are replaced with 0.0.0.0.
+
+  If set to "no" SBC tries to put its own media IP everywhere (to replace
+  0.0.0.0). Note that if SBC is not doing rtp relay, it can not replace IP
+  with its own address and the original one is kept there.
+
+hold_activity_aleg / hold_activity_bleg
+
+  Force "stream activity" (send/recv) on hold offer.
+
+  Possible values: sendrecv, sendonly, recvonly, inactive
+
 
 Call control modules
 --------------------

@@ -122,9 +122,6 @@ private:
   static volatile unsigned int session_num;
   static volatile unsigned int max_session_num;
   static volatile unsigned long long avg_session_num;
-  static volatile unsigned long max_cps;
-  static volatile unsigned long max_cps_counter;
-  static volatile unsigned long avg_cps;
   static AmMutex session_num_mut;
 
   friend class AmMediaProcessor;
@@ -189,6 +186,7 @@ public:
   void updateRefreshMethod(const string& headers);
 
   AmRtpAudio* RTPStream();
+  bool hasRtpStream() { return _rtp_str.get() != NULL; }
 
 #ifdef WITH_ZRTP
   zrtp_conn_ctx_t*    zrtp_session; // ZRTP session
@@ -305,7 +303,7 @@ public:
   void setMute(bool mute) { RTPStream()->mute = mute; }
 
   /** setter for rtp_str->receiving */
-  void setReceiving(bool receive) { RTPStream()->receiving = receive; }
+  void setReceiving(bool receive) { RTPStream()->setReceiving(receive); }
 
   /** setter for rtp_str->force_receive_dtmf*/
   void setForceDtmfReceiving(bool receive) { RTPStream()->force_receive_dtmf = receive; }
@@ -406,14 +404,6 @@ public:
    * Gets the average of running sessions since last query
    */
   static unsigned int getAvgSessionNum();
-  /**
-   * Gets the maximum of calls per second since last query
-   */
-  static unsigned int getMaxCPS();
-  /**
-   * Gets the timeaverage of calls per second since last query
-   */
-  static unsigned int getAvgCPS();
 
   /* ----         DTMF                          ---- */
   /**

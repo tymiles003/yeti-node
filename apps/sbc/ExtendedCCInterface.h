@@ -39,7 +39,7 @@ class ExtendedCCInterface
     /** First method called from extended CC module interface.
      * It should initialize CC module internals (values from sbcprofile.conf can
      * be used for evaluating CC module parameters). */
-    virtual void init(SBCCallLeg *call, const map<string, string> &values) { }
+    virtual bool init(SBCCallLeg *call, const map<string, string> &values) { return true; }
 
     virtual void onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cause) { };
 
@@ -69,14 +69,17 @@ class ExtendedCCInterface
     /** called before any other processing for the event is done */
     virtual CCChainProcessing onEvent(SBCCallLeg *call, AmEvent *e) { return ContinueProcessing; }
 
+    virtual CCChainProcessing onDtmf(SBCCallLeg *call, int event, int duration) { return ContinueProcessing;  };
 
     // hold related functionality (seems to work best being explicitly supported
     // with API than hacking based on another callbacks)
 
-    virtual CCChainProcessing putOnHold(SBCCallLeg *call) { return ContinueProcessing; }
-    virtual CCChainProcessing resumeHeld(SBCCallLeg *call, bool send_reinvite) { return ContinueProcessing; }
-    virtual CCChainProcessing createHoldRequest(SBCCallLeg *call, AmSdp &sdp) { return ContinueProcessing; }
-    virtual CCChainProcessing handleHoldReply(SBCCallLeg *call, bool succeeded) { return ContinueProcessing; }
+    virtual void holdRequested(SBCCallLeg *call) { }
+    virtual void holdAccepted(SBCCallLeg *call) { }
+    virtual void holdRejected(SBCCallLeg *call) { }
+    virtual void resumeRequested(SBCCallLeg *call) { }
+    virtual void resumeAccepted(SBCCallLeg *call) { }
+    virtual void resumeRejected(SBCCallLeg *call) { }
 
     virtual CCChainProcessing onRemoteDisappeared(SBCCallLeg *call, const AmSipReply &reply) { return ContinueProcessing; }
     virtual CCChainProcessing onBye(SBCCallLeg *call, const AmSipRequest &req) { return ContinueProcessing; }
@@ -96,7 +99,7 @@ class ExtendedCCInterface
 
     // using extended CC modules with simple relay
 
-    virtual void init(SBCCallProfile &profile, SimpleRelayDialog *relay, void *&user_data) { }
+    virtual bool init(SBCCallProfile &profile, SimpleRelayDialog *relay, void *&user_data) { return true; }
     virtual void initUAC(const AmSipRequest &req, void *user_data) { }
     virtual void initUAS(const AmSipRequest &req, void *user_data) { }
     virtual void finalize(void *user_data) { }

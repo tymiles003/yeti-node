@@ -149,6 +149,7 @@ SimpleRelayCreator::createGenericRelay(SBCCallProfile& call_profile,
 SBCFactory::SBCFactory(const string& _app_name)
   : AmSessionFactory(_app_name), 
     AmDynInvokeFactory(_app_name),
+    core_options_handling(false),
     callLegCreator(new CallLegCreator()),
     simpleRelayCreator(new SimpleRelayCreator())
 {
@@ -209,6 +210,9 @@ int SBCFactory::onLoad()
     regex_mappings.setRegexMap(*it, v);
     INFO("loaded regex mapping '%s'\n", it->c_str());
   }
+
+  core_options_handling = cfg.getParameter("core_options_handling") == "yes";
+  DBG("OPTIONS messages handled by the core: %s\n", core_options_handling?"yes":"no");
 
   if (!AmPlugIn::registerApplication(MOD_NAME, this)) {
     ERROR("registering "MOD_NAME" application\n");
@@ -325,12 +329,19 @@ void SBCFactory::onOoDRequest(const AmSipRequest& req)
 {
   DBG("processing message %s %s\n", req.method.c_str(), req.r_uri.c_str());  
 
+  if (core_options_handling && req.method == SIP_METH_OPTIONS) {
+    DBG("processing OPTIONS in core\n");
+    AmSessionFactory::onOoDRequest(req);
+    return;
+  }
+
+
   ParamReplacerCtx ctx;
   ctx.app_param = getHeader(req.hdrs, PARAM_HDR, true);
 
   string profile_rule;
 
-	if(req.method==SIP_METH_OPTIONS){
+	/*if(req.method==SIP_METH_OPTIONS){
 		//hack for response for LB node ping
 		DBG("%s() reply 200 OK for %s to %s:%d %s (hardcoded)",FUNC_NAME,
 			req.method.c_str(),
@@ -339,7 +350,7 @@ void SBCFactory::onOoDRequest(const AmSipRequest& req)
 			req.callid.c_str());
 		AmSipDialog::reply_error(req,200,"OK");
 		return;
-	}
+	}*/
 
   SBCCallProfile& call_profile = logic->getCallProfile(req,ctx);
 
@@ -569,7 +580,7 @@ bool SBCFactory::CCRoute(const AmSipRequest& req,
 	}
 	switch (ret[i][SBC_CC_ACTION].asInt()) {
 	case SBC_CC_DROP_ACTION: {
-	  DBG("dropping call on call control action DROP from '%s'\n",
+	  DBG("dropping request/call on call control action DROP from '%s'\n",
 	      cc_if.cc_name.c_str());
 	  return false;
 	}

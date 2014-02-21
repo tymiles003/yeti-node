@@ -8,10 +8,11 @@ enum {
   ReplaceLeg,
   ReplaceInProgress,
   DisconnectLeg,
-  ChangeRtpModeEventId
+  ChangeRtpModeEventId,
+  ResumeHeld
 };
 
-#define LAST_B2B_CALL_LEG_EVENT_ID ChangeRtpModeEventId
+#define LAST_B2B_CALL_LEG_EVENT_ID ResumeHeld
 
 struct ConnectLegEvent: public B2BEvent
 {
@@ -57,6 +58,8 @@ struct ReliableB2BEvent: public B2BEvent
 
     ReliableB2BEvent(int ev_id, B2BEvent *_processed, B2BEvent *_unprocessed):
       B2BEvent(ev_id), processed(false), processed_reply(_processed), unprocessed_reply(_unprocessed) { }
+    ReliableB2BEvent(int ev_id, B2BEventType ev_type, B2BEvent *_processed, B2BEvent *_unprocessed):
+      B2BEvent(ev_id, ev_type), processed(false), processed_reply(_processed), unprocessed_reply(_unprocessed) { }
     void markAsProcessed() { processed = true; }
     void setSender(const string &tag) { sender = tag; }
     virtual ~ReliableB2BEvent();
@@ -101,7 +104,7 @@ struct ReconnectLegEvent: public ReliableB2BEvent
     role(_role)
   { setSender(tag); }
 
-  virtual ~ReconnectLegEvent() { if (media && media->releaseReference()) delete media; }
+    virtual ~ReconnectLegEvent() { if (media) media->releaseReference(); }
 };
 
 
@@ -138,7 +141,11 @@ struct ReplaceInProgressEvent: public B2BEvent
 struct DisconnectLegEvent: public B2BEvent
 {
   bool put_remote_on_hold;
-  DisconnectLegEvent(bool _put_remote_on_hold): B2BEvent(DisconnectLeg), put_remote_on_hold(_put_remote_on_hold) { }
+  bool preserve_media_session;
+  DisconnectLegEvent(bool _put_remote_on_hold, bool _preserve_media_session = false):
+    B2BEvent(DisconnectLeg),
+    put_remote_on_hold(_put_remote_on_hold),
+    preserve_media_session(_preserve_media_session) { }
 };
 
 /* we don't need to have 'reliable event' for this because we are always
@@ -152,8 +159,12 @@ struct ChangeRtpModeEvent: public B2BEvent
     B2BEvent(ChangeRtpModeEventId), new_mode(_new_mode), media(_media)
     { if (media) media->addReference(); }
 
-  virtual ~ChangeRtpModeEvent() { if (media && media->releaseReference()) delete media; }
+    virtual ~ChangeRtpModeEvent() { if (media) media->releaseReference(); }
 };
 
+struct ResumeHeldEvent: public B2BEvent
+{
+  ResumeHeldEvent(): B2BEvent(ResumeHeld) { }
+};
 
 #endif

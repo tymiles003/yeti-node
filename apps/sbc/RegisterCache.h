@@ -3,6 +3,7 @@
 
 #include "singleton.h"
 #include "hash_table.h"
+#include "atomic_types.h"
 
 #include "AmSipMsg.h"
 #include "AmUriParser.h"
@@ -201,6 +202,9 @@ class _RegisterCache
 
   AmSharedVar<bool> running;
 
+  // stats
+  atomic_int active_regs;
+
   void gbc(unsigned int bucket_id);
   void removeAlias(const string& alias, bool generate_event);
 
@@ -328,7 +332,7 @@ public:
    */
   bool throttleRegister(RegisterCacheCtx& ctx,
 			const AmSipRequest& req,
-                        msg_logger *logger);
+                        msg_logger *logger = NULL);
 
   /**
    * Save a single REGISTER contact into cache
@@ -345,7 +349,12 @@ public:
    */
   bool saveSingleContact(RegisterCacheCtx& ctx,
 			const AmSipRequest& req,
-                        msg_logger *logger);
+                        msg_logger *logger = NULL);
+
+  /**
+   * Statistics
+   */
+  unsigned int getActiveRegs() { return active_regs.get(); }
 };
 
 typedef singleton<_RegisterCache> RegisterCache;

@@ -178,6 +178,10 @@ int AmOfferAnswer::onReplyIn(const AmSipReply& reply)
 	
 	DBG("ignoring subsequent SDP reply within the same transaction\n");
 	DBG("this usually happens when 183 and 200 have SDP\n");
+
+	/* Make sure that session is started when 200 OK is received */
+	if (reply.code == 200) dlg->onSdpCompleted();
+
       }
       else {
 	saveState();
@@ -360,34 +364,61 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply)
       }
     }
   }
-  
+
+  if (reply.cseq_method == SIP_METH_INVITE && reply.code < 300) {
+    // ignore SDP repeated in 1xx and 2xx replies (183, 180, ... 2xx)
+    if (has_sdp &&
+        (state == OA_Completed || state == OA_OfferSent) &&
+        reply.cseq == cseq)
+    {
+      has_sdp = false;
+    }
+  }
+
   saveState();
 
   if (generate_sdp) {
 
     string sdp_buf;
     if(getSdpBody(sdp_buf)) {
-      return -1;
-    }
-
-    if(!sdp_body){
-      if( (sdp_body = 
-	   reply.body.addPart(SIP_APPLICATION_SDP)) 
-	  == NULL ) {
-	DBG("AmMimeBody::addPart() failed\n");
-	return -1;
+      if (reply.code == 183 && reply.cseq_method == SIP_METH_INVITE) {
+        // just ignore if no SDP is generated (required for B2B)
       }
+      else return -1;
     }
+    else {
+      if(!sdp_body){
+        if( (sdp_body = 
+             reply.body.addPart(SIP_APPLICATION_SDP)) 
+            == NULL ) {
+          DBG("AmMimeBody::addPart() failed\n");
+          return -1;
+        }
+      }
 
-    sdp_body->setPayload((const unsigned char*)sdp_buf.c_str(),
-			 sdp_buf.length());
-    has_sdp = true;
+      sdp_body->setPayload((const unsigned char*)sdp_buf.c_str(),
+                           sdp_buf.length());
+      has_sdp = true;
+    }
+  } else if (sdp_body && has_sdp) {
+    // update local SDP copy
+    if (sdp_local.parse((const char*)sdp_body->getPayload())) {
+      ERROR("parser failed on Tx SDP: '%s'\n", (const char*)sdp_body->getPayload());
+    }
   }
 
   if (has_sdp && (onTxSdp(reply.cseq,reply.body) != 0)) {
     
     DBG("onTxSdp() failed\n");
     return -1;
+  }
+
+  if( (reply.code >= 300) &&
+      (reply.cseq == cseq) ) {
+    // final error reply -> cleanup OA state
+    DBG("after %u reply to %s: resetting OA state\n",
+	reply.code, reply.cseq_method.c_str());
+    clearTransitionalState();
   }
 
   return 0;

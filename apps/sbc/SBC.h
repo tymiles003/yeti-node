@@ -74,6 +74,8 @@ class SBCFactory: public AmSessionFactory,
   bool registrations_enabled;
   int LoadLogicModule();
 
+  bool core_options_handling;
+
   auto_ptr<CallLegCreator> callLegCreator;
   auto_ptr<SimpleRelayCreator> simpleRelayCreator;
 

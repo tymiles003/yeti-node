@@ -50,9 +50,13 @@ Several CC modules are implemented
   o cc_call_timer     - call timer (maximum call duration)
   o cc_prepaid        - prepaid billing with storing balances in memory
   o cc_prepaid_xmlrpc - prepaid billing querying balances from external server with XMLRPC
-
-See their respective documentation for details.
-
+  o cc_ctl            - control SBC profile options through headers
+  o cc_rest           - query REST/http API and use response for retargeting etc
+  o cc_syslog_cdr     - write CDRs to syslog
+  o cc_bl_redis       - check blacklist from REDIS (redis.io)
+  o cc_registrar      - local registrar (REGISTER handling, lookup on INVITEs) 
+  
+See their respective documentation in the doc/sbc/ directory for details.
 
 Developer documentation 
 =======================
@@ -61,6 +65,7 @@ The functions of CC modules are invoked
  - at the beginning of a call: "start" function
  - when the call is connected: "connect" function
  - when the call is ended: "end" function
+ - when an out-of-dialog request should be routed: "route" function
 
 In the start function, CC modules can
  - modify values in the used call profile instance (RURI, From, To etc)

@@ -353,6 +353,16 @@ loglevel=2
 #
 # Default: shutdown_mode_reply="503 Server shutting down"
 
+# optional parameter: cps_limit=<limit>;<err code>;<err reason>
+# 
+# - this sets a maximum calls per sec limit. If that limit is 
+#   reached, no further calls are accepted, but the error reply 
+#   with err code/err reason is sent out.
+# 
+# Default: 0 (None)
+#
+# Example:
+#  cps_limit="100;503;Server overload"
 
 ############################################################
 # tuning
@@ -376,6 +386,13 @@ loglevel=2
 #
 # media_processor_threads=1
 
+# optional parameter: rtp_receiver_threads=<num_value>
+#
+# - controls how many threads should be created that
+#   receive and relay RTP media - on single-processor systems set this
+#   parameter to 1 (default), on MP systems to a higher value.
+#
+# rtp_receiver_threads=1
 
 # optional parameter: session_limit=<limit>;<err code>;<err reason>
 # 

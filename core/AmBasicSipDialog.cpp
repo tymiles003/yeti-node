@@ -30,6 +30,7 @@ AmBasicSipDialog::AmBasicSipDialog(AmBasicSipEventHandler* h)
     next_hop(AmConfig::NextHop),
     next_hop_1st_req(AmConfig::NextHop1stReq),
     patch_ruri_next_hop(false),
+    next_hop_fixed(false),
     outbound_interface(-1),
     nat_handling(AmConfig::SipNATHandling),
     usages(0)
@@ -469,6 +470,12 @@ void AmBasicSipDialog::updateDialogTarget(const AmSipReply& reply)
        (reply.cseq_method == SIP_METH_SUBSCRIBE)) ) {
     
     setRemoteUri(reply.to_uri);
+    if(!getNextHop().empty() && !next_hop_fixed) {
+      DBG("updating next_hop from reply to %s:%u\n",
+	  reply.remote_ip.c_str(), reply.remote_port);
+      setNextHop(reply.remote_ip + ":"
+		 + int2str(reply.remote_port));
+    }
 
     string ua = getHeader(reply.hdrs,"Server");
     setRemoteUA(ua);
@@ -564,7 +571,6 @@ int AmBasicSipDialog::reply(const AmSipRequest& req,
   }
   DBG("reply: transaction found!\n");
     
-  string m_hdrs = hdrs;
   AmSipReply reply;
 
   reply.code = code;
@@ -572,7 +578,7 @@ int AmBasicSipDialog::reply(const AmSipRequest& req,
   reply.tt = req.tt;
   if((code > 100) && !(flags & SIP_FLAGS_NOTAG))
     reply.to_tag = ext_local_tag.empty() ? local_tag : ext_local_tag;
-  reply.hdrs = m_hdrs;
+  reply.hdrs = hdrs;
   reply.cseq = req.cseq;
   reply.cseq_method = req.method;
 
@@ -686,13 +692,21 @@ int AmBasicSipDialog::sendRequest(const string& method,
       req.hdrs += SIP_HDR_COLSP(SIP_HDR_USER_AGENT) + AmConfig::Signature + CRLF;
   }
 
+  int send_flags = 0;
+  if(patch_ruri_next_hop && remote_tag.empty()) {
+    send_flags |= TR_FLAG_NEXT_HOP_RURI;
+  }
+
+  if((flags & SIP_FLAGS_NOBL) ||
+     !remote_tag.empty()) {
+    send_flags |= TR_FLAG_DISABLE_BL;
+  }
+
   int res = SipCtrlInterface::send(req, local_tag,
 				   remote_tag.empty() || !next_hop_1st_req ?
 				   next_hop : "",
 				   outbound_interface,
-				   !patch_ruri_next_hop || !remote_tag.empty() ? 0
-				   : SEND_REQUEST_FLAG_NEXT_HOP_RURI,
-				   logger);
+				   send_flags,logger);
   if(res) {
     ERROR("Could not send request: method=%s; call-id=%s; cseq=%i\n",
 	  req.method.c_str(),req.callid.c_str(),req.cseq);
@@ -707,7 +721,7 @@ void AmBasicSipDialog::dump()
 {
   DBG("callid = %s\n",callid.c_str());
   DBG("local_tag = %s\n",local_tag.c_str());
-  DBG("uac_trans.size() = %u\n",(unsigned int)uac_trans.size());
+  DBG("uac_trans.size() = %zu\n",uac_trans.size());
   if(uac_trans.size()){
     for(TransMap::iterator it = uac_trans.begin();
 	it != uac_trans.end(); it++){
@@ -715,7 +729,7 @@ void AmBasicSipDialog::dump()
       DBG("    cseq = %i; method = %s\n",it->first,it->second.method.c_str());
     }
   }
-  DBG("uas_trans.size() = %u\n",(unsigned int)uas_trans.size());
+  DBG("uas_trans.size() = %zu\n",uas_trans.size());
   if(uas_trans.size()){
     for(TransMap::iterator it = uas_trans.begin();
 	it != uas_trans.end(); it++){

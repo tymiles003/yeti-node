@@ -119,7 +119,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   void oodHandlingTerminated(const AmSipRequest *req,SqlCallProfile *call_profile);
 
         //!ExtendedCCInterface handlers
-  void init(SBCCallLeg *call, const map<string, string> &values);
+  bool init(SBCCallLeg *call, const map<string, string> &values);
 
   void onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cause);
   void onDestroyLeg(SBCCallLeg *call);
@@ -145,7 +145,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   int relayEvent(SBCCallLeg *call, AmEvent *e);
 
         //!OoD handlers
-  void init(SBCCallProfile &profile, SimpleRelayDialog *relay, void *&user_data);
+  bool init(SBCCallProfile &profile, SimpleRelayDialog *relay, void *&user_data);
   void initUAC(const AmSipRequest &req, void *user_data);
   void initUAS(const AmSipRequest &req, void *user_data);
   void finalize(void *user_data);

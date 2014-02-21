@@ -657,7 +657,7 @@ void Yeti::oodHandlingTerminated(const AmSipRequest *req,SqlCallProfile *call_pr
 	}
 }
 
-void Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
+bool Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	CallCtx *ctx = getCtx(call);
 	Cdr *cdr = getCdr(ctx);
@@ -675,6 +675,8 @@ void Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
 	}
 
 	cdr->update(*call);
+
+	return true;
 }
 
 void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cause){
@@ -1224,8 +1226,9 @@ int Yeti::relayEvent(SBCCallLeg *call, AmEvent *e){
 }
 	//!Ood handlers
 
-void Yeti::init(SBCCallProfile &profile, SimpleRelayDialog *relay, void *&user_data) {
+bool Yeti::init(SBCCallProfile &profile, SimpleRelayDialog *relay, void *&user_data) {
 	DBG("%s() called",FUNC_NAME);
+	return true;
 }
 
 void Yeti::initUAC(const AmSipRequest &req, void *user_data) {
@@ -1431,8 +1434,8 @@ void Yeti::GetStats(const AmArg& args, AmArg& ret){
 	u["SessionNum"] = (int)AmSession::getSessionNum();
 	u["MaxSessionNum"] = (int)AmSession::getMaxSessionNum();
 	u["AvgSessionNum"] = (int)AmSession::getAvgSessionNum();
-	u["MaxCPS"] = (int)AmSession::getMaxCPS();
-	u["AvgCPS"] = (int)AmSession::getAvgCPS();
+	/*u["MaxCPS"] = (int)AmSession::getMaxCPS();
+	u["AvgCPS"] = (int)AmSession::getAvgCPS();*/
 
 	stats.push("AmSession",u);
 

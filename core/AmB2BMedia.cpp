@@ -17,13 +17,7 @@ using namespace std;
 
 /** class for computing payloads for relay the simpliest way - allow relaying of
  * all payloads supported by remote party */
-class SimpleRelayController: public RelayController {
-  public:
-    virtual void computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &mask);
-};
-
 static B2BMediaStatistics b2b_stats;
-static SimpleRelayController simple_relay_ctrl;
 
 static const string zero_ip("0.0.0.0");
 
@@ -42,40 +36,6 @@ static void replaceRtcpAttr(SdpMedia &m, const string& relay_address, int rtcp_p
       DBG("can't replace RTCP address: %s\n", e.what());
     }
   }
-}
-
-//////////////////////////////////////////////////////////////////////////////////
-
-void SimpleRelayController::computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &mask)
-{
-  int te_pl = -1;
-  enable = false;
-
-  mask.clear();
-
-  // walk through the media lines and find the telephone-event payload
-  for (std::vector<SdpPayload>::const_iterator i = m.payloads.begin();
-      i != m.payloads.end(); ++i)
-  {
-    // do not mark telephone-event payload for relay
-    if(!strcasecmp("telephone-event",i->encoding_name.c_str())){
-      te_pl = i->payload_type;
-    }
-    else {
-      enable = true;
-    }
-  }
-
-  if(!enable)
-    return;
-
-  if(te_pl > 0) { 
-    TRACE("unmarking telephone-event payload %d for relay\n", te_pl);
-    mask.set(te_pl);
-  }
-
-  TRACE("marking all other payloads for relay\n");
-  mask.invert();
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -207,6 +167,9 @@ void AudioStreamData::initialize(AmB2BSession *session)
   stream = new AmRtpAudio(session, session->getRtpInterface());
   stream->setRtpRelayTransparentSeqno(session->getRtpRelayTransparentSeqno());
   stream->setRtpRelayTransparentSSRC(session->getRtpRelayTransparentSSRC());
+  stream->setRtpRelayFilterRtpDtmf(session->getEnableDtmfRtpFiltering());
+  if (session->getEnableDtmfRtpDetection())
+    stream->force_receive_dtmf = true;
   force_symmetric_rtp = session->getRtpRelayForceSymmetricRtp();
   enable_dtmf_transcoding = session->getEnableDtmfTranscoding();
   session->getLowFiPLs(lowfi_payloads);
@@ -221,7 +184,7 @@ AudioStreamData::AudioStreamData(AmB2BSession *session):
   incoming_payload(UNDEFINED_PAYLOAD),
   force_symmetric_rtp(false),
   enable_dtmf_transcoding(false),
-  muted(false)
+  muted(false), relay_paused(false), receiving(true)
 {
   if (session) initialize(session);
   else stream = NULL; // not initialized yet
@@ -283,24 +246,50 @@ void AudioStreamData::resumeStreamProcessing()
 
 void AudioStreamData::setRelayStream(AmRtpStream *other)
 {
-  if (!stream) {
-    ERROR("BUG: trying to set relay for NULL stream\n");
+  if (!stream) return;
+
+  if (relay_address.empty()) {
+    DBG("not setting relay for empty relay address\n");
+    stream->disableRtpRelay();
     return;
   }
 
-  // FIXME: muted stream should not relay to the other?
-  /* if (muted) {
-    stream->disableRtpRelay();
-    return;
-  }*/
-
   if (relay_enabled && other) {
-    stream->enableRtpRelay(relay_mask, other);
+    stream->setRelayStream(other);
+    stream->setRelayPayloads(relay_mask);
+    if (!relay_paused)
+      stream->enableRtpRelay();
+
     stream->setRAddr(relay_address, relay_port, relay_port+1);
   }
   else {
     // nothing to relay or other stream not set
     stream->disableRtpRelay();
+  }
+}
+
+void AudioStreamData::setRelayPayloads(const SdpMedia &m, RelayController *ctrl) {
+  ctrl->computeRelayMask(m, relay_enabled, relay_mask);
+}
+
+void AudioStreamData::setRelayDestination(const string& connection_address, int port) {
+  relay_address = connection_address; relay_port = port;
+}
+
+void AudioStreamData::setRelayPaused(bool paused) {
+  if (paused == relay_paused) {
+    DBG("relay already paused for stream [%p], ignoring\n", stream);
+    return;
+  }
+
+  relay_paused = paused;
+  DBG("relay %spaused, stream [%p]\n", relay_paused?"":"not ", stream);
+
+  if (NULL != stream) {
+    if (relay_paused)
+      stream->disableRtpRelay();
+    else 
+      stream->enableRtpRelay();
   }
 }
 
@@ -318,6 +307,7 @@ void AudioStreamData::clearDtmfSink()
 
 void AudioStreamData::setDtmfSink(AmDtmfSink *dtmf_sink)
 {
+  // TODO: optimize: clear & create the dtmf_detector only if the dtmf_sink changed
   clearDtmfSink();
 
   if (dtmf_sink && stream) {
@@ -347,19 +337,21 @@ bool AudioStreamData::initStream(PlayoutType playout_type,
   resetStats();
 
   if (!stream) {
-    // we have no stream so normal audio processing is not possible
-    // FIXME: if we have no stream here (i.e. no session) how we got the local
-    // and remote SDP?
-    ERROR("BUG: trying to initialize stream before creation\n");
     initialized = false;
-    return false; // it is bug with current AmB2BMedia implementation
+    return false;
   }
 
   // TODO: try to init only in case there are some payloads which can't be relayed
   stream->forceSdpMediaIndex(media_idx);
+
+  stream->setOnHold(false); // just hack to do correctly mute detection in stream->init
   if (stream->init(local_sdp, remote_sdp, force_symmetric_rtp) == 0) {
     stream->setPlayoutType(playout_type);
     initialized = true;
+
+//    // do not unmute if muted because of 0.0.0.0 remote IP (the mute flag is set during init)
+//    if (!stream->muted()) stream->setOnHold(muted);
+
   } else {
     initialized = false;
     DBG("stream initialization failed\n");
@@ -367,6 +359,7 @@ bool AudioStreamData::initStream(PlayoutType playout_type,
     // to be relayed this needs not to be an error)
   }
   stream->setOnHold(muted);
+  stream->setReceiving(receiving);
 
   return initialized;
 }
@@ -480,12 +473,23 @@ int AudioStreamData::writeStream(unsigned long long ts, unsigned char *buffer, A
 
 void AudioStreamData::mute(bool set_mute)
 {
+  DBG("mute(%s) - RTP stream [%p]\n", set_mute?"true":"false", stream);
+ 
   if (stream) {
     stream->setOnHold(set_mute);
     if (muted != set_mute) stream->clearRTPTimeout();
   }
   muted = set_mute;
 }
+
+void AudioStreamData::setReceiving(bool r) {
+  DBG("setReceiving(%s) - RTP stream [%p]\n", r?"true":"false", stream);
+  if (stream) {
+    stream->setReceiving(r);
+  }
+  receiving = r;
+}
+
 //////////////////////////////////////////////////////////////////////////////////
 
 AmB2BMedia::RelayStreamPair::RelayStreamPair(AmB2BSession *_a, AmB2BSession *_b)
@@ -499,11 +503,10 @@ AmB2BMedia::AmB2BMedia(AmB2BSession *_a, AmB2BSession *_b):
   callgroup(AmSession::getNewId()),
   have_a_leg_local_sdp(false), have_a_leg_remote_sdp(false),
   have_b_leg_local_sdp(false), have_b_leg_remote_sdp(false),
-  processing_started(false),
   playout_type(ADAPTIVE_PLAYOUT),
   //playout_type(SIMPLE_PLAYOUT),
   a_leg_muted(false), b_leg_muted(false),
-  a_leg_on_hold(false), b_leg_on_hold(false),
+  relay_paused(false),
   logger(NULL)
 { 
 }
@@ -511,6 +514,33 @@ AmB2BMedia::AmB2BMedia(AmB2BSession *_a, AmB2BSession *_b):
 AmB2BMedia::~AmB2BMedia()
 {
   if (logger) dec_ref(logger);
+}
+
+void AmB2BMedia::addToMediaProcessor() {
+  addReference(); // AmMediaProcessor's reference
+  AmMediaProcessor::instance()->addSession(this, callgroup);
+}
+
+void AmB2BMedia::addToMediaProcessorUnsafe() {
+  ref_cnt++; // AmMediaProcessor's reference
+  AmMediaProcessor::instance()->addSession(this, callgroup);
+}
+
+void AmB2BMedia::addReference() {
+  mutex.lock();
+  ref_cnt++;
+  mutex.unlock();
+}
+
+bool AmB2BMedia::releaseReference() {
+  mutex.lock();
+  int r = --ref_cnt;
+  mutex.unlock();
+  if (r==0) {
+    DBG("last reference to AmB2BMedia [%p] cleared, destroying\n", this);
+    delete this;
+  }
+  return (r == 0); 
 }
 
 void AmB2BMedia::changeSession(bool a_leg, AmB2BSession *new_session)
@@ -530,10 +560,8 @@ void AmB2BMedia::changeSessionUnsafe(bool a_leg, AmB2BSession *new_session)
   // update all streams
   for (AudioStreamIterator i = audio.begin(); i != audio.end(); ++i) {
     // stop processing first to avoid unexpected results
-    if (processing_started) {
-      i->a.stopStreamProcessing();
-      i->b.stopStreamProcessing();
-    }
+    i->a.stopStreamProcessing();
+    i->b.stopStreamProcessing();
 
     // replace session
     if (a_leg) {
@@ -543,33 +571,7 @@ void AmB2BMedia::changeSessionUnsafe(bool a_leg, AmB2BSession *new_session)
       i->b.changeSession(new_session);
     }
 
-    if (processing_started) {
-      // needed to reinitialize relay streams because the streams could change
-      // and they are in use already (FIXME: ugly here, needs explicit knowledge
-      // what AudioStreamData::changeSesion does)
-      if (a) i->a.setRelayStream(i->b.getStream());
-      if (b) i->b.setRelayStream(i->a.getStream());
-
-      // needed to reinitialize audio processing in case the stream itself has
-      // changed (FIXME: ugly again - see above and local/remote SDP might
-      // already change since previous initialization!)
-      if (a_leg) {
-        if (a) { // we have the session
-          TRACE("init A stream stuff\n");
-          i->a.initStream(playout_type, a_leg_local_sdp, a_leg_remote_sdp, i->media_idx);
-          i->a.setDtmfSink(b);
-          i->b.setDtmfSink(new_session);
-        }
-      }
-      else {
-        if (b) { // we have the session
-          TRACE("init B stream stuff\n");
-          i->b.initStream(playout_type, b_leg_local_sdp, b_leg_remote_sdp, i->media_idx);
-          i->b.setDtmfSink(a);
-          i->a.setDtmfSink(new_session);
-        }
-      }
-    }
+    updateStreamPair(*i);
 
     if (i->requiresProcessing()) needs_processing = true;
 
@@ -577,34 +579,23 @@ void AmB2BMedia::changeSessionUnsafe(bool a_leg, AmB2BSession *new_session)
     i->setLogger(logger);
 
     // return back for processing if needed
-    if (processing_started) {
-      i->a.resumeStreamProcessing();
-      i->b.resumeStreamProcessing();
-    }
+    i->a.resumeStreamProcessing();
+    i->b.resumeStreamProcessing();
   }
 
   for (RelayStreamIterator j = relay_streams.begin(); j != relay_streams.end(); ++j) {
     AmRtpStream &a = (*j)->a;
     AmRtpStream &b = (*j)->a;
 
-    /*if (a.hasLocalSocket())
-      AmRtpReceiver::instance()->removeStream(a.getLocalSocket());
-    if (b.hasLocalSocket())
-      AmRtpReceiver::instance()->removeStream(b.getLocalSocket());*/
-
+    // FIXME: is stop & resume receiving needed here?
     a.changeSession(new_session);
     b.changeSession(new_session);
 
-    /*if (a.hasLocalSocket())
-      AmRtpReceiver::instance()->addStream(a.getLocalSocket(), &a);
-    if (b.hasLocalSocket())
-      AmRtpReceiver::instance()->addStream(b.getLocalSocket(), &b);*/
   }
 
   if (needs_processing) {
     if (!isProcessingMedia()) {
-      ref_cnt++; // add reference (hold by AmMediaProcessor)
-      AmMediaProcessor::instance()->addSession(this, callgroup);
+      addToMediaProcessorUnsafe();
     }
   }
   else if (isProcessingMedia()) AmMediaProcessor::instance()->removeSession(this);
@@ -739,13 +730,12 @@ void AmB2BMedia::replaceConnectionAddress(AmSdp &parser_sdp, bool a_leg,
 					  const string& relay_address,
 					  const string& relay_public_address)
 {
-  static const string void_addr("0.0.0.0");
   AmLock lock(mutex);
 
   SdpConnection orig_conn = parser_sdp.conn; // needed for the 'quick workaround' for non-audio media
 
   // place relay_address in connection address
-  if (!parser_sdp.conn.address.empty() && (parser_sdp.conn.address != void_addr)) {
+  if (!parser_sdp.conn.address.empty() && (parser_sdp.conn.address != zero_ip)) {
     parser_sdp.conn.address = relay_public_address;
     DBG("new connection address: %s",parser_sdp.conn.address.c_str());
   }
@@ -771,7 +761,7 @@ void AmB2BMedia::replaceConnectionAddress(AmSdp &parser_sdp, bool a_leg,
       }
 
       if(it->port) { // if stream active
-	if (!it->conn.address.empty() && (parser_sdp.conn.address != void_addr)) {
+	if (!it->conn.address.empty() && (parser_sdp.conn.address != zero_ip)) {
 	  it->conn.address = relay_public_address;
 	  DBG("new stream connection address: %s",it->conn.address.c_str());
 	}
@@ -804,7 +794,7 @@ void AmB2BMedia::replaceConnectionAddress(AmSdp &parser_sdp, bool a_leg,
       }
 
       if(it->port) { // if stream active
-	if (!it->conn.address.empty() && (parser_sdp.conn.address != void_addr)) {
+	if (!it->conn.address.empty() && (parser_sdp.conn.address != zero_ip)) {
 	  it->conn.address = relay_public_address;
 	  DBG("new stream connection address: %s",it->conn.address.c_str());
 	}
@@ -845,8 +835,7 @@ void AmB2BMedia::replaceConnectionAddress(AmSdp &parser_sdp, bool a_leg,
   if (it != parser_sdp.media.end()) {
     // FIXME: create new streams here?
     WARN("trying to relay SDP with more media lines than "
-	 "relay streams initialized (%lu)\n", 
-	 (unsigned long)(audio.size()+relay_streams.size()));
+	 "relay streams initialized (%zu)\n",audio.size()+relay_streams.size());
   }
 
   DBG("replaced connection address in SDP with %s:%s.\n",
@@ -868,7 +857,27 @@ _rtp_relay_mode_str(const AmB2BSession::RTPRelayMode& relay_mode)
   return "";
 }
 
-void AmB2BMedia::onSdpUpdate()
+void AmB2BMedia::updateStreamPair(AudioStreamPair &pair)
+{
+  bool have_a = have_a_leg_local_sdp && have_a_leg_remote_sdp;
+  bool have_b = have_b_leg_local_sdp && have_b_leg_remote_sdp;
+
+  TRACE("updating stream in A leg\n");
+  pair.a.setDtmfSink(b);
+  if (pair.b.getInput()) pair.a.setRelayStream(NULL); // don't mix relayed RTP into the other's input
+  else pair.a.setRelayStream(pair.b.getStream());
+  if (have_a) pair.a.initStream(playout_type, a_leg_local_sdp, a_leg_remote_sdp, pair.media_idx);
+
+  TRACE("updating stream in B leg\n");
+  pair.b.setDtmfSink(a);
+  if (pair.a.getInput()) pair.b.setRelayStream(NULL); // don't mix relayed RTP into the other's input
+  else pair.b.setRelayStream(pair.a.getStream());
+  if (have_b) pair.b.initStream(playout_type, b_leg_local_sdp, b_leg_remote_sdp, pair.media_idx);
+
+  TRACE("audio streams updated\n");
+}
+
+void AmB2BMedia::updateAudioStreams()
 {
   // SDP was updated
   TRACE("handling SDP change, A leg: %c%c, B leg: %c%c\n",
@@ -885,21 +894,8 @@ void AmB2BMedia::onSdpUpdate()
   bool have_b = have_b_leg_local_sdp && have_b_leg_remote_sdp;
 
   if (!(
-      (have_a && have_b) ||
-      (have_a && !audio.empty() && audio[0].a.getInput() && (!b)) ||
-      (have_b && !audio.empty() && audio[0].b.getInput() && (!a))
+      (have_a || have_b)
       )) return;
-
-  // clear all the stored flags (re-INVITEs or UPDATEs will negotiate new remote
-  // & local SDPs so the current ones are not interesting later)
-  have_a_leg_local_sdp = false;
-  have_a_leg_remote_sdp = false;
-  have_b_leg_local_sdp = false;
-  have_b_leg_remote_sdp = false;
-
-  processing_started = true;
-
-  TRACE("starting media processing\n");
 
   bool needs_processing = a && b && a->getRtpRelayMode() == AmB2BSession::RTP_Transcoding;
 
@@ -908,19 +904,7 @@ void AmB2BMedia::onSdpUpdate()
     i->a.stopStreamProcessing();
     i->b.stopStreamProcessing();
 
-    if (have_a) {
-      TRACE("initializing stream in A leg\n");
-      i->a.setDtmfSink(b);
-      i->a.setRelayStream(i->b.getStream());
-      i->a.initStream(playout_type, a_leg_local_sdp, a_leg_remote_sdp, i->media_idx);
-    }
-
-    if (have_b) {
-      TRACE("initializing stream in B leg\n");
-      i->b.setDtmfSink(a);
-      i->b.setRelayStream(i->a.getStream());
-      i->b.initStream(playout_type, b_leg_local_sdp, b_leg_remote_sdp, i->media_idx);
-    }
+    updateStreamPair(*i);
 
     if (i->requiresProcessing()) needs_processing = true;
 
@@ -935,17 +919,15 @@ void AmB2BMedia::onSdpUpdate()
   // the media, right?
   if (needs_processing) {
     if (!isProcessingMedia()) {
-      ref_cnt++; // add reference (hold by AmMediaProcessor)
-      AmMediaProcessor::instance()->addSession(this, callgroup);
+      addToMediaProcessorUnsafe();
     }
   }
   else if (isProcessingMedia()) AmMediaProcessor::instance()->removeSession(this);
 }
 
-static void updateRelayStream(AmRtpStream *stream,
-    AmB2BSession *session,
-    const string& connection_address,
-    const SdpMedia &m, AmRtpStream *relay_to)
+void AmB2BMedia::updateRelayStream(AmRtpStream *stream, AmB2BSession *session,
+				   const string& connection_address,
+				   const SdpMedia &m, AmRtpStream *relay_to)
 {
   static const PayloadMask true_mask(true);
 
@@ -958,7 +940,10 @@ static void updateRelayStream(AmRtpStream *stream,
       stream->setRtpRelayTransparentSSRC(session->getRtpRelayTransparentSSRC());
       // if (!stream->hasLocalSocket()) stream->setLocalIP(session->advertisedIP());
     }
-    stream->enableRtpRelay(true_mask,relay_to);
+    stream->setRelayStream(relay_to);
+    stream->setRelayPayloads(true_mask);
+    if (!relay_paused)
+      stream->enableRtpRelay();
     stream->setRAddr(connection_address,m.port,m.port+1);
     if((m.transport != TP_RTPAVP) && (m.transport != TP_RTPSAVP))
       stream->enableRawRelay();
@@ -969,25 +954,38 @@ static void updateRelayStream(AmRtpStream *stream,
   }
 }
 
-bool AmB2BMedia::updateRemoteSdp(bool a_leg, const AmSdp &remote_sdp, RelayController *ctrl)
+void AmB2BMedia::updateStreams(bool a_leg, const AmSdp &local_sdp, const AmSdp &remote_sdp, RelayController *ctrl)
 {
-  bool ok = true;
-  if (!ctrl) ctrl = &simple_relay_ctrl; // use default controller if none given
+  TRACE("%s (%c): updating streams with local & remote SDP\n",
+      a_leg ? a->getLocalTag().c_str() : b->getLocalTag().c_str(),
+      a_leg ? 'A': 'B');
+
+  /*string s;
+  local_sdp.print(s);
+  INFO("local SDP: %s\n", s.c_str());
+  remote_sdp.print(s);
+  INFO("remote SDP: %s\n", s.c_str());*/
 
   AmLock lock(mutex);
+  // streams should be created already (replaceConnectionAddress called
+  // before updateLocalSdp uses/assignes their port numbers)
 
-  // save SDP
+  // save SDP: FIXME: really needed to store instead of just to use?
   if (a_leg) {
+    a_leg_local_sdp = local_sdp;
     a_leg_remote_sdp = remote_sdp;
+    have_a_leg_local_sdp = true;
     have_a_leg_remote_sdp = true;
   }
   else {
+    b_leg_local_sdp = local_sdp;
     b_leg_remote_sdp = remote_sdp;
+    have_b_leg_local_sdp = true;
     have_b_leg_remote_sdp = true;
   }
 
   // create missing streams
-  createStreams(remote_sdp);
+  createStreams(local_sdp); // FIXME: remote_sdp?
 
   // compute relay mask for every stream
   // Warning: do not apply the new mask unless the offer answer succeeds?
@@ -1031,34 +1029,9 @@ bool AmB2BMedia::updateRemoteSdp(bool a_leg, const AmSdp &remote_sdp, RelayContr
     }
   }
 
-  onSdpUpdate();
+  updateAudioStreams();
 
-  return ok;
-}
-    
-bool AmB2BMedia::updateLocalSdp(bool a_leg, const AmSdp &local_sdp)
-{
-  bool ok = true;
-  AmLock lock(mutex);
-  // streams should be created already (replaceConnectionAddress called
-  // before updateLocalSdp uses/assignes their port numbers)
-
-  // save SDP
-  if (a_leg) {
-    a_leg_local_sdp = local_sdp;
-    have_a_leg_local_sdp = true;
-  }
-  else {
-    b_leg_local_sdp = local_sdp;
-    have_b_leg_local_sdp = true;
-  }
-
-  // create missing streams
-  createStreams(local_sdp);
-
-  onSdpUpdate();
-
-  return ok;
+  TRACE("streams updated with SDP\n");
 }
 
 void AmB2BMedia::stop(bool a_leg)
@@ -1067,71 +1040,43 @@ void AmB2BMedia::stop(bool a_leg)
   clearAudio(a_leg);
   // remove from processor only if both A and B leg stopped
   if (isProcessingMedia() && (!a) && (!b)) {
-    processing_started = false;
     AmMediaProcessor::instance()->removeSession(this);
   }
 }
 
-void AmB2BMedia::onMediaProcessingTerminated() 
-{ 
+void AmB2BMedia::onMediaProcessingTerminated()
+{
   AmMediaSession::onMediaProcessingTerminated();
-  processing_started = false;
-  clearAudio();
 
   // release reference held by AmMediaProcessor
-  if (releaseReference()) { 
-    delete this; // this should really work :-D
-  }
+  releaseReference();
 }
 
-bool AmB2BMedia::createHoldRequest(AmSdp &sdp, bool a_leg, bool zero_connection, bool sendonly)
+bool AmB2BMedia::replaceOffer(AmSdp &sdp, bool a_leg)
 {
-  AmB2BSession *session = (a_leg ? a : b);
+  TRACE("replacing offer with a local one\n");
+  createStreams(sdp); // create missing streams
 
-  // session is needed to fill all the stuff and to have the streams initialised correctly
-  if (!session) return false;
-
-  sdp.clear();
-
-  // FIXME: use original origin and continue in versioning? (the one used in
-  // previous SDPs if any)
-  // stolen from AmSession
-  sdp.version = 0;
-  sdp.origin.user = "sems";
-  //offer.origin.sessId = 1;
-  //offer.origin.sessV = 1;
-  sdp.sessionName = "sems";
-  sdp.conn.network = NT_IN;
-  sdp.conn.addrType = AT_V4;
-  if (zero_connection) sdp.conn.address = zero_ip;
-  else sdp.conn.address = session->advertisedIP();
-
-  // possible params:
-  //  - use 0.0.0.0 connection address or sendonly stream
-  // create hold request based on current streams
   AmLock lock(mutex);
 
   try {
-    if (audio.empty()) {
-      // create one dummy stream to create valid SDP
-      AudioStreamPair pair(a, b, 0);
-      audio.push_back(pair);
+
+    AudioStreamIterator as = audio.begin();
+    for (vector<SdpMedia>::iterator m = sdp.media.begin(); m != sdp.media.end(); ++m) {
+      if (m->type == MT_AUDIO && as != audio.end()) {
+        // generate our local offer
+        TRACE("... making audio stream offer\n");
+        if (a_leg) as->a.getSdpOffer(as->media_idx, *m);
+        else as->b.getSdpOffer(as->media_idx, *m);
+        ++as;
+      }
+      else {
+        TRACE("... making non-audio/uninitialised stream inactive\n");
+        m->send = false;
+        m->recv = false;
+      }
     }
 
-    for (AudioStreamIterator i = audio.begin(); i != audio.end(); ++i) {
-      // TODO: put disabled media stream for non-audio media? (we would need to
-      // remember what type of media was it etc.)
-
-      TRACE("generating SDP offer from stream %d\n", i->media_idx);
-      sdp.media.push_back(SdpMedia());
-      SdpMedia &m = sdp.media.back();
-      m.type = MT_AUDIO;
-      if (a_leg) i->a.getSdpOffer(i->media_idx, m);
-      else i->b.getSdpOffer(i->media_idx, m);
-
-      m.send = true; // always? (what if there is no 'hold music' to play?
-      if (sendonly) m.recv = false;
-    }
   }
   catch (...) {
     TRACE("hold SDP offer creation failed\n");
@@ -1162,13 +1107,13 @@ void AmB2BMedia::setFirstStreamInput(bool a_leg, AmAudio *in)
     AudioStreamIterator i = audio.begin();
     if (a_leg) i->a.setInput(in);
     else i->b.setInput(in);
-    if (!processing_started) {
-      // try to start it
-      onSdpUpdate();
+    updateAudioStreams();
+  }
+  else {
+    if (in) {
+      ERROR("BUG: can't set %s leg's first stream input, no streams\n", a_leg ? "A": "B");
     }
   }
-  else ERROR("BUG: can't set %s leg's first stream input, no streams\n", a_leg ? "A": "B");
-  // FIXME: start processing if not started and streams in this leg are fully initialized ?
 }
 
 void AmB2BMedia::createHoldAnswer(bool a_leg, const AmSdp &offer, AmSdp &answer, bool use_zero_con)
@@ -1229,16 +1174,80 @@ void AmB2BMedia::setRtpLogger(msg_logger* _logger)
   for (RelayStreamIterator j = relay_streams.begin(); j != relay_streams.end(); ++j) (*j)->setLogger(logger);
 }
 
+void AmB2BMedia::setRelayDTMFReceiving(bool enabled) {
+  DBG("relay_streams.size() = %zd, audio_streams.size() = %zd\n", relay_streams.size(), audio.size());
+  for (RelayStreamIterator j = relay_streams.begin(); j != relay_streams.end(); j++) {
+    DBG("force_receive_dtmf %sabled for [%p]\n", enabled?"en":"dis", &(*j)->a);
+    DBG("force_receive_dtmf %sabled for [%p]\n", enabled?"en":"dis", &(*j)->b);
+    (*j)->a.force_receive_dtmf = enabled;
+    (*j)->b.force_receive_dtmf = enabled;
+  }
+
+  for (AudioStreamIterator j = audio.begin(); j != audio.end(); j++) {
+    DBG("force_receive_dtmf %sabled for [%p]\n", enabled?"en":"dis", j->a.getStream());
+    DBG("force_receive_dtmf %sabled for [%p]\n", enabled?"en":"dis", j->b.getStream());
+    if (NULL != j->a.getStream())
+      j->a.getStream()->force_receive_dtmf = enabled;
+    
+    if (NULL != j->b.getStream())
+      j->b.getStream()->force_receive_dtmf = enabled;
+  }
+}
+
+/** set receving of RTP/relay streams (not receiving=drop incoming packets) */
+void AmB2BMedia::setReceiving(bool receiving_a, bool receiving_b) {
+  AmLock lock(mutex); // TODO: is this necessary?
+
+  DBG("relay_streams.size() = %zd, audio_streams.size() = %zd\n", relay_streams.size(), audio.size());
+  for (RelayStreamIterator j = relay_streams.begin(); j != relay_streams.end(); j++) {
+    DBG("setReceiving(%s) A relay stream [%p]\n", receiving_a?"true":"false", &(*j)->a);
+    (*j)->a.setReceiving(receiving_a);
+    DBG("setReceiving(%s) B relay stream [%p]\n", receiving_b?"true":"false", &(*j)->b);
+    (*j)->b.setReceiving(receiving_b);
+  }
+
+  for (AudioStreamIterator j = audio.begin(); j != audio.end(); j++) {
+    DBG("setReceiving(%s) A audio stream [%p]\n", receiving_a?"true":"false", j->a.getStream());
+    j->a.setReceiving(receiving_a);
+    DBG("setReceiving(%s) B audio stream [%p]\n", receiving_b?"true":"false", j->b.getStream());
+    j->b.setReceiving(receiving_b);
+  }
+
+}
+
+void AmB2BMedia::pauseRelay() {
+  DBG("relay_streams.size() = %zd, audio_streams.size() = %zd\n", relay_streams.size(), audio.size());
+  relay_paused = true;
+  for (RelayStreamIterator j = relay_streams.begin(); j != relay_streams.end(); j++) {
+    (*j)->a.disableRawRelay();
+    (*j)->b.disableRawRelay();
+  }
+
+  for (AudioStreamIterator j = audio.begin(); j != audio.end(); j++) {
+    j->a.setRelayPaused(true);
+    j->b.setRelayPaused(true);
+  }
+}
+
+void AmB2BMedia::restartRelay() {
+  DBG("relay_streams.size() = %zd, audio_streams.size() = %zd\n", relay_streams.size(), audio.size());
+  relay_paused = false;
+  for (RelayStreamIterator j = relay_streams.begin(); j != relay_streams.end(); j++) {
+    (*j)->a.enableRawRelay();
+    (*j)->b.enableRawRelay();
+  }
+
+  for (AudioStreamIterator j = audio.begin(); j != audio.end(); j++) {
+    j->a.setRelayPaused(false);
+    j->b.setRelayPaused(false);
+  }
+}
+
 void AudioStreamData::debug()
 {
+  DBG("\tmuted: %s\n", muted ? "yes" : "no");
   if(stream) {
-    if(stream->hasLocalSocket() > 0)
-      DBG("\t<%i> <-> <%s:%i>", stream->getLocalPort(),
-	  stream->getRHost().c_str(), stream->getRPort());
-    else
-      DBG("\t<unbound> <-> <%s:%i>",
-	  stream->getRHost().c_str(),
-	  stream->getLocalPort());
+    stream->debug();
   }
   else
     DBG("\t<null> <-> <null>");
@@ -1248,34 +1257,29 @@ void AudioStreamData::debug()
 void AmB2BMedia::debug()
 {
   // walk through all the streams
-  DBG("B2B media session ('%s' <-> '%s'):",
-      a->getLocalTag().c_str(),
-      b->getLocalTag().c_str());
+  DBG("B2B media session %p ('%s' <-> '%s'):",
+      this,
+      a ? a->getLocalTag().c_str() : "?",
+      b ? b->getLocalTag().c_str() : "?");
+  DBG("\tOA status: %c%c / %c%c",
+      have_a_leg_local_sdp ? 'X' : '-',
+      have_a_leg_remote_sdp ? 'X' : '-',
+      have_b_leg_local_sdp ? 'X' : '-',
+      have_b_leg_remote_sdp ? 'X' : '-');
 
   for (AudioStreamIterator i = audio.begin(); i != audio.end(); ++i) {
-    DBG("relay stream:\n");
+    DBG(" - audio stream (A):\n");
     i->a.debug();
+    DBG(" - audio stream (B):\n");
     i->b.debug();
   }
 
   for (RelayStreamIterator j = relay_streams.begin(); 
        j != relay_streams.end(); ++j) {
 
-    DBG("relay stream:\n");
-    if((*j)->a.hasLocalSocket() > 0)
-      DBG("\t<%i> <-> <%s:%i>", (*j)->a.getLocalPort(),
-	  (*j)->a.getRHost().c_str(), (*j)->a.getRPort());
-    else
-      DBG("\t<unbound> <-> <%s:%i>",
-	  (*j)->a.getRHost().c_str(),
-	  (*j)->a.getRPort());
-
-    if((*j)->b.hasLocalSocket() > 0)
-      DBG("\t<%i> <-> <%s:%i>", (*j)->b.getLocalPort(),
-	  (*j)->b.getRHost().c_str(), (*j)->b.getRPort());
-    else
-      DBG("\t<unbound> <-> <%s:%i>",
-	  (*j)->b.getRHost().c_str(),
-	  (*j)->b.getRPort());
+    DBG(" - relay stream (A):\n");
+    (*j)->a.debug();
+    DBG(" - relay stream (B):\n");
+    (*j)->b.debug();
   }
 }
