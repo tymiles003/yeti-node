@@ -323,11 +323,6 @@ struct SBCCallProfile
     next_hop_1st_req(false)
   { }
 
-  ~SBCCallProfile()
-  {
-      DBG("~SBCCallProfile() this = %p",this);
-  }
-
   bool readFromConfiguration(const string& name, const string profile_file_name);
 
   bool operator==(const SBCCallProfile& rhs) const;
