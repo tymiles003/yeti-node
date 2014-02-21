@@ -15,12 +15,12 @@ SEMS_CFG_FILE="/etc/sems/sems.conf"
 
 # user to run SEMS as
 #DEBCONF-USER-START
-SEMS_USER="sems"
+SEMS_USER="root"
 #DEBCONF-USER-END
 
 # group to run SEMS as
 #DEBCONF-GROUP-START
-SEMS_GROUP="sems"
+SEMS_GROUP="root"
 #DEBCONF-GROUP-END
 
 # ser pidfile
