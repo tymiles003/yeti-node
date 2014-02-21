@@ -1146,6 +1146,7 @@ int AmConfig::finalizeIPConfig()
       return -1;
     }
     SIP_Ifs.push_back(intf);
+    setNetInterface(&(*SIP_Ifs.begin()));
     SIP_If_names["default"] = 0;
   }
 
@@ -1157,6 +1158,7 @@ int AmConfig::finalizeIPConfig()
       return -1;
     }
     RTP_Ifs.push_back(intf);
+    setNetInterface(&(*RTP_Ifs.begin()));
     RTP_If_names["default"] = 0;
   }
 
