@@ -599,17 +599,20 @@ int CdrThread::writecdrtofile(Cdr* cdr){
 		return -1;
 	}
 	ofstream &wf = *wfp.get();
+	Yeti::global_config &gc = Yeti::instance()->config;
 
 	wf << std::dec <<
 		//static fields
+	wv(gc.node_id) << wv(gc.pop_id) <<
 	wv(cdr->attempt_num) << wv(cdr->is_last) << wv(cdr->time_limit) <<
 	wv(cdr->legA_local_ip) << wv(cdr->legA_local_port) <<
 	wv(cdr->legA_remote_ip) << wv(cdr->legA_remote_port) <<
 	wv(cdr->legB_local_ip) << wv(cdr->legB_local_port) <<
 	wv(cdr->legB_remote_ip) << wv(cdr->legB_remote_port) <<
-	wv(cdr->start_time.tv_sec) << wv(cdr->connect_time.tv_sec) <<
-	wv(cdr->end_time.tv_sec) << wv(cdr->disconnect_code) <<
-	wv(cdr->disconnect_reason) << wv(cdr->disconnect_initiator);
+	wv(cdr->start_time.tv_sec) << wv(cdr->connect_time.tv_sec) << wv(cdr->end_time.tv_sec) <<
+	wv(cdr->disconnect_code) << wv(cdr->disconnect_reason) <<
+	wv(cdr->disconnect_initiator) <<
+	wv(cdr->disconnect_internal_code) << wv(cdr->disconnect_internal_reason);
 	if(cdr->is_last){
 		wf << 	wv(cdr->disconnect_rewrited_code) <<
 		wv(cdr->disconnect_rewrited_reason);
@@ -618,7 +621,11 @@ int CdrThread::writecdrtofile(Cdr* cdr){
 	}
 	wf << wv(cdr->orig_call_id) << wv(cdr->term_call_id) <<
 	wv(cdr->local_tag) << wv(cdr->msg_logger_path) <<
-	wv(cdr->log_rtp) << wv(cdr->log_sip);
+	wv(cdr->log_rtp) << wv(cdr->log_sip) <<
+	wv(join_str_vector(cdr->legA_incoming_payloads,",")) <<
+	wv(join_str_vector(cdr->legA_outgoing_payloads,",")) <<
+	wv(join_str_vector(cdr->legB_incoming_payloads,",")) <<
+	wv(join_str_vector(cdr->legB_outgoing_payloads,","));
 		//dynamic fields
 	list<string>::iterator	it = cdr->dyn_fields.begin(),
 							lit = cdr->dyn_fields.end();
