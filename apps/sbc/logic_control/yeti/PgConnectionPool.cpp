@@ -106,7 +106,7 @@ void PgConnectionPool::returnConnection(PgConnection* c,conn_stat stat){
 	if(return_connection){
 		connections_mut.lock();
 			connections.push_back(c);
-			size_t active_size = connections.size();
+			//size_t active_size = connections.size();
 			if(timerisset(&c->access_time)){
 				//returnConnection() called after getActiveConnection()
 				if(check){
@@ -203,6 +203,9 @@ PgConnection* PgConnectionPool::getActiveConnection(){
 
 
 void PgConnectionPool::run(){
+	bool succ;
+	string what;
+
 	DBG("PgCP %s thread starting\n",pool_name.c_str());
 	setThreadName("yeti-pg-cp");
 
@@ -229,6 +232,7 @@ void PgConnectionPool::run(){
 
 			// add connections until error occurs
 			while(m_failed_connections){
+				succ = false;
 				try {
 					PgConnection* conn = new PgConnection(conn_str);
 					if(conn->is_open()){
@@ -239,21 +243,30 @@ void PgConnectionPool::run(){
 							failed_connections--;
 						connections_mut.unlock();
 						reconnect_failed_alarm = false;
+						succ = true;
 					} else {
 						throw new pqxx::broken_connection("can't open connection");
 					}
 				} catch(const pqxx::broken_connection &exc){
+					what = exc.what();
+				} catch(pqxx::pqxx_exception &exc){
+					what = exc.base().what();
+				}
+				if(!succ){
 					if(!reconnect_failed_alarm)
-						ERROR("PgCP: %s: connection exception: %s",pool_name.c_str(),exc.what());
+						ERROR("PgCP: %s: connection exception: %s",
+							pool_name.c_str(),what.c_str());
 					exceptions_count++;
 					reconnect_failed_alarm = true;
 					if ((cfg.max_exceptions>0)&&(exceptions_count>cfg.max_exceptions)) {
-						ERROR("PgCP: %s: max exception count reached. Pool stopped.",pool_name.c_str());
+						ERROR("PgCP: %s: max exception count reached. Pool stopped.",
+							pool_name.c_str());
 						try_connect.set(false);
 						break;
 					}
+				} else {
+					m_failed_connections--;
 				}
-				m_failed_connections--;
 			}
 
 			connections_mut.lock();
