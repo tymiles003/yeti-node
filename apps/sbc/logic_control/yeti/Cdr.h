@@ -30,8 +30,7 @@ struct Cdr: public
 	bool is_last;
 
 	string msg_logger_path;
-	bool log_rtp;
-	bool log_sip;
+	int dump_level_id;
 
     int disconnect_initiator;
 

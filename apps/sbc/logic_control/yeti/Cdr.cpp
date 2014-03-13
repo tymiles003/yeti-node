@@ -67,8 +67,7 @@ void Cdr::init(){
     legA_local_ip = "";
 
 	msg_logger_path = "";
-	log_rtp = false;
-	log_sip = false;
+	dump_level_id = 0;
 
     time_limit = 0;
 
@@ -80,13 +79,12 @@ void Cdr::update_sql(const SqlCallProfile &profile){
     outbound_proxy = profile.outbound_proxy;
     dyn_fields = profile.dyn_fields;
     time_limit = profile.time_limit;
+    dump_level_id = profile.dump_level_id;
 }
 
 void Cdr::update_sbc(const SBCCallProfile &profile){
 	DBG("Cdr::%s(SBCCallProfile)",FUNC_NAME);
 	msg_logger_path = profile.get_logger_path();
-	log_rtp = profile.log_rtp;
-	log_sip = profile.log_sip;
 }
 
 void Cdr::update(const AmSipRequest &req){
@@ -261,8 +259,7 @@ Cdr::Cdr(const Cdr& cdr,const SqlCallProfile &profile){
 	local_tag = cdr.local_tag;
 
 	msg_logger_path = cdr.msg_logger_path;
-	log_rtp = cdr.log_rtp;
-	log_sip = cdr.log_sip;
+	dump_level_id = cdr.dump_level_id;
 }
 
 Cdr::Cdr(const SqlCallProfile &profile)

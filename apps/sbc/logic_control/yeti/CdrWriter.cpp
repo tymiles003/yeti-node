@@ -33,8 +33,7 @@ static const char *static_fields_names[] = {
 	"term_call_id",
 	"local_tag",
 	"msg_logger_path",
-	"log_rtp",
-	"log_sip",
+	"dump_level_id",
 	"legA_rx_payloads",
 	"legA_tx_payloads",
 	"legB_rx_payloads",
@@ -506,8 +505,7 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr){
 		invoc(cdr->term_call_id);
 		invoc(cdr->local_tag);
 		invoc(cdr->msg_logger_path);
-		invoc(cdr->log_rtp);
-		invoc(cdr->log_sip);
+		invoc(cdr->dump_level_id);
 
 		invoc(join_str_vector(cdr->legA_incoming_payloads,","));
 		invoc(join_str_vector(cdr->legA_outgoing_payloads,","));
@@ -621,7 +619,7 @@ int CdrThread::writecdrtofile(Cdr* cdr){
 	}
 	wf << wv(cdr->orig_call_id) << wv(cdr->term_call_id) <<
 	wv(cdr->local_tag) << wv(cdr->msg_logger_path) <<
-	wv(cdr->log_rtp) << wv(cdr->log_sip) <<
+	wv(cdr->dump_level_id) <<
 	wv(join_str_vector(cdr->legA_incoming_payloads,",")) <<
 	wv(join_str_vector(cdr->legA_outgoing_payloads,",")) <<
 	wv(join_str_vector(cdr->legB_incoming_payloads,",")) <<

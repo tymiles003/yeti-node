@@ -200,7 +200,7 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 	if (!readCodecPrefs(t)) return false;
 	if (!readTranscoder(t)) return false;
 
-	int dump_level_id = t["dump_level_id"].as<int>(0);
+	dump_level_id = t["dump_level_id"].as<int>(0);
 	log_rtp = dump_level_id&LOG_RTP_MASK;
 	log_sip = dump_level_id&LOG_SIP_MASK;
 
