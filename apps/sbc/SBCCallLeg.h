@@ -233,6 +233,7 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
   virtual void resumeAccepted();
   virtual void resumeRejected();
 
+  virtual int onSdpCompleted(const AmSdp& local, const AmSdp& remote);
   //int applySSTCfg(AmConfigReader& sst_cfg, const AmSipRequest* p_req);
 
   bool openLogger(const std::string &path);

@@ -89,6 +89,8 @@ class ExtendedCCInterface
 	// AmRtpStream callbacks
 	virtual void onRTPStreamDestroy(SBCCallLeg *call,AmRtpStream *stream) {}
 
+	// AmSipDialog callbacks
+	virtual void onSdpCompleted(SBCCallLeg *call, AmSdp& offer, AmSdp& answer) {}
     /** Possibility to influence messages relayed to the B2B peer leg.
       return value:
       - lower than 0 means error (returned upstream, the one

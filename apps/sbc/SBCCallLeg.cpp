@@ -1867,3 +1867,12 @@ void SBCCallLeg::computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &
     CallLeg::computeRelayMask(m, enable, mask);
   }
 }
+
+int SBCCallLeg::onSdpCompleted(const AmSdp& local, const AmSdp& remote){
+    AmSdp offer(local),answer(remote);
+    //give extended interfaces chance to transform sdp before relay mask will be computed
+    for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
+      (*i)->onSdpCompleted(this, offer, answer);
+    }
+    return CallLeg::onSdpCompleted(offer, answer);
+}
