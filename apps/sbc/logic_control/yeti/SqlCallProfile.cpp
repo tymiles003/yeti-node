@@ -6,7 +6,11 @@
 
 SqlCallProfile::SqlCallProfile():
 	aleg_override_id(0),
-	bleg_override_id(0)
+	bleg_override_id(0),
+	rtprelay_transparent_seqno(true),
+	rtprelay_transparent_ssrc(true),
+	rtprelay_dtmf_filtering(false),
+	rtprelay_dtmf_detection(false)
 { }
 
 SqlCallProfile::~SqlCallProfile(){ }
@@ -296,6 +300,10 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 				INFO("SBC:      RTP Relay interface B leg '%s'\n", rtprelay_interface.c_str());
 			}
 
+			INFO("SBC:      RTP Relay RTP DTMF filtering %sabled\n",
+				rtprelay_dtmf_filtering?"en":"dis");
+			INFO("SBC:      RTP Relay RTP DTMF detection %sabled\n",
+				rtprelay_dtmf_detection?"en":"dis");
 			INFO("SBC:      RTP Relay %s seqno\n",
 			rtprelay_transparent_seqno?"transparent":"opaque");
 			INFO("SBC:      RTP Relay %s SSRC\n",
