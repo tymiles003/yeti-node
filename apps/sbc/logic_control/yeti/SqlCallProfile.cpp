@@ -6,12 +6,13 @@
 
 SqlCallProfile::SqlCallProfile():
 	aleg_override_id(0),
-	bleg_override_id(0),
-	rtprelay_transparent_seqno(true),
-	rtprelay_transparent_ssrc(true),
-	rtprelay_dtmf_filtering(false),
-	rtprelay_dtmf_detection(false)
-{ }
+	bleg_override_id(0)
+{
+	rtprelay_transparent_seqno = true;
+	rtprelay_transparent_ssrc = true;
+	rtprelay_dtmf_filtering = false;
+	rtprelay_dtmf_detection = false;
+}
 
 SqlCallProfile::~SqlCallProfile(){ }
 
