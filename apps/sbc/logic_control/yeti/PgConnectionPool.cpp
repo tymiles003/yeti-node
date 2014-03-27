@@ -233,8 +233,9 @@ void PgConnectionPool::run(){
 			// add connections until error occurs
 			while(m_failed_connections){
 				succ = false;
+				PgConnection* conn = NULL;
 				try {
-					PgConnection* conn = new PgConnection(conn_str);
+					conn = new PgConnection(conn_str);
 					if(conn->is_open()){
 						prepare_queries(conn);
 						DBG("PgCP: %s: SQL connected. Backend pid: %d.",pool_name.c_str(),conn->backendpid());
@@ -253,6 +254,11 @@ void PgConnectionPool::run(){
 					what = exc.base().what();
 				}
 				if(!succ){
+					if(conn){
+						if(conn->is_open())
+							conn->disconnect();
+						delete conn;
+					}
 					if(!reconnect_failed_alarm)
 						ERROR("PgCP: %s: connection exception: %s",
 							pool_name.c_str(),what.c_str());
@@ -264,6 +270,9 @@ void PgConnectionPool::run(){
 						try_connect.set(false);
 						break;
 					}
+					if(gotostop)
+						break;
+					usleep(PG_CONN_POOL_RECONNECT_DELAY);
 				} else {
 					m_failed_connections--;
 				}
