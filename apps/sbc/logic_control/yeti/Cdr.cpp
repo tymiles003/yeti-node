@@ -72,6 +72,9 @@ void Cdr::init(){
     time_limit = 0;
 
 	attempt_num = 1;
+
+	legA_bytes_recvd = legB_bytes_recvd = 0;
+	legA_bytes_sent = legB_bytes_sent = 0;
 }
 
 void Cdr::update_sql(const SqlCallProfile &profile){
@@ -98,13 +101,18 @@ void Cdr::update(const AmSipRequest &req){
 }
 
 void Cdr::update(SBCCallLeg *call,AmRtpStream *stream){
-	DBG("Cdr::%s(AmSipRequest)",FUNC_NAME);
+	DBG("Cdr::%s(SBCCallLeg [%p], AmRtpStream [%p])",FUNC_NAME,
+		call,stream);
 	if(writed) return;
 	lock();
 	if(call->isALeg()){
 		stream->getPayloadsHistory(legA_incoming_payloads,legA_outgoing_payloads);
+		legA_bytes_recvd = stream->getRcvdBytes();
+		legA_bytes_sent = stream->getSentBytes();
 	} else {
 		stream->getPayloadsHistory(legB_incoming_payloads,legB_outgoing_payloads);
+		legB_bytes_recvd = stream->getRcvdBytes();
+		legB_bytes_sent = stream->getSentBytes();
 	}
 	unlock();
 }

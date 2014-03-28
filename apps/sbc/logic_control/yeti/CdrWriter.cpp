@@ -37,7 +37,12 @@ static const char *static_fields_names[] = {
 	"legA_rx_payloads",
 	"legA_tx_payloads",
 	"legB_rx_payloads",
-	"legB_tx_payloads"
+	"legB_tx_payloads",
+	"legA_rx_bytes",
+	"legA_tx_bytes",
+	"legB_rx_bytes",
+	"legB_tx_bytes"
+
 };
 
 static string join_str_vector(const vector<string> v,const string delim){
@@ -512,6 +517,11 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr){
 		invoc(join_str_vector(cdr->legB_incoming_payloads,","));
 		invoc(join_str_vector(cdr->legB_outgoing_payloads,","));
 
+		invoc(cdr->legA_bytes_recvd);
+		invoc(cdr->legA_bytes_sent);
+		invoc(cdr->legB_bytes_recvd);
+		invoc(cdr->legB_bytes_sent);
+
 		/* invocate dynamic fields  */
 		list<string>::iterator it = cdr->dyn_fields.begin();
 		for(;it!=cdr->dyn_fields.end();++it){
@@ -623,7 +633,9 @@ int CdrThread::writecdrtofile(Cdr* cdr){
 	wv(join_str_vector(cdr->legA_incoming_payloads,",")) <<
 	wv(join_str_vector(cdr->legA_outgoing_payloads,",")) <<
 	wv(join_str_vector(cdr->legB_incoming_payloads,",")) <<
-	wv(join_str_vector(cdr->legB_outgoing_payloads,","));
+	wv(join_str_vector(cdr->legB_outgoing_payloads,",")) <<
+	wv(cdr->legA_bytes_recvd) << wv(cdr->legA_bytes_sent) <<
+	wv(cdr->legB_bytes_recvd) << wv(cdr->legB_bytes_sent);
 		//dynamic fields
 	list<string>::iterator	it = cdr->dyn_fields.begin(),
 							lit = cdr->dyn_fields.end();

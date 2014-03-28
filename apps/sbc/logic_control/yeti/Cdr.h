@@ -64,6 +64,8 @@ struct Cdr: public
 
 	vector<string> legA_incoming_payloads,legB_incoming_payloads;
 	vector<string> legA_outgoing_payloads,legB_outgoing_payloads;
+	unsigned long legA_bytes_recvd, legB_bytes_recvd;
+	unsigned long legA_bytes_sent, legB_bytes_sent;
 
 	Cdr();
 	Cdr(const Cdr& cdr,const SqlCallProfile &profile);
