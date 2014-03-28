@@ -160,6 +160,8 @@ protected:
 
   std::vector<int> incoming_payloads;
   std::vector<int> outgoing_payloads;
+  unsigned long incoming_bytes;
+  unsigned long outgoing_bytes;
 
   struct PayloadMapping {
     // remote payload type
@@ -430,6 +432,8 @@ public:
   int getLastPayload() { return last_payload; }
   string getPayloadName(int payload_type);
   void getPayloadsHistory(std::vector<string> &incoming,std::vector<string> &outgoing);
+  unsigned long getRcvdBytes() { return incoming_bytes; }
+  unsigned long getSentBytes() { return outgoing_bytes; }
   /**
    * send a DTMF as RTP payload (RFC4733)
    * @param event event ID (e.g. key press), see rfc

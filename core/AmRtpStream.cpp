@@ -300,6 +300,7 @@ int AmRtpStream::compile_and_send(const int payload, bool marker, unsigned int t
   }
 
   add_if_no_exist(outgoing_payloads,rp.payload);
+  outgoing_bytes+=rp.getDataSize();
   if (logger) rp.logSent(logger, &l_saddr);
  
   return size;
@@ -420,7 +421,9 @@ AmRtpStream::AmRtpStream(AmSession* _s, int _if)
     relay_transparent_ssrc(true),
     relay_transparent_seqno(true),
     relay_filter_dtmf(false),
-    force_receive_dtmf(false)
+    force_receive_dtmf(false),
+    incoming_bytes(0),
+    outgoing_bytes(0)
 {
 
   memset(&r_saddr,0,sizeof(struct sockaddr_storage));
@@ -1041,6 +1044,7 @@ void AmRtpStream::recvPacket(int fd)
     int parse_res = 0;
 
     if (logger) p->logReceived(logger, &l_saddr);
+    incoming_bytes += p->getBufferSize();
 
     gettimeofday(&p->recv_time,NULL);
     
@@ -1149,6 +1153,7 @@ void AmRtpStream::relay(AmRtpPacket* p)
     if (logger) p->logSent(logger, &l_saddr);
 	if(session) session->onAfterRTPRelay(p,&r_saddr);
 	add_if_no_exist(outgoing_payloads,p->payload);
+	outgoing_bytes += p->getBufferSize();
   }
 }
 
