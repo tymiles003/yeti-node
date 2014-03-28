@@ -1660,7 +1660,10 @@ void Yeti::reload(const AmArg& args, AmArg& ret){
 
 void Yeti::closeCdrFiles(const AmArg& args, AmArg& ret){
 	router_mutex.lock();
-		router->closeCdrFiles();
+		set<SqlRouter *>::const_iterator i = routers.begin();
+		for(;i!=routers.end();++i){
+			if(*i) (*i)->closeCdrFiles();
+		}
 	router_mutex.unlock();
 	ret.push(200);
 	ret.push("OK");
