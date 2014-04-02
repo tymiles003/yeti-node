@@ -470,15 +470,10 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req, pqxx::conne
 		const pqxx::result::tuple &t = (*rit);
 		SqlCallProfile* profile = new SqlCallProfile();
 		//read profile
-		if(!profile->readFromTuple(t)){
+		if(!profile->readFromTuple(t,dyn_fields)){
 			delete profile;
 			delete entry;
 			throw GetProfileException(FC_READ_FROM_TUPLE_FAILED,false);
-		}
-		//fill dyn fields
-		DynFieldsT_iterator it = dyn_fields.begin();
-		for(;it!=dyn_fields.end();++it){
-			profile->dyn_fields.push_back(t[it->first].c_str());
 		}
 		profile->infoPrint(dyn_fields);
 		//evaluate it
@@ -498,7 +493,7 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req, pqxx::conne
 void SqlRouter::align_cdr(Cdr &cdr){
     DynFieldsT_iterator it = dyn_fields.begin();
     for(;it!=dyn_fields.end();++it){
-        cdr.dyn_fields.push_back("0");
+        cdr.dyn_fields.push(AmArg());
     }
 }
 

@@ -32,18 +32,20 @@ struct SqlCallProfile
 	int aleg_override_id,bleg_override_id;
 	int dump_level_id;
 
-	list<string> dyn_fields;
+	AmArg dyn_fields;
+
 	string resources;
 	ResourceList rl;
 
 	SqlCallProfile();
 	~SqlCallProfile();
 
-	bool readFromTuple(const pqxx::result::tuple &t);
+	bool readFromTuple(const pqxx::result::tuple &t,const DynFieldsT &df);
 	bool readFilter(const pqxx::result::tuple &t, const char* cfg_key_filter,
 			vector<FilterEntry>& filter_list, bool keep_transparent_entry);
 	bool readCodecPrefs(const pqxx::result::tuple &t);
 	bool readTranscoder(const pqxx::result::tuple &t);
+	bool readDynFields(const pqxx::result::tuple &t,const DynFieldsT &df);
 	bool column_exist(const pqxx::result::tuple &t,string column_name);
 	bool eval_resources();
 	bool eval();

@@ -524,10 +524,9 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr){
 		invoc(cdr->legB_bytes_sent);
 
 		/* invocate dynamic fields  */
-		list<string>::iterator it = cdr->dyn_fields.begin();
-		for(;it!=cdr->dyn_fields.end();++it){
-			invoc((*it));
-		}
+		const size_t n = cdr->dyn_fields.size();
+		for(unsigned int k = 0;k<n;++k)
+			invoc_AmArg(invoc,cdr->dyn_fields.get(k));
 		r = invoc.exec();
 		if (r.size()!=0&&0==r[0][0].as<int>()){
 			ret = 0;
@@ -638,15 +637,30 @@ int CdrThread::writecdrtofile(Cdr* cdr){
 	wv(cdr->legA_bytes_recvd) << wv(cdr->legA_bytes_sent) <<
 	wv(cdr->legB_bytes_recvd) << wv(cdr->legB_bytes_sent);
 		//dynamic fields
-	list<string>::iterator	it = cdr->dyn_fields.begin(),
-							lit = cdr->dyn_fields.end();
-	lit--;
-	for(;it!=lit;++it)
-		wf << wv(*it);
-	wf << "'" << *lit << "'" << endl;
+	int n = cdr->dyn_fields.size()-1;
+	for(int k = 0;k<n;k++)
+		wf << wv(AmArg::print(cdr->dyn_fields[k]));
+	wf << "'" << AmArg::print(cdr->dyn_fields[n]) << "'" << endl;
 	wf.flush();
 	stats.writed_cdrs++;
 	return 0;
+}
+
+bool CdrThread::invoc_AmArg(pqxx::prepare::invocation &invoc,const AmArg &arg){
+	short type = arg.getType();
+	AmArg a;
+	switch(type){
+	case AmArg::Int:      { invoc(arg.asInt()); } break;
+	case AmArg::LongLong: { invoc(arg.asLongLong()); } break;
+	case AmArg::Bool:     { invoc(arg.asBool()); } break;
+	case AmArg::CStr:     { invoc(arg.asCStr()); } break;
+	case AmArg::Undef:    { invoc(); } break;
+	default: {
+		WARN("invoc_AmArg. unhandled AmArg type %s",a.t2str(type));
+		invoc();
+	}
+	}
+	return true;
 }
 
 int CdrThreadCfg::cfg2CdrThCfg(AmConfigReader& cfg, string& prefix){

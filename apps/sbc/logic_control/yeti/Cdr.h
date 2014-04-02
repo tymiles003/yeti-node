@@ -59,7 +59,7 @@ struct Cdr: public
     string local_tag;
     int time_limit;
 
-    list<string> dyn_fields;
+    AmArg dyn_fields;
     string outbound_proxy;
 
 	vector<string> legA_incoming_payloads,legB_incoming_payloads;

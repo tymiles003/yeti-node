@@ -26,5 +26,6 @@ typedef PreparedQueriesT::iterator PreparedQueriesT_iterator;
 
 typedef list< pair<string,string> > DynFieldsT;
 typedef DynFieldsT::iterator DynFieldsT_iterator;
+typedef DynFieldsT::const_iterator DynFieldsT_const_iterator;
 
 #endif

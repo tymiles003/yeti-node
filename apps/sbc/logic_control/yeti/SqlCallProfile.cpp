@@ -16,7 +16,7 @@ SqlCallProfile::SqlCallProfile():
 
 SqlCallProfile::~SqlCallProfile(){ }
 
-bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
+bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT &df){
 
 	profile_file = "SQL";
 
@@ -204,6 +204,7 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t){
 
 	if (!readCodecPrefs(t)) return false;
 	if (!readTranscoder(t)) return false;
+	if(!readDynFields(t,df)) return false;
 
 	dump_level_id = t["dump_level_id"].as<int>(0);
 	log_rtp = dump_level_id&LOG_RTP_MASK;
@@ -366,13 +367,11 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 		INFO("SBC:      static_codecs_bleg_id: %i\n", static_codecs_bleg_id);
 		INFO("SBC:      aleg_single_codec: '%s'\n", aleg_single_codec?"yes":"no");
 
-		list<string>::const_iterator dit = dyn_fields.begin();
 		DynFieldsT::const_iterator dfit = df.begin();
-		while(dit!=dyn_fields.end()){
+		for(unsigned int k = 0;k<dyn_fields.size();k++){
 			INFO("SBC:      dynamic_field['%s']: '%s'\n",
 				 dfit->first.c_str(),
-				 dit->c_str());
-			++dit;
+				 AmArg::print(dyn_fields.get(k)).c_str());
 			++dfit;
 		}
 
@@ -439,6 +438,36 @@ bool SqlCallProfile::readTranscoder(const pqxx::result::tuple &t){
 	transcoder.audio_codecs_norelay_str = t["prefer_transcoding_for_codecs"].c_str();
 	transcoder.audio_codecs_norelay_aleg_str = t["prefer_transcoding_for_codecs_aleg"].c_str();
 
+	return true;
+}
+
+bool SqlCallProfile::readDynFields(const pqxx::result::tuple &t,const DynFieldsT &df){
+	dyn_fields.assertArray(df.size());
+	DynFieldsT_const_iterator it = df.begin();
+	int k = 0;
+	for(;it!=df.end();++it,++k){
+		const string &type = it->second;
+		const string &name = it->first;
+		if(t[name].is_null()){
+			dyn_fields[k] = AmArg();
+			continue;
+		}
+		if(type=="varchar"){
+			dyn_fields[k] = t[name].c_str();
+		} else if(type=="integer"){
+			dyn_fields[k] = t[name].as<int>();
+		} else if(type=="bigint"){
+			dyn_fields[k] = t[name].as<long long>();
+		} else if(type=="boolean"){
+			dyn_fields[k] = t[name].as<bool>();
+		} else {
+			WARN("unhandled sql type '%s'. consider it as varchar",type.c_str());
+			dyn_fields[k] = t[name].c_str();
+		}
+		/*DBG("name = %s, type = %s, arg = %s",
+			name.c_str(),type.c_str(),
+			dyn_fields[k].print(dyn_fields[k]).c_str());*/
+	}
 	return true;
 }
 

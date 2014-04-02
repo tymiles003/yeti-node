@@ -131,10 +131,10 @@ void CdrList::cdr2arg(const Cdr *cdr,const SqlRouter *router, AmArg& arg){
 
 	const DynFieldsT &router_dyn_fields = router->getDynFields();
 	DynFieldsT::const_iterator it = router_dyn_fields.begin();
-	list<string>::const_iterator fit = cdr->dyn_fields.begin();
-	for(;it!=router_dyn_fields.end();++it){
+	const size_t n = cdr->dyn_fields.size();
+	for(unsigned int k = 0;k<n;++k){
 		string field_name = it->first;
-		arg[field_name] = *fit;
-		fit++;
+		arg[field_name] = cdr->dyn_fields.get(k);
+		++it;
 	}
 }

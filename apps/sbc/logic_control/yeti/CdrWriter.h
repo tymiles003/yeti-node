@@ -55,6 +55,7 @@ class CdrThread : public AmThread{
 	void prepare_queries(pqxx::connection *c);
 	int writecdr(pqxx::connection* conn,Cdr* cdr);
 	int writecdrtofile(Cdr* cdr);
+	bool invoc_AmArg(pqxx::prepare::invocation &invoc,const AmArg &arg);
 	bool openfile();
 	void write_header();
 	bool gotostop;
