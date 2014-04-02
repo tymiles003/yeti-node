@@ -11,6 +11,8 @@ int raw_sender::rsock = -1;
 
 int raw_sender::init()
 {
+  int rcv_buf_size = 0;
+
   if(rsock >= 0) {
     return 0;
   }
@@ -19,17 +21,23 @@ int raw_sender::init()
   if(rsock < 0) {
     if(errno == EPERM) {
       ERROR("SEMS must be running as root to be able to use raw sockets.");
-      ERROR("-> raw socket usage will be deactivated.");
-      return -1;
+      goto err;
     }
     else {
       ERROR("raw_udp_socket(): %s",strerror(errno));
-      ERROR("-> raw socket usage will be deactivated.");
-      return -1;
+      goto err;
     }
   }
 
+  if(setsockopt(rsock, SOL_SOCKET, SO_RCVBUF, &rcv_buf_size, sizeof(rcv_buf_size)) < 0) {
+      ERROR("setsockopt(): %s",strerror(errno));
+      goto err;
+  }
+
   return 0;
+err:
+  ERROR("-> raw socket usage will be deactivated.");
+  return -1;
 }
 
 int raw_sender::send(const char* buf, unsigned int len, int sys_if_idx,
