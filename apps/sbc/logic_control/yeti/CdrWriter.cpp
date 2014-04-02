@@ -5,44 +5,43 @@
 #include "Version.h"
 #include "yeti.h"
 
-static const char *static_fields_names[] = {
-	"node_id",
-	"pop_id",
-	"attempt_num",
-	"is_last",
-	"time_limit",
-	"legA_local_ip",
-	"legA_local_port",
-	"legA_remote_ip",
-	"legA_remote_port",
-	"legB_local_ip",
-	"legB_local_port",
-	"legB_remote_ip",
-	"legB_remote_port",
-	"start_time",
-	"connect_time",
-	"end_time",
-	"disconnect_code",
-	"disconnect_reason",
-	"disconnect_initiator",
-	"disconnect_intermediate_code",
-	"disconnect_intermediate_reason",
-	"disconnect_rewrited_code",
-	"disconnect_rewrited_reason",
-	"orig_call_id",
-	"term_call_id",
-	"local_tag",
-	"msg_logger_path",
-	"dump_level_id",
-	"legA_rx_payloads",
-	"legA_tx_payloads",
-	"legB_rx_payloads",
-	"legB_tx_payloads",
-	"legA_rx_bytes",
-	"legA_tx_bytes",
-	"legB_rx_bytes",
-	"legB_tx_bytes"
-
+const static_field cdr_static_fields[] = {
+	{ "node_id", "integer" },
+	{ "pop_id", "integer" },
+	{ "attempt_num", "integer" },
+	{ "is_last", "boolean" },
+	{ "time_limit", "integer" },
+	{ "legA_local_ip", "inet" },
+	{ "legA_local_port", "integer" },
+	{ "legA_remote_ip", "inet" },
+	{ "legA_remote_port", "integer" },
+	{ "legB_local_ip", "inet" },
+	{ "legB_local_port", "integer" },
+	{ "legB_remote_ip", "inet" },
+	{ "legB_remote_port", "integer" },
+	{ "start_time", "bigint" },
+	{ "connect_time", "bigint" },
+	{ "end_time", "bigint" },
+	{ "disconnect_code", "integer" },
+	{ "disconnect_reason", "varchar" },
+	{ "disconnect_initiator", "integer" },
+	{ "disconnect_intermediate_code", "integer" },
+	{ "disconnect_intermediate_reason", "varchar" },
+	{ "disconnect_rewrited_code", "integer" },
+	{ "disconnect_rewrited_reason", "varchar" },
+	{ "orig_call_id", "varchar" },
+	{ "term_call_id", "varchar" },
+	{ "local_tag", "varchar" },
+	{ "msg_logger_path", "varchar" },
+	{ "dump_level_id", "integer" },
+	{ "legA_rx_payloads", "varchar" },
+	{ "legA_tx_payloads", "varchar" },
+	{ "legB_rx_payloads", "varchar" },
+	{ "legB_tx_payloads", "varchar" },
+	{ "legA_rx_bytes", "integer" },
+	{ "legA_tx_bytes", "integer" },
+	{ "legB_rx_bytes", "integer" },
+	{ "legB_tx_bytes", "integer" },
 };
 
 static string join_str_vector(const vector<string> v,const string delim){
@@ -73,7 +72,8 @@ int CdrWriter::configure(CdrWriterCfg& cfg)
 	int param_num = 1;
 	//static params
 	for(;param_num<=WRITECDR_STATIC_FIELDS_COUNT;param_num++){
-		DBG("CdrWriterArg:     %d: %s : varchar [static]",param_num,static_fields_names[param_num-1]);
+		const static_field &sf = cdr_static_fields[param_num-1];
+		DBG("CdrWriterArg:     %d: %s : %s [static]",param_num,sf.name,sf.type);
 	}
 	//dynamic params
 	DynFieldsT_iterator dit = config.dyn_fields.begin();
@@ -133,7 +133,8 @@ void CdrWriter::getConfig(AmArg &arg){
 	int param_num = 1;
 	//static params
 	for(;param_num<=WRITECDR_STATIC_FIELDS_COUNT;param_num++){
-		params.push(int2str(param_num)+": "+string(static_fields_names[param_num-1])+" : "+"varchar");
+		const static_field &sf = cdr_static_fields[param_num-1];
+		params.push(int2str(param_num)+": "+string(sf.name)+" : "+string(sf.type));
 	}
 	//dynamic params
 	DynFieldsT_iterator dit = config.dyn_fields.begin();
@@ -590,7 +591,7 @@ void CdrThread::write_header(){
 	wf << "#fields_descr: ";
 	for(int i = 0;i<WRITECDR_STATIC_FIELDS_COUNT;i++){
 		if(i) wf << ",";
-		wf << "'" << static_fields_names[i] << "'";
+		wf << "'" << cdr_static_fields[i].name << "'";
 	}
 		//dynamic fields names
 	DynFieldsT_iterator dit = config.dyn_fields.begin();

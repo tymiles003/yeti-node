@@ -16,6 +16,27 @@
 #include "DbTypes.h"
 #include "yeti.h"
 
+const static_field profile_static_fields[] = {
+    { "node_id", "integer" },
+    { "pop_id", "integer" },
+    { "remote_ip", "inet" },
+    { "remote_port", "integer" },
+    { "local_ip", "inet" },
+    { "local_port", "integer" },
+    { "from_dsp", "varchar" },
+    { "from_name", "varchar" },
+    { "from_domain", "varchar" },
+    { "from_port", "integer" },
+    { "to_name", "varchar" },
+    { "to_domain", "varchar" },
+    { "to_port", "integer" },
+    { "contact_name", "varchar" },
+    { "contact_domain", "varchar" },
+    { "contact_port", "integer" },
+    { "uri_name", "varchar" },
+    { "uri_domain", "varchar" },
+};
+
 SqlRouter::SqlRouter():
   master_pool(NULL),
   slave_pool(NULL),
@@ -79,19 +100,31 @@ int SqlRouter::db_configure(AmConfigReader& cfg){
 	int ret = 1;
 try {
 	int n;
+	PreparedQueryArgs profile_types,cdr_types;
 		//load config from db
 	string sql_query,prefix("master");
 	dbc.cfg2dbcfg(cfg,prefix);
+
+	//fill arg types for static fields
+	for(int k = 0;k<GETPROFILE_STATIC_FIELDS_COUNT;k++)
+		profile_types.push_back(profile_static_fields[k].type);
+	for(int k = 0;k<WRITECDR_STATIC_FIELDS_COUNT;k++)
+		cdr_types.push_back(cdr_static_fields[k].type);
+
 	pqxx::connection c(dbc.conn_str());
 	{
 		pqxx::nontransaction t(c);
 		pqxx::result r = t.exec("SELECT * from "+getprofile_schema+".load_interface_out()");
 		for(pqxx::result::size_type i = 0; i < r.size();++i){
 			const pqxx::result::tuple &t = r[i];
+			const char *vartype = t["vartype"].c_str();
+			const char *varname = t["varname"].c_str();
 			DBG("load_interface_out:     %ld: %s : %s, %s",i,
-				t["varname"].c_str(),t["vartype"].c_str(),t["forcdr"].c_str());
-			if(true==t["forcdr"].as<bool>())
-				dyn_fields.push_back(pair<string,string>(t["varname"].c_str(),t["vartype"].c_str()));
+				varname,vartype,t["forcdr"].c_str());
+			if(true==t["forcdr"].as<bool>()){
+				dyn_fields.push_back(pair<string,string>(varname,vartype));
+				cdr_types.push_back(vartype);
+			}
 		}
 	}
 	{
@@ -99,25 +132,41 @@ try {
 		pqxx::result r = t.exec("SELECT * from "+getprofile_schema+".load_interface_in()");
 		for(pqxx::result::size_type i = 0; i < r.size();++i){
 			const pqxx::result::tuple &t = r[i];
+			const char *vartype = t["vartype"].c_str();
 			DBG("load_interface_in:     %ld: %s : %s",i,
-				t["varname"].c_str(),t["vartype"].c_str());
+				t["varname"].c_str(),vartype);
 			used_header_fields.push_back(UsedHeaderField(t));
+			profile_types.push_back(vartype);
 		}
 	}
 	c.disconnect();
 
+	{PreparedQueryArgs_iterator i = profile_types.begin();
+	while(i!=profile_types.end()){
+		ERROR("profile_types: %s",i->c_str());
+		++i;
+	}}
+	{PreparedQueryArgs_iterator i = cdr_types.begin();
+	while(i!=cdr_types.end()){
+		ERROR("cdr_types: %s",i->c_str());
+		++i;
+	}}
+
+
 		//apply them
 	sql_query = "SELECT * FROM "+getprofile_schema+"."+getprofile_function+"($1";
-		n = GETPROFILE_STATIC_FIELDS_COUNT+used_header_fields.size();
+		//n = GETPROFILE_STATIC_FIELDS_COUNT+used_header_fields.size();
+		n = profile_types.size();
 		for(int i = 2;i<=n;i++) sql_query.append(",$"+int2str(i));
 		sql_query.append(");");
-	prepared_queries["getprofile"] = pair<string,int>(sql_query,n);
+	prepared_queries["getprofile"] = pair<string,PreparedQueryArgs>(sql_query,profile_types);
 
 	sql_query = "SELECT "+writecdr_schema+"."+writecdr_function+"($1";
-		n = WRITECDR_STATIC_FIELDS_COUNT+dyn_fields.size();
+		//n = WRITECDR_STATIC_FIELDS_COUNT+dyn_fields.size();
+		n =  cdr_types.size();
 		for(int i = 2;i<=n;i++) sql_query.append(",$"+int2str(i));
 		sql_query.append(");");
-	cdr_prepared_queries["writecdr"] = pair<string,int>(sql_query,n);
+	cdr_prepared_queries["writecdr"] = pair<string,PreparedQueryArgs>(sql_query,cdr_types);
 
 	ret = 0;
 

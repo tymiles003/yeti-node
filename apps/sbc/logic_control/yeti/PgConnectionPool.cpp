@@ -408,8 +408,9 @@ void PgConnectionPool::prepare_queries(PgConnection *c){
 	PreparedQueriesT::iterator it = cfg.prepared_queries.begin();
 	for(;it!=cfg.prepared_queries.end();++it){
 		pqxx::prepare::declaration d = c->prepare(it->first,it->second.first);
-		for(int i = 0;i<it->second.second;i++){
-			d("varchar",pqxx::prepare::treat_direct);
+		PreparedQueryArgs_iterator ait = it->second.second.begin();
+		for(;ait!=it->second.second.end();++ait){
+			d(*ait,pqxx::prepare::treat_direct);
 		}
 		c->prepare_now(it->first);
 	}
