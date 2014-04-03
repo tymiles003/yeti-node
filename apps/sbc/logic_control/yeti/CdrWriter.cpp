@@ -457,15 +457,52 @@ int CdrThread::connectdb(){
 	return ret;
 }
 
+void CdrThread::dbg_writecdr(AmArg &fields_values,AmArg &dyn_fields){
+	int k = 0;
+	//static fields
+	for(int j = 0;j<WRITECDR_STATIC_FIELDS_COUNT;j++,k++){
+		AmArg &a = fields_values.get(k);
+		const static_field &f = cdr_static_fields[j];
+		DBG("%d: %s[%s] -> %s[%s]",
+			k,f.name,f.type,
+			AmArg::print(a).c_str(),
+			a.t2str(a.getType()));
+	}
+	//dynamic fields
+	const size_t n = dyn_fields.size();
+	const size_t m = config.dyn_fields.size();
+	if(m!=n){
+		ERROR("mismatched count of configured and actually gained dynamic fields."
+			  "cfg: %ld, actually: %ld",m,n);
+		return;
+	}
+	DynFieldsT_const_iterator it = config.dyn_fields.begin();
+	for(int j = 0;it!=config.dyn_fields.end();++it,++j,++k){
+		AmArg &a = dyn_fields.get(j);
+		const DynField &f = *it;
+		DBG("%d: %s[%s] -> %s[%s]",
+			k,f.first.c_str(),f.second.c_str(),
+			AmArg::print(a).c_str(),
+			a.t2str(a.getType()));
+	}
+}
+
 int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr){
+#define invoc_field(field_value)\
+	fields_values.push(AmArg(field_value));\
+	invoc(field_value);
+
 	DBG("%s[%p](conn = %p,cdr = %p)",FUNC_NAME,this,conn,cdr);
 	int ret = 1;
 	Yeti::global_config &gc = Yeti::instance()->config;
+	AmArg fields_values;
 
 	if(conn==NULL){
 		ERROR("writecdr() we got NULL connection pointer.");
 		return 1;
 	}
+
+	fields_values.assertArray();
 
 	stats.tried_cdrs++;
 	try{
@@ -479,49 +516,49 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr){
 
 		pqxx::prepare::invocation invoc = tnx.prepared("writecdr");
 		/* invocate static fields */
-		invoc(gc.node_id);
-		invoc(gc.pop_id);
-		invoc(cdr->attempt_num);
-		invoc(cdr->is_last);
-		invoc(cdr->time_limit);
-		invoc(cdr->legA_local_ip);
-		invoc(cdr->legA_local_port);
-		invoc(cdr->legA_remote_ip);
-		invoc(cdr->legA_remote_port);
-		invoc(cdr->legB_local_ip);
-		invoc(cdr->legB_local_port);
-		invoc(cdr->legB_remote_ip);
-		invoc(cdr->legB_remote_port);
-		invoc(cdr->start_time.tv_sec);
-		invoc(cdr->connect_time.tv_sec);
-		invoc(cdr->end_time.tv_sec);
-		invoc(cdr->disconnect_code);
-		invoc(cdr->disconnect_reason);
-		invoc(cdr->disconnect_initiator);
-		invoc(cdr->disconnect_internal_code);
-		invoc(cdr->disconnect_internal_reason);
+		invoc_field(gc.node_id);
+		invoc_field(gc.pop_id);
+		invoc_field(cdr->attempt_num);
+		invoc_field(cdr->is_last);
+		invoc_field(cdr->time_limit);
+		invoc_field(cdr->legA_local_ip);
+		invoc_field(cdr->legA_local_port);
+		invoc_field(cdr->legA_remote_ip);
+		invoc_field(cdr->legA_remote_port);
+		invoc_field(cdr->legB_local_ip);
+		invoc_field(cdr->legB_local_port);
+		invoc_field(cdr->legB_remote_ip);
+		invoc_field(cdr->legB_remote_port);
+		invoc_field(cdr->start_time.tv_sec);
+		invoc_field(cdr->connect_time.tv_sec);
+		invoc_field(cdr->end_time.tv_sec);
+		invoc_field(cdr->disconnect_code);
+		invoc_field(cdr->disconnect_reason);
+		invoc_field(cdr->disconnect_initiator);
+		invoc_field(cdr->disconnect_internal_code);
+		invoc_field(cdr->disconnect_internal_reason);
 		if(cdr->is_last){
-			invoc(cdr->disconnect_rewrited_code);
-			invoc(cdr->disconnect_rewrited_reason);
+			invoc_field(cdr->disconnect_rewrited_code);
+			invoc_field(cdr->disconnect_rewrited_reason);
 		} else {
-			invoc(0);
-			invoc("");
+			invoc_field(0);
+			invoc_field("");
 		}
-		invoc(cdr->orig_call_id);
-		invoc(cdr->term_call_id);
-		invoc(cdr->local_tag);
-		invoc(cdr->msg_logger_path);
-		invoc(cdr->dump_level_id);
+		invoc_field(cdr->orig_call_id);
+		invoc_field(cdr->term_call_id);
+		invoc_field(cdr->local_tag);
+		invoc_field(cdr->msg_logger_path);
+		invoc_field(cdr->dump_level_id);
 
-		invoc(join_str_vector(cdr->legA_incoming_payloads,","));
-		invoc(join_str_vector(cdr->legA_outgoing_payloads,","));
-		invoc(join_str_vector(cdr->legB_incoming_payloads,","));
-		invoc(join_str_vector(cdr->legB_outgoing_payloads,","));
+		invoc_field(join_str_vector(cdr->legA_incoming_payloads,","));
+		invoc_field(join_str_vector(cdr->legA_outgoing_payloads,","));
+		invoc_field(join_str_vector(cdr->legB_incoming_payloads,","));
+		invoc_field(join_str_vector(cdr->legB_outgoing_payloads,","));
 
-		invoc(cdr->legA_bytes_recvd);
-		invoc(cdr->legA_bytes_sent);
-		invoc(cdr->legB_bytes_recvd);
-		invoc(cdr->legB_bytes_sent);
+		invoc_field(cdr->legA_bytes_recvd);
+		invoc_field(cdr->legA_bytes_sent);
+		invoc_field(cdr->legB_bytes_recvd);
+		invoc_field(cdr->legB_bytes_sent);
 
 		/* invocate dynamic fields  */
 		const size_t n = cdr->dyn_fields.size();
@@ -533,10 +570,12 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr){
 		}
 	} catch(const pqxx::pqxx_exception &e){
 		DBG("SQL exception on CdrWriter thread: %s",e.base().what());
+		dbg_writecdr(fields_values,cdr->dyn_fields);
 		conn->disconnect();
 		stats.db_exceptions++;
 	}
 	return ret;
+#undef invoc_field
 }
 
 bool CdrThread::openfile(){

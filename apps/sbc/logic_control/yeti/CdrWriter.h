@@ -53,6 +53,7 @@ class CdrThread : public AmThread{
 	int _connectdb(pqxx::connection **conn,string conn_str);
 	int connectdb();
 	void prepare_queries(pqxx::connection *c);
+	void dbg_writecdr(AmArg &fields_values,AmArg &dyn_fields);
 	int writecdr(pqxx::connection* conn,Cdr* cdr);
 	int writecdrtofile(Cdr* cdr);
 	bool invoc_AmArg(pqxx::prepare::invocation &invoc,const AmArg &arg);

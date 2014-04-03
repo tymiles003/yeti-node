@@ -24,7 +24,8 @@ typedef PreparedQueryArgs::iterator PreparedQueryArgs_iterator;
 typedef map<string, pair<string,PreparedQueryArgs> > PreparedQueriesT;
 typedef PreparedQueriesT::iterator PreparedQueriesT_iterator;
 
-typedef list< pair<string,string> > DynFieldsT;
+typedef pair<string,string> DynField;
+typedef list<DynField> DynFieldsT;
 typedef DynFieldsT::iterator DynFieldsT_iterator;
 typedef DynFieldsT::const_iterator DynFieldsT_const_iterator;
 

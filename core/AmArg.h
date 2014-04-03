@@ -149,6 +149,11 @@ class AmArg
     v_int(v)
     { }
 
+ AmArg(const long unsigned int& v)
+   : type(LongLong),
+    v_long(v)
+    { }
+
  AmArg(const long long int& v)
    : type(LongLong),
     v_long(v)
