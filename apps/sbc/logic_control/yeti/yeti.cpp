@@ -672,10 +672,14 @@ bool Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
 				int2str(config.node_id) << ".pcap";
 		profile.set_logger_path(ss.str());
 		cdr->update_sbc(profile);
+	} else {
+		SBCCallProfile &profile = call->getCallProfile();
+		if(!profile.callid.empty()){
+			string id = AmSession::getNewId();
+			replace(profile.callid,"%uuid",id);
+		}
 	}
-
 	cdr->update(*call);
-
 	return true;
 }
 

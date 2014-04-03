@@ -140,7 +140,8 @@ void Cdr::update(SBCCallLeg &leg){
         orig_call_id = leg.getCallID();
     } else {
         //B leg related variables
-        term_call_id = leg.getCallID();
+        SBCCallProfile &profile = leg.getCallProfile();
+        term_call_id = profile.callid.empty()? leg.getCallID() : profile.callid;
     }
     unlock();
 }
