@@ -460,6 +460,8 @@ bool SqlCallProfile::readDynFields(const pqxx::result::tuple &t,const DynFieldsT
 			dyn_fields[k] = t[name].as<long long>();
 		} else if(type=="boolean"){
 			dyn_fields[k] = t[name].as<bool>();
+		} else if(type=="inet"){
+			dyn_fields[k] = t[name].c_str();
 		} else {
 			WARN("unhandled sql type '%s'. consider it as varchar",type.c_str());
 			dyn_fields[k] = t[name].c_str();

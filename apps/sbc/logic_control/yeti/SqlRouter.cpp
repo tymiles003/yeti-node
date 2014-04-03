@@ -333,24 +333,12 @@ void SqlRouter::getprofiles(const AmSipRequest &req,CallCtx &ctx)
 		DBG("GetProfile exception on %s SQLThread: fatal = %d code  = '%d'",
 			pool->pool_name.c_str(),
 			e.fatal,e.code);
+		refuse_code = e.code;
 		if(e.fatal){
 			pool->returnConnection(conn,PgConnectionPool::CONN_COMM_ERR);
 		} else {
 			pool->returnConnection(conn);
-			refuse_code = e.code;
 		}
-	} catch(pqxx::broken_connection &e){
-		pool->returnConnection(conn,PgConnectionPool::CONN_COMM_ERR);
-		refuse_code = FC_DB_BROKEN_EXCEPTION;
-		DBG("SQL exception on %s SQLThread: pqxx::broken_connection.",pool->pool_name.c_str());
-	} catch(pqxx::conversion_error &e){
-		pool->returnConnection(conn,PgConnectionPool::CONN_DB_EXCEPTION);
-		refuse_code =  FC_DB_CONVERSION_EXCEPTION;
-		DBG("SQL exception on %s SQLThread: conversion error: %s.",pool->pool_name.c_str(),e.what());
-	} catch(pqxx::pqxx_exception &e){
-		pool->returnConnection(conn,PgConnectionPool::CONN_DB_EXCEPTION);
-		refuse_code = FC_DB_BASE_EXCEPTION;
-		DBG("SQL exception on %s SQLThread: %s.",pool->pool_name.c_str(),e.base().what());
 	}
 
 	if(getprofile_fail&&pool == master_pool&&1==failover_to_slave) {
@@ -380,14 +368,21 @@ void SqlRouter::getprofiles(const AmSipRequest &req,CallCtx &ctx)
 
 ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req, pqxx::connection* conn)
 {
+#define invoc_field(field_value)\
+	fields_values.push(AmArg(field_value));\
+	invoc(field_value);
+
 	pqxx::result r;
 	pqxx::nontransaction tnx(*conn);
 	ProfilesCacheEntry *entry = NULL;
 	Yeti::global_config &gc = Yeti::instance()->config;
+	AmArg fields_values;
 
 	const char *sptr;
 	sip_nameaddr na;
 	sip_uri from_uri,to_uri,contact_uri;
+
+	fields_values.assertArray();
 
 	sptr = req.to.c_str();
 	if(	parse_nameaddr(&na,&sptr,req.to.length()) < 0 ||
@@ -409,46 +404,58 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req, pqxx::conne
 	//simply remove all double quotes from string
 	from_name.erase(std::remove(from_name.begin(), from_name.end(), '"'),from_name.end());
 
-	if(tnx.prepared("getprofile").exists()){
-		pqxx::prepare::invocation invoc = tnx.prepared("getprofile");
-		invoc(gc.node_id);
-		invoc(gc.pop_id);
-		invoc(req.remote_ip);
-		invoc(req.remote_port);
-		invoc(req.local_ip);
-		invoc(req.local_port);
-		invoc(from_name);
-		invoc(c2stlstr(from_uri.user));
-		invoc(c2stlstr(from_uri.host));
-		invoc(from_uri.port);
-		invoc(c2stlstr(to_uri.user));
-		invoc(c2stlstr(to_uri.host));
-		invoc(to_uri.port);
-		invoc(c2stlstr(contact_uri.user));
-		invoc(c2stlstr(contact_uri.host));
-		invoc(contact_uri.port);
-		invoc(req.user);
-		invoc(req.domain);
-		//invoc headers from sip request
-		for(vector<UsedHeaderField>::const_iterator it = used_header_fields.begin();
-				it != used_header_fields.end(); ++it){
-			string value;
-			if(it->getValue(req,value)){
-				invoc(value);
-			} else {
-				invoc();
-			}
-		}
-		r = invoc.exec();
-	} else {
+	if(!tnx.prepared("getprofile").exists())
 		throw GetProfileException(FC_NOT_PREPARED,true);
+
+	pqxx::prepare::invocation invoc = tnx.prepared("getprofile");
+	invoc_field(gc.node_id);				//"node_id", "integer"
+	invoc_field(gc.pop_id);					//"pop_id", "integer"
+	invoc_field(req.remote_ip);				//"remote_ip", "inet"
+	invoc_field(req.remote_port);			//"remote_port", "integer"
+	invoc_field(req.local_ip);				//"local_ip", "inet"
+	invoc_field(req.local_port);			//"local_port", "integer"
+	invoc_field(from_name);					//"from_dsp", "varchar"
+	invoc_field(c2stlstr(from_uri.user));	//"from_name", "varchar"
+	invoc_field(c2stlstr(from_uri.host));	//"from_domain", "varchar"
+	invoc_field(from_uri.port);				//"from_port", "integer"
+	invoc_field(c2stlstr(to_uri.user));		//"to_name", "varchar"
+	invoc_field(c2stlstr(to_uri.host));		//"to_domain", "varchar"
+	invoc_field(to_uri.port);				//"to_port", "integer"
+	invoc_field(c2stlstr(contact_uri.user));//"contact_name", "varchar"
+	invoc_field(c2stlstr(contact_uri.host));//"contact_domain", "varchar"
+	invoc_field(contact_uri.port);			//"contact_port", "integer"
+	invoc_field(req.user);					//"uri_name", "varchar"
+	invoc_field(req.domain);				//"uri_domain", "varchar"
+	//invoc headers from sip request
+	for(vector<UsedHeaderField>::const_iterator it = used_header_fields.begin();
+			it != used_header_fields.end(); ++it){
+		string value;
+		if(it->getValue(req,value)){
+			invoc_field(value);
+		} else {
+			invoc_field();
+		}
 	}
 
+	try {
+		r = invoc.exec();
+	} catch(pqxx::broken_connection &e){
+		ERROR("SQL exception for [%p]: pqxx::broken_connection.",conn);
+		dbg_get_profiles(fields_values);
+		throw GetProfileException(FC_DB_BROKEN_EXCEPTION,true);
+	} catch(pqxx::conversion_error &e){
+		ERROR("SQL exception for [%p]: conversion error: %s.",conn,e.what());
+		dbg_get_profiles(fields_values);
+		throw GetProfileException(FC_DB_CONVERSION_EXCEPTION,true);
+	} catch(pqxx::pqxx_exception &e){
+		ERROR("SQL exception for [%p]: %s.",conn,e.base().what());
+		dbg_get_profiles(fields_values);
+		throw GetProfileException(FC_DB_BASE_EXCEPTION,true);
+	}
 	//DBG("%s() database returned %ld profiles",FUNC_NAME,r.size());
 
-	if (r.size()==0){
+	if (r.size()==0)
 		throw GetProfileException(FC_DB_EMPTY_RESPONSE,false);
-	}
 
 	entry = new ProfilesCacheEntry();
 
@@ -487,8 +494,35 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req, pqxx::conne
 	}
 
 	return entry;
+#undef invoc_field
 }
 
+void SqlRouter::dbg_get_profiles(AmArg &fields_values){
+	int k = 0;
+	//static fields
+	for(int j = 0;j<GETPROFILE_STATIC_FIELDS_COUNT;j++){
+		AmArg &a = fields_values.get(k);
+		const static_field &f = profile_static_fields[j];
+		DBG("%d: %s[%s] -> %s[%s]",
+			k,f.name,f.type,
+			AmArg::print(a).c_str(),
+			a.t2str(a.getType()));
+		k++;
+	}
+	//dyn fields
+	for(vector<UsedHeaderField>::const_iterator it = used_header_fields.begin();
+			it != used_header_fields.end(); ++it)
+	{
+		AmArg &a = fields_values.get(k);
+		const UsedHeaderField &f = *it;
+		DBG("%d: %s[%s:%s] -> %s[%s]",
+			k,
+			f.getName().c_str(),f.type2str(),f.part2str(),
+			AmArg::print(a).c_str(),
+			a.t2str(a.getType()));
+		k++;
+	}
+}
 
 void SqlRouter::align_cdr(Cdr &cdr){
     DynFieldsT_iterator it = dyn_fields.begin();

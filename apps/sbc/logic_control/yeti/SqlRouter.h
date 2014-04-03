@@ -62,6 +62,7 @@ private:
 
   ProfilesCacheEntry* _getprofiles(const AmSipRequest&,
 							   pqxx::connection*);
+  void dbg_get_profiles(AmArg &fields_values);
   void update_counters(struct timeval &start_time);
 
   PgConnectionPool *master_pool;

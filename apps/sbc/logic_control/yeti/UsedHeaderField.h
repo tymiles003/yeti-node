@@ -33,6 +33,8 @@ class UsedHeaderField {
     void readFromTuple(const pqxx::result::tuple &t);
     bool getValue(const AmSipRequest &req,string &val) const;
     void getInfo(AmArg &arg) const;
+    const char*type2str() const;
+    const char*part2str() const;
 
     const string &getName() const { return name; }
     bool is_hashkey() const { return hashkey; }

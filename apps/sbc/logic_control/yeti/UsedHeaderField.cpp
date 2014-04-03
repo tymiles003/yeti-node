@@ -103,20 +103,27 @@ void UsedHeaderField::getInfo(AmArg &arg) const{
     string s;
     arg["name"] = name;
     arg["hashkey"] = hashkey;
+    arg["type"] = type2str();
+    if(type!=Raw)
+        arg["part"] = part2str();
+}
+
+const char* UsedHeaderField::type2str() const {
     switch(type){
-        case Raw: s = "Raw"; break;
-        case Uri: s = "Uri"; break;
-        default: s = "Unknown"; break;
+        case Raw: return "Raw";
+        case Uri: return "Uri";
+        default: return "Unknown";
     }
-    arg["type"] = s;
-    if(type!=Raw){
-        switch(part){
-            case uri_user: s = "uri_user"; break;
-            case uri_domain: s = "uri_domain"; break;
-            case uri_port: s = "uri_port"; break;
-            default: s = "unknown"; break;
-        }
-        arg["part"] = s;
+}
+
+const char* UsedHeaderField::part2str() const {
+    if(type==Raw)
+        return "*";
+    switch(part){
+        case uri_user: return "uri_user";
+        case uri_domain: return "uri_domain";
+        case uri_port: return "uri_port";
+        default: return "unknown";
     }
 }
 
