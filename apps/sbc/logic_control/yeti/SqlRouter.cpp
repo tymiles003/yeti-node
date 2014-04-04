@@ -141,7 +141,7 @@ try {
 	}
 	c.disconnect();
 
-	{PreparedQueryArgs_iterator i = profile_types.begin();
+	/*{PreparedQueryArgs_iterator i = profile_types.begin();
 	while(i!=profile_types.end()){
 		ERROR("profile_types: %s",i->c_str());
 		++i;
@@ -150,8 +150,7 @@ try {
 	while(i!=cdr_types.end()){
 		ERROR("cdr_types: %s",i->c_str());
 		++i;
-	}}
-
+	}}*/
 
 		//apply them
 	sql_query = "SELECT * FROM "+getprofile_schema+"."+getprofile_function+"($1";
