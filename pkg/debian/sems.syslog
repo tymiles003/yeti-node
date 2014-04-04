@@ -1,3 +1,2 @@
-if $programname == 'yeti' and $syslogpriority > 6 then ~
 if $programname == 'yeti' then /var/log/sems/sems-main.log
 if $programname == 'yeti' then ~
