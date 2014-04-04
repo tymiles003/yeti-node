@@ -153,8 +153,9 @@ bool AmSessionEventHandlerFactory::onInvite(const AmSipRequest& req,
 }
 
 
-AmLoggingFacility::AmLoggingFacility(const string& name) 
-  : AmPluginFactory(name) 
+AmLoggingFacility::AmLoggingFacility(const string& name,int log_level)
+  : AmPluginFactory(name),
+    _log_level(log_level)
 {
 }
 

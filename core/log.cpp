@@ -36,6 +36,7 @@
 
 #include <vector>
 #include <string>
+#include <utility>
 
 #include "AmApi.h"	/* AmLoggingFacility */
 #include "AmThread.h"   /* AmMutex */
@@ -66,7 +67,7 @@ class SyslogLogFac : public AmLoggingFacility {
   }
 
  public:
-  SyslogLogFac() : AmLoggingFacility("syslog"), facility(LOG_DAEMON) {
+  SyslogLogFac() : AmLoggingFacility("syslog",AmConfig::LogLevel), facility(LOG_DAEMON) {
     init();
   }
 
@@ -190,7 +191,9 @@ void run_log_hooks(int level, pid_t pid, pthread_t tid, const char* func, const 
   if (!log_hooks.empty()) {
     for (vector<AmLoggingFacility*>::iterator it = log_hooks.begin();
          it != log_hooks.end(); ++it) {
-      (*it)->log(level, pid, tid, func, file, line, msg);
+      AmLoggingFacility* fac = *it;
+      if(level <= fac->getLogLevel())
+        fac->log(level, pid, tid, func, file, line, msg);
     }
   }
 
@@ -203,6 +206,8 @@ void run_log_hooks(int level, pid_t pid, pthread_t tid, const char* func, const 
 void register_log_hook(AmLoggingFacility* fac)
 {
   AmLock lock(log_hooks_mutex);
+  int desired_log_level = fac->getLogLevel();
+  if(desired_log_level > log_level) log_level = desired_log_level;
   log_hooks.push_back(fac);
   inc_ref(fac);
 }
@@ -212,6 +217,10 @@ void unregister_log_hook(AmLoggingFacility* fac){
 	vector<AmLoggingFacility*>::iterator fac_it = std::find(log_hooks.begin(),log_hooks.end(),fac);
 	if(fac_it!=log_hooks.end())
 		log_hooks.erase(fac_it);
+}
+
+void set_log_level(int log_level_arg){
+	syslog_log.setLogLevel(log_level_arg);
 }
 
 /**

@@ -364,7 +364,7 @@ int main(int argc, char* argv[])
     return -1;
   }
 
-  log_level = AmConfig::LogLevel;
+  //log_level = AmConfig::LogLevel;
   log_stderr = AmConfig::LogStderr;
 
   /* re-apply command-line options to override configuration file */

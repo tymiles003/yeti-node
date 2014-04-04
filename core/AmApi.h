@@ -204,9 +204,9 @@ class AmSessionFactory: public AmPluginFactory
  */
 class AmLoggingFacility : public AmPluginFactory
 {
-
+  int _log_level;
  public:
-  AmLoggingFacility(const string& name);
+  AmLoggingFacility(const string& name,int log_level = L_DBG);
   virtual ~AmLoggingFacility() { }
 
   /**
@@ -223,6 +223,11 @@ class AmLoggingFacility : public AmPluginFactory
    */
   virtual void log(int level, pid_t pid, pthread_t tid, const char* func, const char* file, int line, char* msg) = 0;
   void on_destroy();
+  int getLogLevel() { return _log_level; }
+  int setLogLevel(int log_level_arg) {
+    _log_level = log_level_arg;
+    if(_log_level > log_level) log_level = _log_level;
+  }
 };
 
 #if  __GNUC__ < 3

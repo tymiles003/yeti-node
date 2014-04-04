@@ -20,8 +20,10 @@ EXPORT_PLUGIN_CLASS_FACTORY(DILog, MOD_NAME);
 char DILog::ring_buf[MAX_LINES][MAX_LINE_LEN] = {{0}};
 int DILog::pos = 0;
 
-DILog::DILog(const string& name) : AmLoggingFacility(name), AmDynInvokeFactory(name) {
-}
+DILog::DILog(const string& name)
+    : AmLoggingFacility(name,L_DBG),
+      AmDynInvokeFactory(name)
+{ }
 
 DILog* DILog::_instance=0;
 

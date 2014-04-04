@@ -222,7 +222,7 @@ int AmConfig::setLogLevel(const string& level, bool apply)
 
   LogLevel = n;
   if (apply) {
-    log_level = LogLevel;
+    set_log_level(LogLevel);
   }
   return 1;
 }
