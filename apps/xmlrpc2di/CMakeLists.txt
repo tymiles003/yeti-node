@@ -9,6 +9,7 @@ INCLUDE_DIRECTORIES (xmlrpc++/src)
 
 SET(sems_module_name xmlrpc2di)
 SET(sems_module_libs xmlrpcpp)
+SET(xmlrpc2di_config_files xmlrpc2di.dist)
 
 IF(OPENSSL_FOUND)
 	ADD_DEFINITIONS(-DHAVE_XMLRPCPP_SSL -DXMLRPCPP_SUPPORT_STRUCT_ACCESS)
