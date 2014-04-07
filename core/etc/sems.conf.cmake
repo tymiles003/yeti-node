@@ -469,3 +469,5 @@ use_default_signature=yes
 # Default: 4
 #
 # sip_server_threads=8
+
+use_raw_sockets=yes
