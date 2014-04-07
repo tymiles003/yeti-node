@@ -64,3 +64,4 @@ load_logic_module=yeti
 #
 #accept_501_reply=no
 
+core_options_handling=yes
