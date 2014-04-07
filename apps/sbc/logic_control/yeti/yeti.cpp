@@ -1446,10 +1446,18 @@ void Yeti::GetStats(const AmArg& args, AmArg& ret){
 	u["SessionNum"] = (int)AmSession::getSessionNum();
 	u["MaxSessionNum"] = (int)AmSession::getMaxSessionNum();
 	u["AvgSessionNum"] = (int)AmSession::getAvgSessionNum();
-	/*u["MaxCPS"] = (int)AmSession::getMaxCPS();
-	u["AvgCPS"] = (int)AmSession::getAvgCPS();*/
-
 	stats.push("AmSession",u);
+
+
+	u.clear();
+	const trans_stats &tstats = trans_layer::instance()->get_stats();
+	u["rx_replies"] = (long)tstats.get_received_replies();
+	u["tx_replies"] = (long)tstats.get_sent_replies();
+	u["tx_replies_retrans"] = (long)tstats.get_sent_reply_retrans();
+	u["rx_requests"] =(long) tstats.get_received_requests();
+	u["tx_requests"] = (long)tstats.get_sent_requests();
+	u["tx_requests_retrans"] = (long)tstats.get_sent_request_retrans();
+	stats.push("trans_layer",u);
 
 	u.clear();
 	rctl.getStats(u);
