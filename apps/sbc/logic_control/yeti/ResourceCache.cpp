@@ -98,22 +98,29 @@ void ResourceCache::run(){
 
 				int state = redisGetReply(write_ctx,(void **)&reply);
 				if(state!=REDIS_OK)
-					throw GetReplyException("redisGetReply() != REDIS_OK",state);
+					throw GetReplyException("DECRBY redisGetReply() != REDIS_OK",state);
 				if(reply==NULL)
-					throw GetReplyException("reply == NULL",state);
-				if(reply->type != desired)
-					throw ReplyTypeException("type not desired",reply->type);
+					throw GetReplyException("DECRBY reply == NULL",state);
+				if(reply->type != desired){
+					if(reply->type==REDIS_REPLY_ERROR){
+						DBG("redis reply_error: %s",reply->str);
+					}
+					DBG("DECRBY desired_reply: %d, reply: %d",desired,reply->type);
+					throw ReplyTypeException("DECRBY type not desired",reply->type);
+				}
 
 				if(reply->type==REDIS_REPLY_ARRAY){ /* process EXEC here */
 					redisReply *r;
 					if(reply->elements != put.size()){
-						throw ReplyDataException("mismatch responses array size");
+						throw ReplyDataException("DECRBY mismatch responses array size");
 					}
 					unsigned int i = 0;
 					while(i<reply->elements){
 						r = reply->element[i];
 						if(r->type!=REDIS_REPLY_INTEGER){
-							throw ReplyDataException("integer expected");
+							DBG("DECRBY r->type!=REDIS_REPLY_INTEGER, r->type = %d",
+								r->type);
+							throw ReplyDataException("DECRBY integer expected");
 						}
 						INFO("put_resource %d:%d %lld/%d",put[i].type,put[i].id,r->integer,put[i].limit);
 						i++;
@@ -171,6 +178,9 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 	resource = rl.begin();
 
 	try {
+
+		//preliminary resources availability check
+
 		bool resources_available = false;
 		list <int> desired_response;
 		redisReply *reply = NULL;
@@ -182,8 +192,7 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 			throw ResourceCacheException("can't get connection from read redis pool",0);
 		}
 
-		//prepare request
-
+			//prepare request
 		redisAppendCommand(redis_ctx,"MULTI");
 		desired_response.push_back(REDIS_REPLY_STATUS);
 
@@ -198,8 +207,7 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 		redisAppendCommand(redis_ctx,"EXEC");
 		desired_response.push_back(REDIS_REPLY_ARRAY);
 
-		//perform request
-
+			//perform request
 		try {
 			while(!desired_response.empty()){
 				int desired = desired_response.front();
@@ -207,20 +215,22 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 
 				int state = redisGetReply(redis_ctx,(void **)&reply);
 				if(state!=REDIS_OK)
-					throw GetReplyException("redisGetReply() != REDIS_OK",state);
+					throw GetReplyException("GET redisGetReply() != REDIS_OK",state);
 				if(reply==NULL)
-					throw GetReplyException("reply == NULL",state);
+					throw GetReplyException("GET reply == NULL",state);
 				if(reply->type != desired){
 					if(reply->type==REDIS_REPLY_ERROR){
 						DBG("redis reply_error: %s",reply->str);
 					}
-					DBG("desired_reply: %d, reply: %d",desired,reply->type);
-					throw ReplyTypeException("type not desired",reply->type);
+					DBG("GET desired_reply: %d, reply: %d",desired,reply->type);
+					throw ReplyTypeException("GET type not desired",reply->type);
 				}
 				if(reply->type==REDIS_REPLY_ARRAY){ /* process EXEC here */
 					redisReply *r;
 					if(reply->elements != rl.size()){
-						throw ReplyDataException("mismatch responses array size");
+						DBG("GET reply->elements = %ld, desired size = %ld",
+							reply->elements,rl.size());
+						throw ReplyDataException("GET mismatch responses array size");
 					}
 					unsigned int i = 0;
 					char *str_val;
@@ -229,27 +239,27 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 						r = reply->element[i];
 						switch(r->type) {
 							case REDIS_REPLY_INTEGER:	//integer response
-								//DBG("we have integer reply. simply assign it");
+								DBG("GET we have integer reply. simply assign it");
 								now = r->integer;
 								break;
 							case REDIS_REPLY_NIL:		//non existent key
-								//DBG("we have nil reply. consider it as 0");
+								DBG("GET we have nil reply. consider it as 0");
 								now = 0;
 								break;
 							case REDIS_REPLY_STRING:	//string response
-								//DBG("we have string reply '%s'. trying convert it",r->str);
+								DBG("GET we have string reply '%s'. trying convert it",r->str);
 								str_val = r->str;
 								if(!str2long(str_val,now)){
-									DBG("conversion falied for: '%s'",r->str);
-									throw ReplyDataException("invalid response from redis");
+									DBG("rGET conversion falied for: '%s'",r->str);
+									throw ReplyDataException("rGET invalid response from redis");
 								}
 								break;
 							case REDIS_REPLY_ERROR:
-								DBG("reply error: '%s'",r->str);
-								throw ReplyDataException("undesired reply");
+								DBG("GET reply error: '%s'",r->str);
+								throw ReplyDataException("GET undesired reply");
 								break;
 							default:
-								throw ReplyTypeException("reply type not desired",r->type);
+								throw ReplyTypeException("GET reply type not desired",r->type);
 								break;
 						}
 						int limit = rl[i].limit;
@@ -272,6 +282,8 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 				freeReplyObject(reply);
 			}
 			redis_pool->putConnection(redis_ctx,RedisConnPool::CONN_STATE_OK);
+
+			//aquire resources if available
 
 			if(!resources_available){
 				WARN("resources unavailable");
@@ -310,27 +322,29 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 
 					int state = redisGetReply(redis_ctx,(void **)&reply);
 					if(state!=REDIS_OK)
-						throw GetReplyException("redisGetReply() != REDIS_OK",state);
+						throw GetReplyException("INCRBY redisGetReply() != REDIS_OK",state);
 					if(reply==NULL)
-						throw GetReplyException("reply == NULL",state);
+						throw GetReplyException("INCRBY reply == NULL",state);
 					if(reply->type != desired){
 						if(reply->type==REDIS_REPLY_ERROR){
-							DBG("redis reply_error: %s",reply->str);
+							DBG("INCRBY redis reply_error: %s",reply->str);
 						}
-						DBG("desired_reply: %d, reply: %d",desired,reply->type);
-						throw ReplyTypeException("type not desired",reply->type);
+						DBG("INCRBY desired_reply: %d, reply: %d",desired,reply->type);
+						throw ReplyTypeException("INCRBY type not desired",reply->type);
 					}
 
 					if(reply->type==REDIS_REPLY_ARRAY){ /* process EXEC here */
 						redisReply *r;
 						if(reply->elements != rl.size()){
-							throw ReplyDataException("mismatch responses array size");
+							DBG("INCRBY reply->elements = %ld, desired size = %ld",
+								reply->elements,rl.size());
+							throw ReplyDataException("INCRBY mismatch responses array size");
 						}
 						unsigned int i = 0;
 						while(i<reply->elements){
 							r = reply->element[i];
 							if(r->type!=REDIS_REPLY_INTEGER){
-								throw ReplyDataException("integer expected");
+								throw ReplyDataException("INCRBY integer expected");
 							}
 							INFO("grab_resource %d:%d %lld/%d",rl[i].type,rl[i].id,r->integer,rl[i].limit);
 							i++;
