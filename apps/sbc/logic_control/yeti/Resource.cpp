@@ -10,14 +10,17 @@
 
 void ResourceList::parse(const std::string rs){
 	clear();
+	//DBG("rs = %s",rs.c_str());
 	vector<string> lc = explode(rs,RES_ATOM_SEPARATOR);
 	for(vector<string>::const_iterator ri = lc.begin();
 		ri != lc.end(); ++ri)
 	{
+		//DBG("   *ri = %s",(*ri).c_str());
 		vector<string> ac = explode(*ri,RES_OPTION_SEPARATOR);
 		for(vector<string>::const_iterator ai = ac.begin();
 			ai != ac.end(); ++ai)
 		{
+			//DBG("      *ai = %s",(*ai).c_str());
 			Resource r;
 			vector<string> vc = explode(*ai,RES_FIELDS_SEPARATOR);
 			if(vc.size()!=4){
@@ -37,7 +40,7 @@ void ResourceList::parse(const std::string rs){
 				throw ResourceParseException("invalid format: str2int conversion",(*ri));
 			}
 		}
-		back().failover_to_next = false;
+		if(!empty()) back().failover_to_next = false;
 	}
 }
 
