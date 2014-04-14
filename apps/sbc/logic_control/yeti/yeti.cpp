@@ -2,6 +2,7 @@
 #include "sdp_filter.h"
 
 #include <string.h>
+#include <ctime>
 
 #include "log.h"
 #include "AmPlugIn.h"
@@ -867,7 +868,7 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 	//throw AmSession::Exception(NO_REPLY_DISCONNECT_CODE,"test silent mode");
 
 	try {
-
+	clock_t prof_start = clock();
 	do {
 		DBG("%s() check resources for profile. attempt %d",FUNC_NAME,attempt);
 		rctl_ret = rctl.get(ctx->getCurrentResourceList(),refuse_code,refuse_reason);
@@ -904,6 +905,9 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 	if(rctl_ret != RES_CTL_OK){
 		throw AmSession::Exception(refuse_code,refuse_reason);
 	}
+
+	clock_t prof_end = clock();
+	DBG("resources checking and grabbing took %f",(prof_end-prof_start)/(double)CLOCKS_PER_SEC);
 
 	if(attempt != 0){
 			//profile changed
