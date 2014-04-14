@@ -356,6 +356,9 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 
 		INFO("SBC:      time_limit: %i\n", time_limit);
 		INFO("SBC:      resources: %s\n", resources.c_str());
+		for(ResourceList::const_iterator i = rl.begin();i!=rl.end();++i)
+			INFO("SBC:         resource: <%s>",(*i).print().c_str());
+
 		INFO("SBC:      aleg_override_id: %i\n", aleg_override_id);
 		INFO("SBC:      bleg_override_id: %i\n", bleg_override_id);
 
@@ -485,11 +488,7 @@ bool SqlCallProfile::column_exist(const pqxx::result::tuple &t,string column_nam
 
 bool SqlCallProfile::eval_resources(){
 	try {
-		rl = resource_parse(resources);
-		ResourceList::const_iterator i = rl.begin();
-		for(;i!=rl.end();++i){
-			INFO("profile[%p]     resource: <%s>",this,resource_print(*i).c_str());
-		}
+		rl.parse(resources);
 	} catch(ResourceParseException &e){
 		ERROR("resources parse error:  %s <ctx = '%s'>",e.what.c_str(),e.ctx.c_str());
 	}
@@ -497,6 +496,8 @@ bool SqlCallProfile::eval_resources(){
 }
 
 bool SqlCallProfile::eval(){
+	if(0!=disconnect_code_id)
+		return true; //skip resources evaluation for refuse profiles
 	return eval_resources();
 }
 

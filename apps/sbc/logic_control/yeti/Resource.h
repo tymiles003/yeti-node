@@ -17,11 +17,21 @@ struct Resource {
 		type,				//determines behavior when resource is busy
 		takes,				//how many takes one get()
 		limit;				//upper limit for such active resources
+	bool taken,				//resource grabbed
+		 active,			//whether we should grab resource after checking phase
+		 failover_to_next;	//whether we should use resource which follows if current overloaded
+	Resource():
+		id(0),type(0),takes(0),limit(0),
+		taken(false), active(false), failover_to_next(false) {}
+	string print() const;
 };
 
-typedef vector<Resource> ResourceList;
 
-ResourceList resource_parse(const string s);
-string resource_print(const Resource &r);
+//typedef vector<Resource> ResourceList;
+
+struct ResourceList: public vector<Resource> {
+	void parse(const string s);
+};
+//ResourceList resource_parse(const string s);
 
 #endif // RESOURCE_H

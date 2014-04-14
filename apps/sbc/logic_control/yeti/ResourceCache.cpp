@@ -5,6 +5,10 @@
 
 #define REDIS_STRING_ZERO "(null)"
 
+#define CHECK_STATE_NORMAL 0
+#define CHECK_STATE_FAILOVER 1
+#define CHECK_STATE_SKIP 2
+
 struct GetReplyException {
 	string what;
 	int status;
@@ -23,6 +27,37 @@ struct ReplyDataException {
 };
 
 
+static long int Reply2Int(redisReply *r){
+	long int ret = 0;
+	char *s;
+	switch(r->type) {
+		case REDIS_REPLY_INTEGER:	//integer response
+			DBG("Reply2Int: we have integer reply. simply assign it");
+			ret = r->integer;
+			break;
+		case REDIS_REPLY_NIL:		//non existent key
+			DBG("Reply2Int: we have nil reply. consider it as 0");
+			ret = 0;
+			break;
+		case REDIS_REPLY_STRING:	//string response
+			DBG("Reply2Int: we have string reply '%s'. trying convert it",r->str);
+			s = r->str;
+			if(!str2long(s,ret)){
+				DBG("Reply2Int: conversion falied for: '%s'",r->str);
+				throw ReplyDataException("invalid response from redis");
+			}
+			break;
+		case REDIS_REPLY_ERROR:
+			DBG("reply error: '%s'",r->str);
+			throw ReplyDataException("undesired reply");
+			break;
+		default:
+			throw ReplyTypeException("reply type [%d] not desired",r->type);
+			break;
+	}
+	return ret;
+}
+
 ResourceCache::ResourceCache():
 	tostop(false),
 	data_ready(true)
@@ -37,9 +72,9 @@ int ResourceCache::configure(const AmConfigReader &cfg){
 
 void ResourceCache::run(){
 	ResourceList put;
+	ResourceList filtered_put;
 	redisReply *reply;
 	list <int> desired_response;
-//	DBG("%s()",FUNC_NAME);
 	redisContext *write_ctx;
 
 	setThreadName("yeti-res-wr");
@@ -48,14 +83,17 @@ void ResourceCache::run(){
 	write_pool.start();
 
 	while(!tostop){
-//		DBG("%s() while start",FUNC_NAME);
 		data_ready.wait_for();
 
 		put_queue_mutex.lock();
 			put.swap(put_resources_queue);
 		put_queue_mutex.unlock();
 
-		if(put.empty()){
+		for(ResourceList::const_iterator rit = put.begin();rit!=put.end();++rit)
+			if((*rit).taken)
+				filtered_put.push_back(*rit);
+
+		if(!filtered_put.size()){
 			data_ready.set(false);
 			continue;
 		}
@@ -70,20 +108,18 @@ void ResourceCache::run(){
 		}
 
 		desired_response.clear();
+
 		//pipeline all needed
 		redisAppendCommand(write_ctx,"MULTI");
 		desired_response.push_back(REDIS_REPLY_STATUS);
 
-		ResourceList::iterator rit = put.begin();
-		for(;rit!=put.end();++rit){
+		ResourceList::iterator rit = filtered_put.begin();
+		for(;rit!=filtered_put.end();++rit){
 			Resource &r = (*rit);
-
 			string key = get_key(r);
-			string takes = int2str(r.takes);
-
-			redisAppendCommand(write_ctx,"DECRBY %b %b",
+			redisAppendCommand(write_ctx,"DECRBY %b %d",
 				key.c_str(),key.size(),
-				takes.c_str(),takes.size());
+				r.takes);
 			desired_response.push_back(REDIS_REPLY_STATUS);
 		}
 
@@ -111,7 +147,7 @@ void ResourceCache::run(){
 
 				if(reply->type==REDIS_REPLY_ARRAY){ /* process EXEC here */
 					redisReply *r;
-					if(reply->elements != put.size()){
+					if(reply->elements != filtered_put.size()){
 						throw ReplyDataException("DECRBY mismatch responses array size");
 					}
 					unsigned int i = 0;
@@ -122,7 +158,8 @@ void ResourceCache::run(){
 								r->type);
 							throw ReplyDataException("DECRBY integer expected");
 						}
-						INFO("put_resource %d:%d %lld/%d",put[i].type,put[i].id,r->integer,put[i].limit);
+						Resource &res =  filtered_put[i];
+						INFO("put_resource %d:%d %lld/%d",res.type,res.id,r->integer,res.limit);
 						i++;
 					}
 				}
@@ -148,8 +185,8 @@ void ResourceCache::run(){
 			continue;
 		}
 		put.clear();
+		filtered_put.clear();
 		data_ready.set(false);
-		//DBG("%s() while end",FUNC_NAME);
 	}
 }
 
@@ -172,16 +209,13 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 									ResourceList::iterator &resource)
 {
 	ResourceResponse ret = RES_ERR;
-	bool resources_grabbed = false;
-	string zero_string = REDIS_STRING_ZERO;
-
 	resource = rl.begin();
 
 	try {
 
 		//preliminary resources availability check
 
-		bool resources_available = false;
+		bool resources_available = true;
 		list <int> desired_response;
 		redisReply *reply = NULL;
 		redisContext *redis_ctx = NULL;
@@ -226,58 +260,52 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 					throw ReplyTypeException("GET type not desired",reply->type);
 				}
 				if(reply->type==REDIS_REPLY_ARRAY){ /* process EXEC here */
-					redisReply *r;
-					if(reply->elements != rl.size()){
+					size_t n = reply->elements;
+					if(n != rl.size()){
 						DBG("GET reply->elements = %ld, desired size = %ld",
-							reply->elements,rl.size());
+							n,rl.size());
 						throw ReplyDataException("GET mismatch responses array size");
 					}
-					unsigned int i = 0;
-					char *str_val;
-					while(i<reply->elements){
-						long int  now;
-						r = reply->element[i];
-						switch(r->type) {
-							case REDIS_REPLY_INTEGER:	//integer response
-								DBG("GET we have integer reply. simply assign it");
-								now = r->integer;
-								break;
-							case REDIS_REPLY_NIL:		//non existent key
-								DBG("GET we have nil reply. consider it as 0");
-								now = 0;
-								break;
-							case REDIS_REPLY_STRING:	//string response
-								DBG("GET we have string reply '%s'. trying convert it",r->str);
-								str_val = r->str;
-								if(!str2long(str_val,now)){
-									DBG("rGET conversion falied for: '%s'",r->str);
-									throw ReplyDataException("rGET invalid response from redis");
-								}
-								break;
-							case REDIS_REPLY_ERROR:
-								DBG("GET reply error: '%s'",r->str);
-								throw ReplyDataException("GET undesired reply");
-								break;
-							default:
-								throw ReplyTypeException("GET reply type not desired",r->type);
-								break;
+
+					//resources availability checking cycle
+					int check_state = CHECK_STATE_NORMAL;
+					for(unsigned int i = 0;i<n;i++){
+						long int now = Reply2Int(reply->element[i]);
+						Resource &res = rl[i];
+
+						if(CHECK_STATE_SKIP==check_state){
+							DBG("skip %d:%d intended for failover",res.type,res.id);
+							if(!res.failover_to_next) //last failover resource
+								check_state = CHECK_STATE_NORMAL;
+							continue;
 						}
-						int limit = rl[i].limit;
+
 						INFO("check_resource %d:%d %ld/%d",
-							rl[i].type,rl[i].id,now,limit);
-						if(limit!=0){ //0 means unlimited resource
-							//check limit
-							if(now > limit){
-								DBG("resource %d:%d overload ",
-									rl[i].type,rl[i].id);
-								resource = resource+i;
-								break;
+							res.type,res.id,now,res.limit);
+
+						//check limit
+						if(now > res.limit){
+							INFO("resource %d:%d overload ",
+								res.type,res.id);
+							if(res.failover_to_next){
+								INFO("failover_to_next enabled. check the next resource");
+								check_state = CHECK_STATE_FAILOVER;
+								continue;
 							}
+							resource = resource+i;
+							resources_available = false;
+							break;
+						} else {
+							res.active = true;
+							if(CHECK_STATE_FAILOVER==check_state){
+								INFO("failovered to resource %d:%d",res.type,res.id);
+								/*if(res.failover_to_next)	//skip if not last
+									check_state = CHECK_STATE_SKIP;*/
+							}
+							check_state = res.failover_to_next ?
+								CHECK_STATE_SKIP : CHECK_STATE_NORMAL;
 						}
-						i++;
 					}
-					if(i==reply->elements) //all resources checked and available
-						resources_available = true;
 				}
 				freeReplyObject(reply);
 			}
@@ -295,21 +323,26 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 				if(redis_ctx==NULL){
 					throw ResourceCacheException("can't get connection from write redis pool",0);
 				}
+
 				//prepare query
 				desired_response.clear();
 
 				redisAppendCommand(redis_ctx,"MULTI");
 				desired_response.push_back(REDIS_REPLY_STATUS);
 
+				vector<int> active_idx;
 				ResourceList::iterator rit = rl.begin();
-				for(;rit!=rl.end();++rit){
+				for(int i = 0;rit!=rl.end();++rit,i++){
 					Resource &r = (*rit);
+
+					if(!r.active || r.taken) continue;
+
 					string key = get_key(r);
-					string takes = int2str(r.takes);
-					redisAppendCommand(redis_ctx,"INCRBY %b %b",
+					redisAppendCommand(redis_ctx,"INCRBY %b %d",
 						key.c_str(),key.size(),
-						takes.c_str(),takes.size());
+						r.takes);
 					desired_response.push_back(REDIS_REPLY_STATUS);
+					active_idx.push_back(i);
 				}
 
 				redisAppendCommand(redis_ctx,"EXEC");
@@ -335,25 +368,25 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 
 					if(reply->type==REDIS_REPLY_ARRAY){ /* process EXEC here */
 						redisReply *r;
-						if(reply->elements != rl.size()){
+						size_t n = reply->elements;
+						if(n != active_idx.size()){
 							DBG("INCRBY reply->elements = %ld, desired size = %ld",
-								reply->elements,rl.size());
+								n,active_idx.size());
 							throw ReplyDataException("INCRBY mismatch responses array size");
 						}
-						unsigned int i = 0;
-						while(i<reply->elements){
+						for(unsigned int i = 0;i<n;i++){
 							r = reply->element[i];
 							if(r->type!=REDIS_REPLY_INTEGER){
 								throw ReplyDataException("INCRBY integer expected");
 							}
-							INFO("grab_resource %d:%d %lld/%d",rl[i].type,rl[i].id,r->integer,rl[i].limit);
-							i++;
+							Resource &res = rl[active_idx[i]];
+							res.taken = true;
+							INFO("grabbed_resource %d:%d %lld/%d",res.type,res.id,r->integer,res.limit);
 						}
 					}
 					freeReplyObject(reply);
 				}
 				redis_pool->putConnection(redis_ctx,RedisConnPool::CONN_STATE_OK);
-				resources_grabbed = true;
 				ret =  RES_SUCC;
 			} //else if(!resources_available)
 		} catch(GetReplyException &e){
@@ -372,11 +405,6 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 		ERROR("exception: %s %d",e.what.c_str(),e.code);
 	}
 
-	if(!resources_grabbed){
-		DBG("resources not grabbed. clear resources list");
-		//avoid freeing of non grabbed resources
-		rl.clear();
-	}
 	DBG("%s() finished ",FUNC_NAME);
 	return ret;
 }

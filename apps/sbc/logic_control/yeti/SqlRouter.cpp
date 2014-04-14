@@ -481,13 +481,13 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req, pqxx::conne
 			delete entry;
 			throw GetProfileException(FC_READ_FROM_TUPLE_FAILED,false);
 		}
-		profile->infoPrint(dyn_fields);
 		//evaluate it
 		if(!profile->eval()){
 			delete profile;
 			delete entry;
 			throw GetProfileException(FC_EVALUATION_FAILED,false);
 		}
+		profile->infoPrint(dyn_fields);
 		//push to ret
 		entry->profiles.push_back(profile);
 	}

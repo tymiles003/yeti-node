@@ -142,7 +142,15 @@ ResourceCtlResponse ResourceControl::get(ResourceList &rl,
 		return RES_CTL_OK;
 	}
 	stat.hits++;
+
+	/*for(ResourceList::const_iterator i = rl.begin();i!=rl.end();++i)
+		DBG("ResourceControl::get() before resource: <%s>",(*i).print().c_str());*/
+
 	ResourceResponse ret = cache.get(rl,rli);
+
+	/*for(ResourceList::const_iterator i = rl.begin();i!=rl.end();++i)
+		DBG("ResourceControl::get() resource: <%s>",(*i).print().c_str());*/
+
 	switch(ret){
 		case RES_SUCC: {
 			return RES_CTL_OK;
