@@ -22,6 +22,8 @@
 
 #include <ctime>
 
+#define YETI_CALL_DURATION_TIMER SBC_TIMER_ID_CALL_TIMERS_START
+
 class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterface
 {
   static Yeti* _instance;

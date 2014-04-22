@@ -936,9 +936,9 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 
 	if(cdr->time_limit){
 		DBG("%s() save timer %d with timeout %d",FUNC_NAME,
-			SBC_TIMER_ID_CALL_TIMERS_START,
+			YETI_CALL_DURATION_TIMER,
 			cdr->time_limit);
-		call->saveCallTimer(SBC_TIMER_ID_CALL_TIMERS_START,cdr->time_limit);
+		call->saveCallTimer(YETI_CALL_DURATION_TIMER,cdr->time_limit);
 	}
 
 	if(0!=cdr_list.insert(cdr)){
@@ -1035,8 +1035,18 @@ CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
 			plugin_event->event_id);
 		if(plugin_event->name=="timer_timeout"){
 			int timer_id = plugin_event->data.get(0).asInt();
+			Cdr *cdr = getCdr(call);
+
 			DBG("%s() timer %d fired.\n",FUNC_NAME,timer_id);
-			getCdr(call)->update_internal_reason(DisconnectByTS,"Timer "+int2str(timer_id)+" fired",200);
+
+			if(timer_id==YETI_CALL_DURATION_TIMER){
+				cdr->update_internal_reason(DisconnectByTS,"Call duration limit reached",200);
+			} else {
+				DBG("%s() timer %d fired.\n",FUNC_NAME,timer_id);
+				cdr->update_internal_reason(DisconnectByTS,"Timer "+int2str(timer_id)+" fired",200);
+			}
+			cdr->update_aleg_reason("Bye",200);
+			cdr->update_bleg_reason("Bye",200);
 		}
 	}
 
