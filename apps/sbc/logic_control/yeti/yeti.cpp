@@ -17,6 +17,23 @@
 #include "SBC.h"
 struct CallLegCreator;
 
+#if YETI_ENABLE_PROFILING
+
+#define PROF_START(var) clock_t prof_start_##var = clock();
+#define PROF_END(var) clock_t prof_end_##var = clock();
+#define PROF_DIFF(var) ((prof_end_##var-prof_start_##var)/(double)CLOCKS_PER_SEC)
+#define PROF_PRINT(descr,var) INFO(descr" took %f",PROF_DIFF(var));
+
+#else
+
+#define PROF_START(var) ;
+#define PROF_END(var) ;
+#define PROF_DIFF(var) (-1)
+#define PROF_PRINT(descr,var) ;
+
+
+#endif
+
 #define getCtx_void()\
 	CallCtx *ctx = getCtx(call);\
 	if(NULL==ctx){\
@@ -356,6 +373,9 @@ SBCCallLeg *Yeti::getCallLeg(	const AmSipRequest& req,
 	SqlRouter *r = router;
 	router_mutex.unlock();
 	CallCtx *call_ctx = new CallCtx(r);
+
+	PROF_START(gprof);
+
 	r->getprofiles(req,*call_ctx);
 
 	SqlCallProfile *profile = call_ctx->getFirstProfile();
@@ -364,6 +384,9 @@ SBCCallLeg *Yeti::getCallLeg(	const AmSipRequest& req,
 		delete call_ctx;
 		throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
 	}
+
+	PROF_END(gprof);
+	PROF_PRINT("getting profile",gprof);
 
 	Cdr *cdr = getCdr(call_ctx);
 
@@ -860,6 +883,8 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 	int refuse_code;
 	int attempt = 0;
 
+	PROF_START(func);
+
 	cdr->update(Start);
 	cdr->update(req);
 
@@ -868,7 +893,7 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 	//throw AmSession::Exception(NO_REPLY_DISCONNECT_CODE,"test silent mode");
 
 	try {
-	clock_t prof_start = clock();
+	PROF_START(rchk);
 	do {
 		DBG("%s() check resources for profile. attempt %d",FUNC_NAME,attempt);
 		rctl_ret = rctl.get(ctx->getCurrentResourceList(),refuse_code,refuse_reason);
@@ -906,8 +931,8 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 		throw AmSession::Exception(refuse_code,refuse_reason);
 	}
 
-	clock_t prof_end = clock();
-	DBG("resources checking and grabbing took %f",(prof_end-prof_start)/(double)CLOCKS_PER_SEC);
+	PROF_END(rchk);
+	PROF_PRINT("resources checking and grabbing",rchk);
 
 	if(attempt != 0){
 			//profile changed
@@ -962,6 +987,9 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 		cdr->update_internal_reason(DisconnectByTS,e.reason,e.code);
 		throw e;
 	}
+
+	PROF_END(func);
+	PROF_PRINT("Yeti::onInitialInvite",func);
 
 	return ContinueProcessing;
 }
