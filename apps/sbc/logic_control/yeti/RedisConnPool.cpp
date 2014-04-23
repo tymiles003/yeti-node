@@ -24,6 +24,10 @@ int RedisConnPool::configure(const AmConfigReader &cfg,string name){
 		ERROR("no timeout for %s redis",name.c_str());
 		return -1;
 	}
+	if(active_timeout<10 || active_timeout > 5e3){
+		ERROR("timeout value must be between 10-5000 msec for %s redis",name.c_str());
+		return -1;
+	}
 	return cfg2RedisCfg(cfg,_cfg,pool_name);
 }
 
@@ -114,10 +118,13 @@ void RedisConnPool::on_stop(){
 //	DBG("%s() finished",FUNC_NAME);
 }
 
-redisContext *RedisConnPool::getConnection(){
+redisContext *RedisConnPool::getConnection(unsigned int timeout){
 	redisContext *ctx = NULL;
 
+
 	//DBG("%s()",FUNC_NAME);
+
+	timeout = timeout > 0 ? timeout : active_timeout;
 
 	while(ctx==NULL){
 
@@ -138,8 +145,8 @@ redisContext *RedisConnPool::getConnection(){
 				break;
 			}
 
-			if(!active_ready.wait_for_to(active_timeout)){
-				ERROR("timeout waiting for an active con1ection (waited %ums)",active_timeout);
+			if(!active_ready.wait_for_to(timeout)){
+				ERROR("timeout waiting for an active connection (waited %ums)",timeout);
 				break;
 			}
 		} else {

@@ -3,6 +3,8 @@
 #include "AmUtils.h"
 #include <sstream>
 
+#include "yeti.h"
+
 #define REDIS_STRING_ZERO "(null)"
 
 #define CHECK_STATE_NORMAL 0
@@ -47,12 +49,17 @@ static long int Reply2Int(redisReply *r){
 				throw ReplyDataException("invalid response from redis");
 			}
 			break;
+		case REDIS_REPLY_ARRAY:
+			DBG("Reply2Int: we have array reply. return sum of all elements");
+			for(unsigned int i=0;i<r->elements;i++)
+				ret+=Reply2Int(r->element[i]);
+			break;
 		case REDIS_REPLY_ERROR:
 			DBG("reply error: '%s'",r->str);
 			throw ReplyDataException("undesired reply");
 			break;
 		default:
-			throw ReplyTypeException("reply type [%d] not desired",r->type);
+			throw ReplyTypeException("reply type not desired",r->type);
 			break;
 	}
 	return ret;
@@ -79,8 +86,15 @@ void ResourceCache::run(){
 
 	setThreadName("yeti-res-wr");
 
+	Yeti::global_config &gc = Yeti::instance()->config;
+
 	read_pool.start();
 	write_pool.start();
+
+	if(!init_resources()){
+		DBG("can't init resources. stop thread");
+		return;
+	}
 
 	while(!tostop){
 		data_ready.wait_for();
@@ -117,9 +131,10 @@ void ResourceCache::run(){
 		for(;rit!=filtered_put.end();++rit){
 			Resource &r = (*rit);
 			string key = get_key(r);
-			redisAppendCommand(write_ctx,"DECRBY %b %d",
+			redisAppendCommand(write_ctx,"HINCRBY %b %d %d",
 				key.c_str(),key.size(),
-				r.takes);
+				gc.node_id,
+				-r.takes/*pass negative to increment*/);
 			desired_response.push_back(REDIS_REPLY_STATUS);
 		}
 
@@ -159,7 +174,7 @@ void ResourceCache::run(){
 							throw ReplyDataException("DECRBY integer expected");
 						}
 						Resource &res =  filtered_put[i];
-						INFO("put_resource %d:%d %lld/%d",res.type,res.id,r->integer,res.limit);
+						INFO("put_resource %d:%d %d %lld/%d (this node stat only)",res.type,res.id,gc.node_id,r->integer,res.limit);
 						i++;
 					}
 				}
@@ -205,10 +220,70 @@ string ResourceCache::get_key(Resource &r){
 	return ss.str();
 }
 
+bool ResourceCache::init_resources(){
+	redisContext *write_ctx = NULL;
+	redisReply *reply = NULL;
+	int node_id = Yeti::instance()->config.node_id;
+	//DBG("ResourceCache::init_resources()");
+	try {
+		write_ctx = write_pool.getConnection();
+		while(write_ctx==NULL){
+			DBG("get connection can't get connection from write redis pool. retry every 1s");
+			sleep(1);
+			if(tostop) return false;
+			write_ctx = write_pool.getConnection();
+		}
+
+		redisAppendCommand(write_ctx,"KEYS *");
+		int state = redisGetReply(write_ctx,(void **)&reply);
+		if(state!=REDIS_OK)
+			throw GetReplyException("KEYS redisGetReply() != REDIS_OK",state);
+
+		if(reply->type != REDIS_REPLY_ARRAY){
+			if(reply->type==REDIS_REPLY_ERROR)
+				throw ReplyDataException(reply->str);
+			if(reply->type==REDIS_REPLY_NIL){
+				DBG("empty database. skip resources initialization");
+				write_pool.putConnection(write_ctx,RedisConnPool::CONN_STATE_OK);
+				return true;
+			}
+		}
+		//iterate over keys and set their values to zero
+		//DBG("elements = %lld",reply->elements);
+		redisAppendCommand(write_ctx,"MULTI");
+		for(unsigned int i = 0;i<reply->elements;i++){
+			redisReply *r = reply->element[i];
+			//DBG("key: %s",r->str);
+			redisAppendCommand(write_ctx,"HSET %s %d %d",r->str,node_id,0);
+		}
+		redisAppendCommand(write_ctx,"EXEC");
+
+		freeReplyObject(reply);
+
+		state = redisGetReply(write_ctx,(void **)&reply);
+		if(state!=REDIS_OK)
+			throw GetReplyException("MULTI HSET redisGetReply() != REDIS_OK",state);
+
+		INFO("resources initialized");
+
+		freeReplyObject(reply);
+		write_pool.putConnection(write_ctx,RedisConnPool::CONN_STATE_OK);
+		return true;
+	} catch(GetReplyException &e){
+		ERROR("GetReplyException: %s, status: %d",e.what.c_str(),e.status);
+	} catch(ReplyDataException &e){
+		ERROR("ReplyDataException: %s",e.what.c_str());
+	}
+	freeReplyObject(reply);
+	write_pool.putConnection(write_ctx,RedisConnPool::CONN_STATE_ERR);
+	return false;
+}
+
 ResourceResponse ResourceCache::get(ResourceList &rl,
 									ResourceList::iterator &resource)
 {
 	ResourceResponse ret = RES_ERR;
+	Yeti::global_config &gc = Yeti::instance()->config;
 	resource = rl.begin();
 
 	try {
@@ -233,7 +308,8 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 		ResourceList::iterator rit = rl.begin();
 		for(;rit!=rl.end();++rit){
 			string key = get_key(*rit);
-			redisAppendCommand(redis_ctx,"GET %b",
+			//redisAppendCommand(redis_ctx,"GET %b",
+			redisAppendCommand(redis_ctx,"HVALS %b",
 				key.c_str(),key.size());
 			desired_response.push_back(REDIS_REPLY_STATUS);
 		}
@@ -338,8 +414,9 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 					if(!r.active || r.taken) continue;
 
 					string key = get_key(r);
-					redisAppendCommand(redis_ctx,"INCRBY %b %d",
+					redisAppendCommand(redis_ctx,"HINCRBY %b %d %d",
 						key.c_str(),key.size(),
+						gc.node_id,
 						r.takes);
 					desired_response.push_back(REDIS_REPLY_STATUS);
 					active_idx.push_back(i);
@@ -377,11 +454,13 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 						for(unsigned int i = 0;i<n;i++){
 							r = reply->element[i];
 							if(r->type!=REDIS_REPLY_INTEGER){
+								if(r->type==REDIS_REPLY_ERROR)
+									DBG("INCRBY redis reply_error: %s",reply->str);
 								throw ReplyDataException("INCRBY integer expected");
 							}
 							Resource &res = rl[active_idx[i]];
 							res.taken = true;
-							INFO("grabbed_resource %d:%d %lld/%d",res.type,res.id,r->integer,res.limit);
+							INFO("grabbed_resource %d:%d %d %lld/%d (this node stat only)",res.type,res.id,gc.node_id,r->integer,res.limit);
 						}
 					}
 					freeReplyObject(reply);
@@ -390,14 +469,14 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 				ret =  RES_SUCC;
 			} //else if(!resources_available)
 		} catch(GetReplyException &e){
-			ERROR("GetReplyException %s status: %d",e.what.c_str(),e.status);
+			ERROR("GetReplyException: %s, status: %d",e.what.c_str(),e.status);
 			redis_pool->putConnection(redis_ctx,RedisConnPool::CONN_STATE_ERR);
 		} catch(ReplyTypeException &e){
-			ERROR("ReplyTypeException %s type: %d",e.what.c_str(),e.type);
+			ERROR("ReplyTypeException: %s, type: %d",e.what.c_str(),e.type);
 			freeReplyObject(reply);
 			redis_pool->putConnection(redis_ctx,RedisConnPool::CONN_STATE_ERR);
 		} catch(ReplyDataException &e){
-			ERROR("ReplyDataException %s",e.what.c_str());
+			ERROR("ReplyDataException: %s",e.what.c_str());
 			freeReplyObject(reply);
 			redis_pool->putConnection(redis_ctx,RedisConnPool::CONN_STATE_ERR);
 		}

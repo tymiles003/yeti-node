@@ -44,7 +44,7 @@ public:
 	void run();
 	void on_stop();
 
-	redisContext *getConnection();
+	redisContext *getConnection(unsigned int timeout = 0);
 	void putConnection(redisContext *,ConnReturnState state);
 
 	void GetConfig(AmArg& ret);

@@ -31,6 +31,9 @@ class ResourceCache
 	bool tostop;
 
 	string get_key(Resource &r);
+
+	bool init_resources();
+
 public:
 	ResourceCache();redisContext *w_ctx;
 	int configure(const AmConfigReader &cfg);
