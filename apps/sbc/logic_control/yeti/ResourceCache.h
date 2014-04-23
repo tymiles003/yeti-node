@@ -26,13 +26,16 @@ class ResourceCache
 {
 	RedisConnPool write_pool,read_pool;
 	ResourceList put_resources_queue;
-	AmMutex put_queue_mutex;
+	ResourceList get_resources_queue;
+	AmMutex queues_mutex;
 	AmCondition <bool>data_ready;
 	bool tostop;
 
 	string get_key(Resource &r);
 
 	bool init_resources();
+	void pending_get(Resource &r);
+	void pending_get_finish();
 
 public:
 	ResourceCache();redisContext *w_ctx;
