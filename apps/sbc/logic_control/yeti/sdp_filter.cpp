@@ -186,6 +186,7 @@ int filterRequestSdp(SBCCallLeg *call,
 					 AmMimeBody &body, const string &method)
 {
 	bool a_leg = call->isALeg();
+	CallCtx *ctx = getCtx(call);
 	SBCCallProfile &call_profile = call->getCallProfile();
 	DBG("filterRequestSdp() method = %s, a_leg = %d\n",method.c_str(),a_leg);
 
@@ -211,7 +212,10 @@ int filterRequestSdp(SBCCallLeg *call,
 	normalizeSDP(sdp, false, "");
 
 	CodecsGroupEntry codecs_group;
-	int group_id = !a_leg ? call_profile.static_codecs_aleg_id : call_profile.static_codecs_bleg_id;
+	int group_id = !a_leg ?
+			call_profile.static_codecs_aleg_id : call_profile.static_codecs_bleg_id;
+	vector<SdpMedia> &negotiated_media = !a_leg ?
+			ctx->bleg_negotiated_media : ctx->aleg_negotiated_media;
 	try {
 		CodecsGroups::instance()->get(group_id,codecs_group);
 	} catch(...){
@@ -228,6 +232,8 @@ int filterRequestSdp(SBCCallLeg *call,
 	fix_dynamic_payloads(sdp,call->getTranscoderMapping());
 
 	filterSDPalines(sdp, call_profile.sdpalinesfilter);
+
+	negotiated_media = sdp.media;
 	//update body
 	string n_body;
 	sdp.print(n_body);
@@ -259,7 +265,7 @@ int filterReplySdp(SBCCallLeg *call,
 		return 0;
 	}
 
-	const vector<SdpMedia> &aleg_media  = ctx->invite_negotiated_media;
+	const vector<SdpMedia> &negotiated_media  = a_leg ? ctx->aleg_negotiated_media : ctx->bleg_negotiated_media;
 	AmSdp sdp;
 	int res = sdp.parse((const char *)sdp_body->getPayload());
 	if (0 != res) {
@@ -269,38 +275,39 @@ int filterReplySdp(SBCCallLeg *call,
 
 	normalizeSDP(sdp, false, ""); // anonymization is done in the other leg to use correct IP address
 
-	if(aleg_media.size()!=sdp.media.size()){
-		ERROR("filterReplySdp() streams count not equal reply: %ld, saved: %ld)",
-			sdp.media.size(),aleg_media.size());
-		return -488;
-	}
-
-	int stream_idx = 0;
-	vector<SdpMedia>::const_iterator aleg_media_it = aleg_media.begin();
-	for (vector<SdpMedia>::iterator m_it = sdp.media.begin();
-		m_it != sdp.media.end(); ++m_it, ++aleg_media_it)
-	{
-		const SdpMedia &aleg_m = *aleg_media_it;
-		SdpMedia& m = *m_it;
-
-		if(m.type!=aleg_m.type){
-			ERROR("filterReplySdp() streams types not matched idx = %d",stream_idx);
-			dump_SdpPayload(aleg_m.payloads,"aleg_m payload "+int2str(stream_idx));
+	if(negotiated_media.size()){
+		if(negotiated_media.size()!=sdp.media.size()){
+			ERROR("filterReplySdp() streams count not equal reply: %ld, saved: %ld)",
+				sdp.media.size(),negotiated_media.size());
 			return -488;
 		}
 
-		//remove all unknown attributes
-		m.attributes.clear();
+		int stream_idx = 0;
+		vector<SdpMedia>::const_iterator aleg_media_it = negotiated_media.begin();
+		for (vector<SdpMedia>::iterator m_it = sdp.media.begin();
+			m_it != sdp.media.end(); ++m_it, ++aleg_media_it)
+		{
+			const SdpMedia &aleg_m = *aleg_media_it;
+			SdpMedia& m = *m_it;
 
-		if(m.type!=MT_AUDIO)
-			continue;
+			if(m.type!=aleg_m.type){
+				ERROR("filterReplySdp() streams types not matched idx = %d",stream_idx);
+				dump_SdpPayload(aleg_m.payloads,"aleg_m payload "+int2str(stream_idx));
+				return -488;
+			}
 
-		m.payloads = aleg_m.payloads;
-		//m.attributes.clear();
+			//remove all unknown attributes
+			m.attributes.clear();
 
-		stream_idx++;
+			if(m.type!=MT_AUDIO)
+				continue;
+
+			m.payloads = aleg_m.payloads;
+			//m.attributes.clear();
+
+			stream_idx++;
+		}
 	}
-
 	fix_dynamic_payloads(sdp,call->getTranscoderMapping());
 	filterSDPalines(sdp, call_profile.sdpalinesfilter);
 

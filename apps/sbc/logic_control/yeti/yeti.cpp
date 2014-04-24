@@ -944,7 +944,7 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 	//filterSDP
 	int res = filterInviteSdp(call->getCallProfile(),
 							  req,
-							  ctx->invite_negotiated_media,
+							  ctx->aleg_negotiated_media,
 							  req.method);
 	if(res < 0){
 		INFO("onInitialInvite() Not acceptable codecs");
@@ -1239,7 +1239,7 @@ void Yeti::onSdpCompleted(SBCCallLeg *call, AmSdp& offer, AmSdp& answer){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	if(call->isALeg()){
 		//fix sdp for relay mask computing in B -> A direction
-		answer.media = getCtx(call)->invite_negotiated_media;
+		answer.media = getCtx(call)->aleg_negotiated_media;
 	}
 }
 
@@ -1260,11 +1260,12 @@ int Yeti::relayEvent(SBCCallLeg *call, AmEvent *e){
 
 			DBG("Yeti::relayEvent(%p) filtering body for request '%s' (c/t '%s')\n",
 				call,req_ev->req.method.c_str(), req_ev->req.body.getCTStr().c_str());
-			int res = filterRequestSdp(call,req_ev->req.body, req_ev->req.method);
+			int res = filterRequestSdp(call, req_ev->req.body, req_ev->req.method);
 			if (res < 0) {
 				delete e;
 				return res;
 			}
+			//bleg_invite_negotiated_media
 		} break;
 
 		case B2BSipReply: {
