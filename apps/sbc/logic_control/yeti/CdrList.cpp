@@ -128,6 +128,7 @@ void CdrList::cdr2arg(const Cdr *cdr,const SqlRouter *router, AmArg& arg){
 	add_field_to_ret(local_tag);
 
 	add_field_to_ret(time_limit);
+	add_field_to_ret(dump_level_id);
 
 	const DynFieldsT &router_dyn_fields = router->getDynFields();
 	DynFieldsT::const_iterator it = router_dyn_fields.begin();
