@@ -184,7 +184,7 @@ void AmThread::setThreadName(const char *thread_name){
   _m_td.lock();
   if(thread_name != NULL &&
      (pthread_setname_np(_td, thread_name)!=0))
-    WARN("can't set name '%s' for thread %ld[%p] ",_td,this);
+    WARN("can't set name '%s' for thread %ld[%p] ",thread_name,_td,this);
   _m_td.unlock();
 }
 
