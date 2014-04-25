@@ -9,7 +9,7 @@ using std::vector;
 #include <AmSdp.h>
 #include "SBCCallLeg.h"
 
-#define DTMF_ENCODING_NAME "telephone-event"
+#define DTMF_ENCODING_NAME "TELEPHONE-EVENT"
 
 void dump_SdpPayload(const vector<SdpPayload> &p,string prefix="");
 void fix_dynamic_payloads(AmSdp &sdp,PayloadIdMapping &mapping);
