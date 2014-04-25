@@ -158,6 +158,7 @@ struct SBCCallProfile
   int static_codecs_aleg_id;
   int static_codecs_bleg_id;
   bool aleg_single_codec;
+  bool bleg_single_codec;
 
   string sst_enabled;
   bool sst_enabled_value;

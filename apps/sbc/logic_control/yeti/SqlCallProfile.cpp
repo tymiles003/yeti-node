@@ -59,6 +59,7 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 	static_codecs_aleg_id = t["aleg_codecs_group_id"].as<int>(0);
 	static_codecs_bleg_id = t["bleg_codecs_group_id"].as<int>(0);
 	aleg_single_codec = t["aleg_single_codec_in_200ok"].as<bool>(false);
+	bleg_single_codec = t["bleg_single_codec_in_200ok"].as<bool>(false);
 
 	anonymize_sdp = t["anonymize_sdp"].as<bool>(true);
 	//DBG("db: %s, anonymize_sdp = %d",t["anonymize_sdp"].c_str(),anonymize_sdp);
@@ -369,6 +370,7 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 		INFO("SBC:      static_codecs_aleg_id: %i\n", static_codecs_aleg_id);
 		INFO("SBC:      static_codecs_bleg_id: %i\n", static_codecs_bleg_id);
 		INFO("SBC:      aleg_single_codec: '%s'\n", aleg_single_codec?"yes":"no");
+		INFO("SBC:      bleg_single_codec: '%s'\n", bleg_single_codec?"yes":"no");
 
 		DynFieldsT::const_iterator dfit = df.begin();
 		for(unsigned int k = 0;k<dyn_fields.size();k++){
@@ -378,9 +380,7 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 			++dfit;
 		}
 
-		if (append_headers.size()) {
-			INFO("SBC:      append headers '%s'\n", append_headers.c_str());
-		}
+		INFO("SBC:      append headers '%s'\n", append_headers.c_str());
 	}
 }
 

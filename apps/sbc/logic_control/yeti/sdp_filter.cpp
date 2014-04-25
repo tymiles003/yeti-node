@@ -81,13 +81,13 @@ int filter_arrange_SDP(AmSdp& sdp,
 		{ //iterate over arranged(!) filter entries
 			const SdpPayload &sp = *f_it;
 			string p = sp.encoding_name,c;
-			std::transform(p.begin(), p.end(), p.begin(), ::tolower);
+			std::transform(p.begin(), p.end(), p.begin(), ::toupper);
 			bool matched = false;
 			std::vector<SdpPayload>::iterator p_it = media.payloads.begin();
 			for (;p_it != media.payloads.end(); p_it++)
 			{ //iterate over Sdp entries of certain SdpMedia
 				c = p_it->encoding_name;
-				std::transform(c.begin(), c.end(), c.begin(), ::tolower);
+				std::transform(c.begin(), c.end(), c.begin(), ::toupper);
 				if(c==p){
 					//DBG("filter_arrange_SDP() matched %s. add to new payload",c.c_str());
 					//new_pl.push_back(*p_it);
@@ -140,11 +140,13 @@ int filter_arrange_SDP(AmSdp& sdp,
 }
 
 
-int filterInviteSdp(SBCCallProfile &call_profile,
+int negotiateRequestSdp(SBCCallProfile &call_profile,
 					AmSipRequest &req, vector<SdpMedia> &negotiated_media,
-					const string &method)
+					const string &method,
+					bool single_codec,
+					int static_codecs_id)
 {
-	DBG("filterInviteSdp() method = %s\n",method.c_str());
+	DBG("negotiateRequestSdp() method = %s\n",method.c_str());
 	AmMimeBody &body = req.body;
 	AmMimeBody* sdp_body = body.hasContentType(SIP_APPLICATION_SDP);
 	if (!sdp_body) return 0;
@@ -162,12 +164,12 @@ int filterInviteSdp(SBCCallProfile &call_profile,
 	}
 
 	CodecsGroupEntry codecs_group;
-	CodecsGroups::instance()->get(call_profile.static_codecs_aleg_id, codecs_group);
+	CodecsGroups::instance()->get(static_codecs_id, codecs_group);
 
 	vector<SdpPayload> static_codecs_filter = codecs_group.get_payloads();
 
 	res = filter_arrange_SDP(sdp,static_codecs_filter,
-							 false,call_profile.aleg_single_codec);
+							 false,single_codec);
 	filterSDPalines(sdp, call_profile.sdpalinesfilter);
 
 	//save negotiated result for the future usage
@@ -183,11 +185,11 @@ int filterInviteSdp(SBCCallProfile &call_profile,
 }
 
 int filterRequestSdp(SBCCallLeg *call,
-					 AmMimeBody &body, const string &method)
+					 SBCCallProfile &call_profile,
+					 AmMimeBody &body, const string &method,
+					 int static_codecs_id)
 {
 	bool a_leg = call->isALeg();
-	CallCtx *ctx = getCtx(call);
-	SBCCallProfile &call_profile = call->getCallProfile();
 	DBG("filterRequestSdp() method = %s, a_leg = %d\n",method.c_str(),a_leg);
 
 	AmMimeBody* sdp_body = body.hasContentType(SIP_APPLICATION_SDP);
@@ -212,16 +214,17 @@ int filterRequestSdp(SBCCallLeg *call,
 	normalizeSDP(sdp, false, "");
 
 	CodecsGroupEntry codecs_group;
-	int group_id = !a_leg ?
-			call_profile.static_codecs_aleg_id : call_profile.static_codecs_bleg_id;
-	vector<SdpMedia> &negotiated_media = !a_leg ?
-			ctx->bleg_negotiated_media : ctx->aleg_negotiated_media;
+/*	int group_id = !a_leg ?
+			call_profile.static_codecs_aleg_id : call_profile.static_codecs_bleg_id;*/
+
+	/*vector<SdpMedia> &negotiated_media = !a_leg ?
+			ctx->bleg_negotiated_media : ctx->aleg_negotiated_media;*/
 	try {
-		CodecsGroups::instance()->get(group_id,codecs_group);
+		CodecsGroups::instance()->get(static_codecs_id,codecs_group);
 	} catch(...){
 		//!TODO: replace with correct InternalException throw
 		ERROR("filterRequestSdp() can't find codecs group %d",
-			  group_id);
+			  static_codecs_id);
 		return -488;
 	}
 
@@ -233,7 +236,6 @@ int filterRequestSdp(SBCCallLeg *call,
 
 	filterSDPalines(sdp, call_profile.sdpalinesfilter);
 
-	negotiated_media = sdp.media;
 	//update body
 	string n_body;
 	sdp.print(n_body);
@@ -244,9 +246,9 @@ int filterRequestSdp(SBCCallLeg *call,
 
 
 int filterReplySdp(SBCCallLeg *call,
-				   AmMimeBody &body, const string &method)
+				   AmMimeBody &body, const string &method,
+				   const vector<SdpMedia> &negotiated_media)
 {
-	CallCtx *ctx = getCtx(call);
 	bool a_leg = call->isALeg();
 	SBCCallProfile &call_profile = call->getCallProfile();
 
@@ -265,7 +267,6 @@ int filterReplySdp(SBCCallLeg *call,
 		return 0;
 	}
 
-	const vector<SdpMedia> &negotiated_media  = a_leg ? ctx->aleg_negotiated_media : ctx->bleg_negotiated_media;
 	AmSdp sdp;
 	int res = sdp.parse((const char *)sdp_body->getPayload());
 	if (0 != res) {
@@ -307,6 +308,8 @@ int filterReplySdp(SBCCallLeg *call,
 
 			stream_idx++;
 		}
+	} else {
+		WARN("no negotiated media for leg%s. leave it as is",a_leg ? "A" : "B");
 	}
 	fix_dynamic_payloads(sdp,call->getTranscoderMapping());
 	filterSDPalines(sdp, call_profile.sdpalinesfilter);

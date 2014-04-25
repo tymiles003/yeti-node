@@ -40,13 +40,13 @@ static bool readPayload(SdpPayload &p, const string &src)
 	p.encoding_name = elems[0];
 
 	string pname = p.encoding_name;
-	std::transform(pname.begin(), pname.end(), pname.begin(), ::tolower);
+	std::transform(pname.begin(), pname.end(), pname.begin(), ::toupper);
 
 	// fix static payload type numbers
 	// (http://www.iana.org/assignments/rtp-parameters/rtp-parameters.xml)
 	for (int i = 0; i < IANA_RTP_PAYLOADS_SIZE; i++) {
 		string s = IANA_RTP_PAYLOADS[i].payload_name;
-		std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+		std::transform(s.begin(), s.end(), s.begin(), ::toupper);
 		if (p.encoding_name == s &&
 			(unsigned)p.clock_rate == IANA_RTP_PAYLOADS[i].clock_rate &&
 			(p.encoding_param == -1 || ((unsigned)p.encoding_param == IANA_RTP_PAYLOADS[i].channels)))
@@ -63,7 +63,7 @@ bool CodecsGroupEntry::add_codec(string c){
 	SdpPayload p;
 	AmPlugIn* plugin = AmPlugIn::instance();
 
-	std::transform(c.begin(), c.end(), c.begin(), ::tolower);
+	std::transform(c.begin(), c.end(), c.begin(), ::toupper);
 	//codecs_filter.filter_list.insert(c);
 	if (!readPayload(p, c)){
 		ERROR("CodecsGroupEntry() can't read payload '%s'",c.c_str());

@@ -513,7 +513,10 @@ bool Yeti::connectCallee(SBCCallLeg *call,const AmSipRequest &orig_req){
 		invite_req.hdrs+=append_headers;
 	}
 
-	int res = filterRequestSdp(call,invite_req.body,invite_req.method);
+	int res = filterRequestSdp(call,
+							   call_profile,
+							   invite_req.body,invite_req.method,
+							   call_profile.static_codecs_bleg_id);
 	if(res < 0){
 		INFO("onInitialInvite() Not acceptable codecs for legB");
 		throw AmSession::Exception(488, SIP_REPLY_NOT_ACCEPTABLE_HERE);
@@ -941,11 +944,14 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 			call->getCallProfile() = *profile;
 	}
 
+	SBCCallProfile &call_profile = call->getCallProfile();
 	//filterSDP
-	int res = filterInviteSdp(call->getCallProfile(),
+	int res = negotiateRequestSdp(call_profile,
 							  req,
 							  ctx->aleg_negotiated_media,
-							  req.method);
+							  req.method,
+							  call_profile.aleg_single_codec,
+							  call_profile.static_codecs_aleg_id);
 	if(res < 0){
 		INFO("onInitialInvite() Not acceptable codecs");
 		throw InternalException(FC_CODECS_NOT_MATCHED);
@@ -953,7 +959,10 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 	}
 
 	//next we should filter request for legB
-	res = filterRequestSdp(call,b_req.body,b_req.method);
+	res = filterRequestSdp(call,
+						   call_profile,
+						   b_req.body,b_req.method,
+						   call_profile.static_codecs_bleg_id);
 	if(res < 0){
 		INFO("onInitialInvite() Not acceptable codecs for legB");
 		throw AmSession::Exception(488, SIP_REPLY_NOT_ACCEPTABLE_HERE);
@@ -1245,7 +1254,6 @@ void Yeti::onSdpCompleted(SBCCallLeg *call, AmSdp& offer, AmSdp& answer){
 
 int Yeti::relayEvent(SBCCallLeg *call, AmEvent *e){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
-
 	CallCtx *ctx = getCtx(call);
 	if(NULL==ctx) {
 		ERROR("Yeti::relayEvent(%p) zero ctx. ignore event",call);
@@ -1253,19 +1261,53 @@ int Yeti::relayEvent(SBCCallLeg *call, AmEvent *e){
 		return 1;
 	}
 
+	bool a_leg = call->isALeg();
+
 	switch (e->event_id) {
 		case B2BSipRequest: {
 			B2BSipRequestEvent* req_ev = dynamic_cast<B2BSipRequestEvent*>(e);
 			assert(req_ev);
 
-			DBG("Yeti::relayEvent(%p) filtering body for request '%s' (c/t '%s')\n",
+			DBG("Yeti::relayEvent(%p) filtering request '%s' (c/t '%s')\n",
 				call,req_ev->req.method.c_str(), req_ev->req.body.getCTStr().c_str());
-			int res = filterRequestSdp(call, req_ev->req.body, req_ev->req.method);
+
+			SBCCallProfile &call_profile = call->getCallProfile();
+
+			int static_codecs_negotiate_id;
+			int static_codecs_filter_id;
+			bool single_codec;
+			vector<SdpMedia> * negotiated_media;
+
+			if(a_leg){
+				static_codecs_negotiate_id = call_profile.static_codecs_aleg_id;
+				static_codecs_filter_id = call_profile.static_codecs_bleg_id;
+				single_codec = call_profile.aleg_single_codec;
+				negotiated_media = &ctx->aleg_negotiated_media;
+			} else {
+				static_codecs_negotiate_id = call_profile.static_codecs_bleg_id;
+				static_codecs_filter_id = call_profile.static_codecs_aleg_id;
+				single_codec = call_profile.bleg_single_codec;
+				negotiated_media = &ctx->bleg_negotiated_media;
+			}
+
+			int res = negotiateRequestSdp(call_profile,
+										  req_ev->req,
+										  *negotiated_media,
+										  req_ev->req.method,
+										  single_codec,
+										  static_codecs_negotiate_id);
 			if (res < 0) {
 				delete e;
 				return res;
 			}
-			//bleg_invite_negotiated_media
+			res = filterRequestSdp(call,
+								   call_profile,
+								   req_ev->req.body, req_ev->req.method,
+								   static_codecs_filter_id);
+			if (res < 0) {
+				delete e;
+				return res;
+			}
 		} break;
 
 		case B2BSipReply: {
@@ -1274,7 +1316,9 @@ int Yeti::relayEvent(SBCCallLeg *call, AmEvent *e){
 
 			DBG("Yeti::relayEvent(%p) filtering body for reply '%s' (c/t '%s')\n",
 				call,reply_ev->trans_method.c_str(), reply_ev->reply.body.getCTStr().c_str());
-			filterReplySdp(call, reply_ev->reply.body, reply_ev->reply.cseq_method);
+			filterReplySdp(call,
+						   reply_ev->reply.body, reply_ev->reply.cseq_method,
+						   call->isALeg() ? ctx->bleg_negotiated_media : ctx->aleg_negotiated_media);
 		} break;
 	} //switch(e->event_id)
 	return 0;
