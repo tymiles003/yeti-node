@@ -359,7 +359,7 @@ int AmRtpAudio::setCurrentPayload(int payload)
   if(payload != this->payload){
     PayloadMappingTable::iterator pmt_it = pl_map.find(payload);
     if(pmt_it == pl_map.end()){
-      ERROR("Could not set current payload: payload %i unknown to this stream\n",payload);
+//      ERROR("Could not set current payload: payload %i unknown to this stream\n",payload);
       return -1;
     }
     
