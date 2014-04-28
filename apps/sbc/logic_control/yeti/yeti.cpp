@@ -1123,7 +1123,8 @@ CCChainProcessing Yeti::onRtpTimeout(SBCCallLeg *call,const AmRtpTimeoutEvent &r
 		ctx->getOverrideId());
 	Cdr *cdr = getCdr(ctx);
 	cdr->update_internal_reason(DisconnectByTS,internal_reason,internal_code);
-	cdr->update_aleg_reason(response_reason,response_code);
+	cdr->update_aleg_reason("Bye",200);
+	cdr->update_bleg_reason("Bye",200);
 	return ContinueProcessing;
 }
 
