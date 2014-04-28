@@ -223,125 +223,125 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 	aleg_override_id = t["aleg_policy_id"].as<int>(0);
 	bleg_override_id = t["bleg_policy_id"].as<int>(0);
 
-	INFO("Yeti: loaded SQL profile\n");
+	DBG("Yeti: loaded SQL profile\n");
 
 	return true;
 }
 
 void SqlCallProfile::infoPrint(const DynFieldsT &df){
 	if(disconnect_code_id!=0) {
-		INFO("SBC:      refusing calls with code '%d'\n", disconnect_code_id);
+		DBG("SBC:      refusing calls with code '%d'\n", disconnect_code_id);
 	/*} else if (!refuse_with.empty()) {
-		INFO("SBC:      refusing calls with '%s'\n", refuse_with.c_str());
+		DBG("SBC:      refusing calls with '%s'\n", refuse_with.c_str());
 		*/
 	} else {
-		INFO("SBC:      RURI      = '%s'\n", ruri.c_str());
-		INFO("SBC:      RURI-host = '%s'\n", ruri_host.c_str());
-		INFO("SBC:      From = '%s'\n", from.c_str());
-		INFO("SBC:      To   = '%s'\n", to.c_str());
+		DBG("SBC:      RURI      = '%s'\n", ruri.c_str());
+		DBG("SBC:      RURI-host = '%s'\n", ruri_host.c_str());
+		DBG("SBC:      From = '%s'\n", from.c_str());
+		DBG("SBC:      To   = '%s'\n", to.c_str());
 		// if (!contact.empty()) {
-		//   INFO("SBC:      Contact   = '%s'\n", contact.c_str());
+		//   DBG("SBC:      Contact   = '%s'\n", contact.c_str());
 		// }
 		if (!callid.empty()) {
-			INFO("SBC:      Call-ID   = '%s'\n", callid.c_str());
+			DBG("SBC:      Call-ID   = '%s'\n", callid.c_str());
 		}
 
-		INFO("SBC:      force outbound proxy: %s\n", force_outbound_proxy?"yes":"no");
-		INFO("SBC:      outbound proxy = '%s'\n", outbound_proxy.c_str());
+		DBG("SBC:      force outbound proxy: %s\n", force_outbound_proxy?"yes":"no");
+		DBG("SBC:      outbound proxy = '%s'\n", outbound_proxy.c_str());
 
 		if (!outbound_interface.empty()) {
-			INFO("SBC:      outbound interface = '%s'\n", outbound_interface.c_str());
+			DBG("SBC:      outbound interface = '%s'\n", outbound_interface.c_str());
 		}
 
 		if (!aleg_outbound_interface.empty()) {
-			INFO("SBC:      A leg outbound interface = '%s'\n", aleg_outbound_interface.c_str());
+			DBG("SBC:      A leg outbound interface = '%s'\n", aleg_outbound_interface.c_str());
 		}
 
-		INFO("SBC:      A leg force outbound proxy: %s\n", aleg_force_outbound_proxy?"yes":"no");
-		INFO("SBC:      A leg outbound proxy = '%s'\n", aleg_outbound_proxy.c_str());
+		DBG("SBC:      A leg force outbound proxy: %s\n", aleg_force_outbound_proxy?"yes":"no");
+		DBG("SBC:      A leg outbound proxy = '%s'\n", aleg_outbound_proxy.c_str());
 
 		if (!next_hop.empty()) {
-			INFO("SBC:      next hop = %s (%s)\n", next_hop.c_str(),
+			DBG("SBC:      next hop = %s (%s)\n", next_hop.c_str(),
 			next_hop_1st_req ? "1st req" : "all reqs");
 		}
 
 		if (!aleg_next_hop.empty()) {
-			INFO("SBC:      A leg next hop = %s\n", aleg_next_hop.c_str());
+			DBG("SBC:      A leg next hop = %s\n", aleg_next_hop.c_str());
 		}
 
 		string filter_type; size_t filter_elems;
 		filter_type = headerfilter.size() ? FilterType2String(headerfilter.back().filter_type) : "disabled";
 		filter_elems = headerfilter.size() ? headerfilter.back().filter_list.size() : 0;
-		INFO("SBC:      header filter  is %s, %zd items in list\n", filter_type.c_str(), filter_elems);
+		DBG("SBC:      header filter  is %s, %zd items in list\n", filter_type.c_str(), filter_elems);
 
 		filter_type = messagefilter.size() ? FilterType2String(messagefilter.back().filter_type) : "disabled";
 		filter_elems = messagefilter.size() ? messagefilter.back().filter_list.size() : 0;
-		INFO("SBC:      message filter is %s, %zd items in list\n", filter_type.c_str(), filter_elems);
+		DBG("SBC:      message filter is %s, %zd items in list\n", filter_type.c_str(), filter_elems);
 
 		filter_type = sdpfilter.size() ? FilterType2String(sdpfilter.back().filter_type) : "disabled";
 		filter_elems = sdpfilter.size() ? sdpfilter.back().filter_list.size() : 0;
-		INFO("SBC:      SDP filter is %sabled, %s, %zd items in list, %sanonymizing SDP\n",
+		DBG("SBC:      SDP filter is %sabled, %s, %zd items in list, %sanonymizing SDP\n",
 		sdpfilter.size()?"en":"dis", filter_type.c_str(), filter_elems, anonymize_sdp?"":"not ");
 
 		filter_type = sdpalinesfilter.size() ? FilterType2String(sdpalinesfilter.back().filter_type) : "disabled";
 		filter_elems = sdpalinesfilter.size() ? sdpalinesfilter.back().filter_list.size() : 0;
-		INFO("SBC:      SDP alines-filter is %sabled, %s, %zd items in list\n", sdpalinesfilter.size()?"en":"dis", filter_type.c_str(), filter_elems);
+		DBG("SBC:      SDP alines-filter is %sabled, %s, %zd items in list\n", sdpalinesfilter.size()?"en":"dis", filter_type.c_str(), filter_elems);
 
-		INFO("SBC:      RTP relay %sabled\n", rtprelay_enabled?"en":"dis");
+		DBG("SBC:      RTP relay %sabled\n", rtprelay_enabled?"en":"dis");
 		if (rtprelay_enabled) {
 			if (!force_symmetric_rtp.empty()) {
-				INFO("SBC:      RTP force symmetric RTP: %s\n",
+				DBG("SBC:      RTP force symmetric RTP: %s\n",
 				force_symmetric_rtp.c_str());
 			}
 			if (msgflags_symmetric_rtp) {
-				INFO("SBC:      P-MsgFlags symmetric RTP detection enabled\n");
+				DBG("SBC:      P-MsgFlags symmetric RTP detection enabled\n");
 			}
 			if (!aleg_rtprelay_interface.empty()) {
-				INFO("SBC:      RTP Relay interface A leg '%s'\n", aleg_rtprelay_interface.c_str());
+				DBG("SBC:      RTP Relay interface A leg '%s'\n", aleg_rtprelay_interface.c_str());
 			}
 			if (!rtprelay_interface.empty()) {
-				INFO("SBC:      RTP Relay interface B leg '%s'\n", rtprelay_interface.c_str());
+				DBG("SBC:      RTP Relay interface B leg '%s'\n", rtprelay_interface.c_str());
 			}
 
-			INFO("SBC:      RTP Relay RTP DTMF filtering %sabled\n",
+			DBG("SBC:      RTP Relay RTP DTMF filtering %sabled\n",
 				rtprelay_dtmf_filtering?"en":"dis");
-			INFO("SBC:      RTP Relay RTP DTMF detection %sabled\n",
+			DBG("SBC:      RTP Relay RTP DTMF detection %sabled\n",
 				rtprelay_dtmf_detection?"en":"dis");
-			INFO("SBC:      RTP Relay %s seqno\n",
+			DBG("SBC:      RTP Relay %s seqno\n",
 			rtprelay_transparent_seqno?"transparent":"opaque");
-			INFO("SBC:      RTP Relay %s SSRC\n",
+			DBG("SBC:      RTP Relay %s SSRC\n",
 			rtprelay_transparent_ssrc?"transparent":"opaque");
 		}
 
-		INFO("SBC:      SST on A leg enabled: '%s'\n", sst_aleg_enabled.empty() ? "no" : sst_aleg_enabled.c_str());
+		DBG("SBC:      SST on A leg enabled: '%s'\n", sst_aleg_enabled.empty() ? "no" : sst_aleg_enabled.c_str());
 		if (sst_aleg_enabled.size() && sst_aleg_enabled != "no") {
-			INFO("SBC:              session_expires=%s\n",
+			DBG("SBC:              session_expires=%s\n",
 			sst_a_cfg.getParameter("session_expires").c_str());
-			INFO("SBC:              minimum_timer=%s\n",
+			DBG("SBC:              minimum_timer=%s\n",
 			sst_a_cfg.getParameter("minimum_timer").c_str());
-			INFO("SBC:              maximum_timer=%s\n",
+			DBG("SBC:              maximum_timer=%s\n",
 			sst_a_cfg.getParameter("maximum_timer").c_str());
-			INFO("SBC:              session_refresh_method=%s\n",
+			DBG("SBC:              session_refresh_method=%s\n",
 			sst_a_cfg.getParameter("session_refresh_method").c_str());
-			INFO("SBC:              accept_501_reply=%s\n",
+			DBG("SBC:              accept_501_reply=%s\n",
 			sst_a_cfg.getParameter("accept_501_reply").c_str());
 		}
-		INFO("SBC:      SST on B leg enabled: '%s'\n", sst_enabled.empty() ? "no" : sst_enabled.c_str());
+		DBG("SBC:      SST on B leg enabled: '%s'\n", sst_enabled.empty() ? "no" : sst_enabled.c_str());
 		if (sst_enabled.size() && sst_enabled != "no") {
-			INFO("SBC:              session_expires=%s\n",
+			DBG("SBC:              session_expires=%s\n",
 			sst_b_cfg.getParameter("session_expires").c_str());
-			INFO("SBC:              minimum_timer=%s\n",
+			DBG("SBC:              minimum_timer=%s\n",
 			sst_b_cfg.getParameter("minimum_timer").c_str());
-			INFO("SBC:              maximum_timer=%s\n",
+			DBG("SBC:              maximum_timer=%s\n",
 			sst_b_cfg.getParameter("maximum_timer").c_str());
-			INFO("SBC:              session_refresh_method=%s\n",
+			DBG("SBC:              session_refresh_method=%s\n",
 			sst_b_cfg.getParameter("session_refresh_method").c_str());
-			INFO("SBC:              accept_501_reply=%s\n",
+			DBG("SBC:              accept_501_reply=%s\n",
 			sst_b_cfg.getParameter("accept_501_reply").c_str());
 		}
 
-		INFO("SBC:      SIP auth %sabled\n", auth_enabled?"en":"dis");
-		INFO("SBC:      SIP auth for A leg %sabled\n", auth_aleg_enabled?"en":"dis");
+		DBG("SBC:      SIP auth %sabled\n", auth_enabled?"en":"dis");
+		DBG("SBC:      SIP auth for A leg %sabled\n", auth_aleg_enabled?"en":"dis");
 
 		if (reply_translations.size()) {
 			string reply_trans_codes;
@@ -349,38 +349,38 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 					reply_translations.begin(); it != reply_translations.end(); it++)
 				reply_trans_codes += int2str(it->first)+", ";
 			reply_trans_codes.erase(reply_trans_codes.length()-2);
-			INFO("SBC:      reply translation for  %s\n", reply_trans_codes.c_str());
+			DBG("SBC:      reply translation for  %s\n", reply_trans_codes.c_str());
 		}
 
 		codec_prefs.infoPrint();
 		transcoder.infoPrint();
 
-		INFO("SBC:      time_limit: %i\n", time_limit);
-		INFO("SBC:      resources: %s\n", resources.c_str());
+		DBG("SBC:      time_limit: %i\n", time_limit);
+		DBG("SBC:      resources: %s\n", resources.c_str());
 		for(ResourceList::const_iterator i = rl.begin();i!=rl.end();++i)
-			INFO("SBC:         resource: <%s>",(*i).print().c_str());
+			DBG("SBC:         resource: <%s>",(*i).print().c_str());
 
-		INFO("SBC:      aleg_override_id: %i\n", aleg_override_id);
-		INFO("SBC:      bleg_override_id: %i\n", bleg_override_id);
+		DBG("SBC:      aleg_override_id: %i\n", aleg_override_id);
+		DBG("SBC:      bleg_override_id: %i\n", bleg_override_id);
 
-		INFO("SBC:      reg-caching: '%s'\n", reg_caching ? "yes" : "no");
-		INFO("SBC:      min_reg_expires: %i\n", min_reg_expires);
-		INFO("SBC:      max_ua_expires: %i\n", max_ua_expires);
+		DBG("SBC:      reg-caching: '%s'\n", reg_caching ? "yes" : "no");
+		DBG("SBC:      min_reg_expires: %i\n", min_reg_expires);
+		DBG("SBC:      max_ua_expires: %i\n", max_ua_expires);
 
-		INFO("SBC:      static_codecs_aleg_id: %i\n", static_codecs_aleg_id);
-		INFO("SBC:      static_codecs_bleg_id: %i\n", static_codecs_bleg_id);
-		INFO("SBC:      aleg_single_codec: '%s'\n", aleg_single_codec?"yes":"no");
-		INFO("SBC:      bleg_single_codec: '%s'\n", bleg_single_codec?"yes":"no");
+		DBG("SBC:      static_codecs_aleg_id: %i\n", static_codecs_aleg_id);
+		DBG("SBC:      static_codecs_bleg_id: %i\n", static_codecs_bleg_id);
+		DBG("SBC:      aleg_single_codec: '%s'\n", aleg_single_codec?"yes":"no");
+		DBG("SBC:      bleg_single_codec: '%s'\n", bleg_single_codec?"yes":"no");
 
 		DynFieldsT::const_iterator dfit = df.begin();
 		for(unsigned int k = 0;k<dyn_fields.size();k++){
-			INFO("SBC:      dynamic_field['%s']: '%s'\n",
+			DBG("SBC:      dynamic_field['%s']: '%s'\n",
 				 dfit->first.c_str(),
 				 AmArg::print(dyn_fields.get(k)).c_str());
 			++dfit;
 		}
 
-		INFO("SBC:      append headers '%s'\n", append_headers.c_str());
+		DBG("SBC:      append headers '%s'\n", append_headers.c_str());
 	}
 }
 

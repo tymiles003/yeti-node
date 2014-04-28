@@ -146,7 +146,7 @@ redisContext *RedisConnPool::getConnection(unsigned int timeout){
 			}
 
 			if(!active_ready.wait_for_to(timeout)){
-				ERROR("timeout waiting for an active connection (waited %ums)",timeout);
+				DBG("timeout waiting for an active connection (waited %ums)",timeout);
 				break;
 			}
 		} else {

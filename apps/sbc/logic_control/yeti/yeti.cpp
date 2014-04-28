@@ -22,7 +22,7 @@ struct CallLegCreator;
 #define PROF_START(var) clock_t prof_start_##var = clock();
 #define PROF_END(var) clock_t prof_end_##var = clock();
 #define PROF_DIFF(var) ((prof_end_##var-prof_start_##var)/(double)CLOCKS_PER_SEC)
-#define PROF_PRINT(descr,var) INFO(descr" took %f",PROF_DIFF(var));
+#define PROF_PRINT(descr,var) DBG(descr" took %f",PROF_DIFF(var));
 
 #else
 
@@ -785,7 +785,7 @@ void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cau
 		cdr->update_internal_reason(DisconnectByTS,internal_reason,internal_code);
 	}
 
-	INFO("%s(%p,leg%s,state = %s, cause = %s)",FUNC_NAME,call,call->isALeg()?"A":"B",
+	DBG("%s(%p,leg%s,state = %s, cause = %s)",FUNC_NAME,call,call->isALeg()?"A":"B",
 		callStatus2str(call->getCallStatus()),
 		reason.c_str());
 

@@ -170,7 +170,7 @@ void ResourceCache::run(){
 								throw ReplyDataException("HINCRBY integer expected");
 							}
 							Resource &res = get[i];
-							INFO("get_resource %d:%d %d %lld",res.type,res.id,gc.node_id,r->integer);
+							DBG("get_resource %d:%d %d %lld",res.type,res.id,gc.node_id,r->integer);
 						}
 					}
 					freeReplyObject(reply);
@@ -226,7 +226,7 @@ void ResourceCache::run(){
 								throw ReplyDataException("HDECRBY integer expected");
 							}
 							Resource &res = filtered_put[i];
-							INFO("put_resource %d:%d %d %lld",res.type,res.id,gc.node_id,r->integer);
+							DBG("put_resource %d:%d %d %lld",res.type,res.id,gc.node_id,r->integer);
 						}
 					}
 					freeReplyObject(reply);
@@ -425,7 +425,7 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 							continue;
 						}
 
-						INFO("check_resource %d:%d %ld/%d",
+						DBG("check_resource %d:%d %ld/%d",
 							res.type,res.id,now,res.limit);
 
 						//check limit

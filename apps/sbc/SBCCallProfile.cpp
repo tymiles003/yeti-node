@@ -1414,10 +1414,10 @@ bool SBCCallProfile::CodecPreferences::readConfig(AmConfigReader &cfg)
 
 void SBCCallProfile::CodecPreferences::infoPrint() const
 {
-  INFO("SBC:      A leg codec preference: %s\n", aleg_payload_order_str.c_str());
-  INFO("SBC:      A leg prefer existing codecs: %s\n", aleg_prefer_existing_payloads_str.c_str());
-  INFO("SBC:      B leg codec preference: %s\n", bleg_payload_order_str.c_str());
-  INFO("SBC:      B leg prefer existing codecs: %s\n", bleg_prefer_existing_payloads_str.c_str());
+  DBG("SBC:      A leg codec preference: %s\n", aleg_payload_order_str.c_str());
+  DBG("SBC:      A leg prefer existing codecs: %s\n", aleg_prefer_existing_payloads_str.c_str());
+  DBG("SBC:      B leg codec preference: %s\n", bleg_payload_order_str.c_str());
+  DBG("SBC:      B leg prefer existing codecs: %s\n", bleg_prefer_existing_payloads_str.c_str());
 }
 
 bool SBCCallProfile::CodecPreferences::operator==(const CodecPreferences& rhs) const
@@ -1507,11 +1507,11 @@ bool SBCCallProfile::TranscoderSettings::readDTMFMode(const std::string &src)
 
 void SBCCallProfile::TranscoderSettings::infoPrint() const
 {
-  INFO("SBC:      transcoder audio codecs: %s\n", audio_codecs_str.c_str());
-  INFO("SBC:      callee codec capabilities: %s\n", callee_codec_capabilities_str.c_str());
-  INFO("SBC:      enable transcoder: %s\n", transcoder_mode_str.c_str());
-  INFO("SBC:      norelay audio codecs: %s\n", audio_codecs_norelay_str.c_str());
-  INFO("SBC:      norelay audio codecs (aleg): %s\n", audio_codecs_norelay_aleg_str.c_str());
+  DBG("SBC:      transcoder audio codecs: %s\n", audio_codecs_str.c_str());
+  DBG("SBC:      callee codec capabilities: %s\n", callee_codec_capabilities_str.c_str());
+  DBG("SBC:      enable transcoder: %s\n", transcoder_mode_str.c_str());
+  DBG("SBC:      norelay audio codecs: %s\n", audio_codecs_norelay_str.c_str());
+  DBG("SBC:      norelay audio codecs (aleg): %s\n", audio_codecs_norelay_aleg_str.c_str());
 }
 
 bool SBCCallProfile::TranscoderSettings::readConfig(AmConfigReader &cfg)
