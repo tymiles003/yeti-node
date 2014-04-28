@@ -31,7 +31,7 @@ CodesTranslator* CodesTranslator::instance()
 }
 
 int CodesTranslator::configure(AmConfigReader &cfg){
-	db_schema = Yeti::instance()->config.db_schema;
+	db_schema = Yeti::instance()->config.routing_schema;
 	configure_db(cfg);
 	if(load_translations_config()){
 		ERROR("can't load resources config");
@@ -68,10 +68,10 @@ int CodesTranslator::load_translations_config(){
 	try {
 		pqxx::result r;
 		pqxx::connection c(dbc.conn_str());
-		pqxx::work t(c);
-
+		c.set_variable("search_path",db_schema+", public");
+			pqxx::work t(c);
 			//code2pref
-			r = t.exec("SELECT * from "+db_schema+".load_disconnect_code_rerouting()");
+			r = t.exec("SELECT * from load_disconnect_code_rerouting()");
 			for(pqxx::result::size_type i = 0; i < r.size();++i){
 				const pqxx::result::tuple &row = r[i];
 				int code = row["received_code"].as<int>(0);
@@ -83,7 +83,7 @@ int CodesTranslator::load_translations_config(){
 			}
 
 			//code2trans
-			r = t.exec("SELECT * from "+db_schema+".load_disconnect_code_rewrite()");
+			r = t.exec("SELECT * from load_disconnect_code_rewrite()");
 			for(pqxx::result::size_type i = 0; i < r.size();++i){
 				const pqxx::result::tuple &row = r[i];
 				int code =	row["o_code"].as<int>(0);
@@ -101,7 +101,7 @@ int CodesTranslator::load_translations_config(){
 			}
 
 			//icode2resp
-			r = t.exec("SELECT * from "+db_schema+".load_disconnect_code_refuse()");
+			r = t.exec("SELECT * from load_disconnect_code_refuse()");
 			for(pqxx::result::size_type i = 0; i < r.size();++i){
 				const pqxx::result::tuple &row = r[i];
 				unsigned int code =	row["o_id"].as<int>(0);
@@ -126,7 +126,7 @@ int CodesTranslator::load_translations_config(){
 			}
 
 			//code2pref overrides
-			r = t.exec("SELECT * from "+db_schema+".load_disconnect_code_rerouting_overrides()");
+			r = t.exec("SELECT * from load_disconnect_code_rerouting_overrides()");
 			for(pqxx::result::size_type i = 0; i < r.size();++i){
 				map<unsigned int,override>::iterator it;
 				const pqxx::result::tuple &row = r[i];
@@ -144,7 +144,7 @@ int CodesTranslator::load_translations_config(){
 			}
 
 			//code2trans overrides
-			r = t.exec("SELECT * from "+db_schema+".load_disconnect_code_rewrite_overrides()");
+			r = t.exec("SELECT * from load_disconnect_code_rewrite_overrides()");
 			for(pqxx::result::size_type i = 0; i < r.size();++i){
 				map<unsigned int,override>::iterator it;
 				const pqxx::result::tuple &row = r[i];

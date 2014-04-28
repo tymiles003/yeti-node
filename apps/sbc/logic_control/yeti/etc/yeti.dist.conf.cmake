@@ -11,12 +11,12 @@
 node_id = 1
 pop_id = 1
 
-# db_schema
+# routing_schema
 #	schema name which used for getprofile query and
 #	for sqlrouter,codes translator & resources control configs loading
 #	default: mandatory
 
-db_schema = switch
+routing_schema = switch
 
 # msg_logger_dir
 #	directory for writing pcap dumps
@@ -100,11 +100,11 @@ slave_max_wait=125
 #	default: 0
 max_exceptions=0
 
-# getprofile_function
+# routing_function
 #	function name for getprofile query
 #	default: mandatory
 #
-getprofile_function = getprofile_f
+routing_function = getprofile_f_release
 
 ### CDR config ###
 

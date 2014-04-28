@@ -143,11 +143,11 @@ bool Yeti::read_config(){
 		return false;
 	}
 
-	if(!cfg.hasParameter("db_schema")){
-		ERROR("Missed parameter 'db_schema'");
+	if(!cfg.hasParameter("routing_schema")){
+		ERROR("Missed parameter 'routing_schema'");
 		return false;
 	}
-	config.db_schema = cfg.getParameter("db_schema");
+	config.routing_schema = cfg.getParameter("routing_schema");
 
 	if(!cfg.hasParameter("msg_logger_dir")){
 		ERROR("Missed parameter 'msg_logger_dir'");
@@ -1649,7 +1649,9 @@ void Yeti::reload(const AmArg& args, AmArg& ret){
 				string prefix("master");
 				dbc.cfg2dbcfg(cfg,prefix);
 				pqxx::connection c(dbc.conn_str());
-				pqxx::prepare::declaration d = c.prepare("check_event","SELECT * from switch.check_event($1)");
+				c.set_variable("search_path",
+							   Yeti::instance()->config.routing_schema+", public");
+				pqxx::prepare::declaration d = c.prepare("check_event","SELECT * from check_event($1)");
 					d("integer",pqxx::prepare::treat_direct);
 				pqxx::nontransaction t(c);
 					pqxx::result r = t.prepared("check_event")(event_id).exec();

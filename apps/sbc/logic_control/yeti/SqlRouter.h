@@ -77,8 +77,8 @@ private:
   int cache_buckets;
   string writecdr_schema;
   string writecdr_function;
-  string getprofile_schema;
-  string getprofile_function;
+  string routing_schema;
+  string routing_function;
   PreparedQueriesT prepared_queries;
   PreparedQueriesT cdr_prepared_queries;
   DynFieldsT dyn_fields;

@@ -30,6 +30,7 @@ struct CdrThreadCfg{
 	DbConfig masterdb,slavedb;
 	PreparedQueriesT prepared_queries;
 	DynFieldsT dyn_fields;
+	string db_schema;
 	int cfg2CdrThCfg(AmConfigReader& cfg,string& prefix);
 };
 

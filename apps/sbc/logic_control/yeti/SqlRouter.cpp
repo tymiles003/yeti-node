@@ -112,9 +112,10 @@ try {
 		cdr_types.push_back(cdr_static_fields[k].type);
 
 	pqxx::connection c(dbc.conn_str());
+	c.set_variable("search_path",routing_schema+", public");
 	{
 		pqxx::nontransaction t(c);
-		pqxx::result r = t.exec("SELECT * from "+getprofile_schema+".load_interface_out()");
+		pqxx::result r = t.exec("SELECT * from load_interface_out()");
 		for(pqxx::result::size_type i = 0; i < r.size();++i){
 			const pqxx::result::tuple &t = r[i];
 			const char *vartype = t["vartype"].c_str();
@@ -129,7 +130,7 @@ try {
 	}
 	{
 		pqxx::nontransaction t(c);
-		pqxx::result r = t.exec("SELECT * from "+getprofile_schema+".load_interface_in()");
+		pqxx::result r = t.exec("SELECT * from load_interface_in()");
 		for(pqxx::result::size_type i = 0; i < r.size();++i){
 			const pqxx::result::tuple &t = r[i];
 			const char *vartype = t["vartype"].c_str();
@@ -153,14 +154,14 @@ try {
 	}}*/
 
 		//apply them
-	sql_query = "SELECT * FROM "+getprofile_schema+"."+getprofile_function+"($1";
+	sql_query = "SELECT * FROM "+routing_function+"($1";
 		//n = GETPROFILE_STATIC_FIELDS_COUNT+used_header_fields.size();
 		n = profile_types.size();
 		for(int i = 2;i<=n;i++) sql_query.append(",$"+int2str(i));
 		sql_query.append(");");
 	prepared_queries["getprofile"] = pair<string,PreparedQueryArgs>(sql_query,profile_types);
 
-	sql_query = "SELECT "+writecdr_schema+"."+writecdr_function+"($1";
+	sql_query = "SELECT "+writecdr_function+"($1";
 		//n = WRITECDR_STATIC_FIELDS_COUNT+dyn_fields.size();
 		n =  cdr_types.size();
 		for(int i = 2;i<=n;i++) sql_query.append(",$"+int2str(i));
@@ -187,8 +188,8 @@ int SqlRouter::configure(AmConfigReader &cfg){
 	}\
 	var = cfg.getParameter(#var);
 
-	getprofile_schema = Yeti::instance()->config.db_schema;
-	GET_VARIABLE(getprofile_function);
+	routing_schema = Yeti::instance()->config.routing_schema;
+	GET_VARIABLE(routing_function);
 
 	GET_VARIABLE(writecdr_schema);
 	GET_VARIABLE(writecdr_function);
@@ -206,6 +207,7 @@ int SqlRouter::configure(AmConfigReader &cfg){
   if (0==cdrconfig.cfg2CdrWrCfg(cfg)){
     cdrconfig.prepared_queries = cdr_prepared_queries;
     cdrconfig.dyn_fields  = dyn_fields;
+    cdrconfig.db_schema = writecdr_schema;
     INFO("Cdr writer pool config loaded");
   } else {
     INFO("Cdr writer pool config loading error");
@@ -609,8 +611,10 @@ void SqlRouter::getConfig(AmArg &arg){
 		u.clear();
 	}
 
-	arg["getprofile_call"] = getprofile_schema+"."+getprofile_function;
-	arg["writecdr_call"] = writecdr_schema+"."+writecdr_function;
+	arg["routing_schema"] = routing_schema;
+	arg["routing_function"] = routing_function;
+	arg["writecdr_function"] = writecdr_function;
+	arg["writecdr_schema"] = writecdr_schema;
 
 	vector<UsedHeaderField>::const_iterator fit = used_header_fields.begin();
 	for(;fit!=used_header_fields.end();++fit){

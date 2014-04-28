@@ -409,6 +409,8 @@ void CdrThread::prepare_queries(pqxx::connection *c){
 	PreparedQueriesT_iterator it = config.prepared_queries.begin();
 	DynFieldsT_iterator dit;
 
+	c->set_variable("search_path",config.db_schema+", public");
+
 	for(;it!=config.prepared_queries.end();++it){
 		pqxx::prepare::declaration d = c->prepare(it->first,it->second.first);
 		//static fields
@@ -508,7 +510,6 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr){
 	try{
 		pqxx::result r;
 		pqxx::nontransaction tnx(*conn);
-
 		if(!tnx.prepared("writecdr").exists()){
 			ERROR("have no prepared SQL statement");
 			return 1;

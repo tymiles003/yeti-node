@@ -2,6 +2,7 @@
 #include "log.h"
 #include <string>
 #include "AmUtils.h"
+#include "yeti.h"
 
 PgConnection::PgConnection(const PGSTD::string &opts):
 	pqxx::connection(opts),
@@ -405,6 +406,8 @@ void PgConnectionPool::getConfig(AmArg &arg){
 }
 
 void PgConnectionPool::prepare_queries(PgConnection *c){
+	c->set_variable("search_path",Yeti::instance()->config.routing_schema+", public");
+
 	PreparedQueriesT::iterator it = cfg.prepared_queries.begin();
 	for(;it!=cfg.prepared_queries.end();++it){
 		pqxx::prepare::declaration d = c->prepare(it->first,it->second.first);

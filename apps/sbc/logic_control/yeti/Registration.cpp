@@ -56,12 +56,14 @@ int Registration::load_registrations(){
 
 	try {
 		pqxx::result r;
-		pqxx::connection c(dbc.conn_str());
-		pqxx::work t(c);
 		vector<RegInfo> new_registrations;
-
 		Yeti::global_config &gc = Yeti::instance()->config;
-		c.prepare("load_reg","SELECT * from "+db_schema+".load_registrations_out($1,$2)")("integer")("integer");
+
+		pqxx::connection c(dbc.conn_str());
+		c.set_variable("search_path",gc.routing_schema+", public");
+
+		pqxx::work t(c);
+		c.prepare("load_reg","SELECT * from load_registrations_out($1,$2)")("integer")("integer");
 		r = t.prepared("load_reg")(gc.pop_id)(gc.node_id).exec();
 		for(pqxx::result::size_type i = 0; i < r.size();++i){
 			RegInfo ri;
@@ -97,7 +99,7 @@ int Registration::load_registrations(){
 
 int Registration::configure(AmConfigReader &cfg){
 
-	db_schema = Yeti::instance()->config.db_schema;
+	db_schema = Yeti::instance()->config.routing_schema;
 	configure_db(cfg);
 
 	check_interval = cfg.getParameterInt("reg_check_interval",CHECK_INTERVAL_DEFAULT);

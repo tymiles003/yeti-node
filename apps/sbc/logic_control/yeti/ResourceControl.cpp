@@ -39,7 +39,7 @@ ResourceControl::ResourceControl()
 }
 
 int ResourceControl::configure(AmConfigReader &cfg){
-	db_schema = Yeti::instance()->config.db_schema;
+	db_schema = Yeti::instance()->config.routing_schema;
 	reject_on_error = cfg.getParameterInt("reject_on_cache_error",-1);
 	if(reject_on_error == -1){
 		ERROR("missed 'reject_on_error' parameter");
@@ -103,8 +103,9 @@ int ResourceControl::load_resources_config(){
 	try {
 		pqxx::result r;
 		pqxx::connection c(dbc.conn_str());
+		c.set_variable("search_path",db_schema+", public");
 			pqxx::work t(c);
-				r = t.exec("SELECT * FROM "+db_schema+".load_resource_types()");
+				r = t.exec("SELECT * FROM load_resource_types()");
 			t.commit();
 		c.disconnect();
 		for(pqxx::result::size_type i = 0; i < r.size();++i){

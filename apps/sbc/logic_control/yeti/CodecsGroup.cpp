@@ -99,7 +99,7 @@ void CodecsGroupEntry::getConfig(AmArg &ret) const {
 }
 
 int CodecsGroups::configure(AmConfigReader &cfg){
-	db_schema = Yeti::instance()->config.db_schema;
+	db_schema = Yeti::instance()->config.routing_schema;
 	configure_db(cfg);
 	if(load_codecs_groups()){
 		ERROR("can't load codecs groups");
@@ -127,9 +127,10 @@ int CodecsGroups::load_codecs_groups(){
 	try {
 		pqxx::result r;
 		pqxx::connection c(dbc.conn_str());
-		pqxx::work t(c);
+		c.set_variable("search_path",db_schema+", public");
 
-		r = t.exec("SELECT * from "+db_schema+".load_codecs()");
+		pqxx::work t(c);
+		r = t.exec("SELECT * from load_codecs()");
 		t.commit();
 		c.disconnect();
 
