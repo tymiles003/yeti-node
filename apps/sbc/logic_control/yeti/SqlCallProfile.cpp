@@ -498,6 +498,9 @@ bool SqlCallProfile::eval_resources(){
 bool SqlCallProfile::eval(){
 	if(0!=disconnect_code_id)
 		return true; //skip resources evaluation for refuse profiles
+	if(!outbound_interface.empty())
+		if(!evaluateOutboundInterface())
+			return false;
 	return eval_resources();
 }
 
