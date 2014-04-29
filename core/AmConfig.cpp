@@ -761,6 +761,13 @@ static int readSIPInterface(AmConfigReader& cfg, const string& i_name)
       if(*it_opt == "force_via_address") {
 	opts |= trsp_socket::force_via_address;
       }
+      else if(*it_opt == "use_raw_sockets") {
+          if(AmConfig::ForceOutboundIf)
+            opts |= trsp_socket::use_raw_sockets;
+          else
+            WARN("raw sockets globally disabled but there is a try to enable for SIP interface ",
+                 i_name.c_str());
+      }
       else {
 	WARN("unknown signaling socket option '%s' set on interface '%s'\n",
 	     it_opt->c_str(),i_name.c_str());
