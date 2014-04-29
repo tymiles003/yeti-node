@@ -216,10 +216,9 @@ string replaceParameters(const string& s,
   size_t p = 0;
   bool is_escaped = false;
   const string& used_hdrs = req.hdrs; //(hdrs == NULL) ? req.hdrs : *hdrs;
-  int outbound_interface = -1;
+  int outbound_interface = call_profile->outbound_interface.empty() ?
+              -1 : call_profile->outbound_interface_value;
 
-  // char last_char=' ';
-  
   while (p<s.length()) {
     size_t skip_chars = 1;
 
