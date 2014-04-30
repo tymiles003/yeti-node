@@ -390,6 +390,7 @@ SBCCallLeg *Yeti::getCallLeg(	const AmSipRequest& req,
 
 	Cdr *cdr = getCdr(call_ctx);
 
+	ctx.call_profile = profile;
 	if(check_and_refuse(profile,cdr,req,ctx,true)) {
 		if(!call_ctx->SQLexception)	//avoid to write cdr on failed getprofile()
 			r->write_cdr(cdr,true);
