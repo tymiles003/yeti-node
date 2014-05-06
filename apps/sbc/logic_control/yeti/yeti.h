@@ -45,7 +45,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   SqlRouter *router;
   set<SqlRouter *> routers;
   AmMutex router_mutex;
-
+  AmArg xmlrpc_cmds;
   AmConfigReader cfg;
   //config values
   int calls_show_limit;
@@ -75,6 +75,8 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   static Yeti* instance();
   void invoke(const string& method, const AmArg& args, AmArg& ret);
   int onLoad();
+  void init_xmlrpc_cmds();
+  void process_xmlrpc_cmds(const AmArg cmds_tree, const string& method, const AmArg& args, AmArg& ret);
 
   struct global_config {
 	int node_id;
@@ -85,23 +87,33 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
 
   time_t start_time;
 
-        //!xmlrpc handlers
-  void DropCall(const AmArg& args, AmArg& ret);
-  void ClearStats(const AmArg& args, AmArg& ret);
-  void ClearCache(const AmArg& args, AmArg& ret);
-  void ShowCache(const AmArg& args, AmArg& ret);
-  void GetStats(const AmArg& args, AmArg& ret);
-  void GetConfig(const AmArg& args, AmArg& ret);
-  void GetCall(const AmArg& args, AmArg& ret);
-  void GetCalls(const AmArg& args, AmArg& ret);
-  void GetCallsCount(const AmArg& args, AmArg& ret);
-  void GetRegistration(const AmArg& args, AmArg& ret);
-  void RenewRegistration(const AmArg& args, AmArg& ret);
-  void GetRegistrations(const AmArg& args, AmArg& ret);
-  void GetRegistrationsCount(const AmArg& args, AmArg& ret);
-  void showVersion(const AmArg& args, AmArg& ret);
-  void reload(const AmArg& args, AmArg& ret);
-  void closeCdrFiles(const AmArg& args, AmArg& ret);
+		  //!xmlrpc handlers
+  typedef void xmlrpc_handler(const AmArg& args, AmArg& ret);
+
+  xmlrpc_handler DropCall;
+  xmlrpc_handler ClearStats;
+  xmlrpc_handler ClearCache;
+  xmlrpc_handler ShowCache;
+  xmlrpc_handler GetStats;
+  xmlrpc_handler GetConfig;
+  xmlrpc_handler GetCall;
+  xmlrpc_handler GetCalls;
+  xmlrpc_handler GetCallsCount;
+  xmlrpc_handler GetRegistration;
+  xmlrpc_handler RenewRegistration;
+  xmlrpc_handler GetRegistrations;
+  xmlrpc_handler GetRegistrationsCount;
+  xmlrpc_handler showVersion;
+  xmlrpc_handler closeCdrFiles;
+  xmlrpc_handler reload;
+  xmlrpc_handler reloadResources;
+  xmlrpc_handler reloadTranslations;
+  xmlrpc_handler reloadRegistrations;
+  xmlrpc_handler reloadCodecsGroups;
+  xmlrpc_handler reloadRouter;
+  bool reload_config(AmArg &ret);
+  bool check_event_id(int event_id, AmArg &ret);
+  bool assert_event_id(const AmArg &args,AmArg &ret);
 
         //!SBCLogicInterface handlers
   SBCCallProfile& getCallProfile( const AmSipRequest& req,

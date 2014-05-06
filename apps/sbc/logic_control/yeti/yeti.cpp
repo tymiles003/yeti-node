@@ -34,6 +34,27 @@ struct CallLegCreator;
 
 #endif
 
+typedef void (Yeti::*YetiRpcHandler)(const AmArg& args, AmArg& ret);
+
+struct xmlrpc_entry: public AmObject {
+  YetiRpcHandler handler;
+  string leaf_descr,func_descr,arg,arg_descr;
+  AmArg leaves;
+
+  xmlrpc_entry(string ld):
+	  handler(NULL), leaf_descr(ld) {}
+
+  xmlrpc_entry(string ld, YetiRpcHandler h, string fd):
+	  leaf_descr(ld), handler(h), func_descr(fd) {}
+
+  xmlrpc_entry(string ld, YetiRpcHandler h, string fd, string a, string ad):
+	  leaf_descr(ld), handler(h), func_descr(fd), arg(a), arg_descr(ad) {}
+
+  bool isMethod(){ return handler!=NULL; }
+  bool hasLeafs(){ return leaves.getType()==AmArg::Struct; }
+  bool hasLeaf(const char *leaf){ return hasLeafs()&&leaves.hasMember(leaf); }
+};
+
 #define getCtx_void()\
 	CallCtx *ctx = getCtx(call);\
 	if(NULL==ctx){\
@@ -54,7 +75,6 @@ struct CallLegCreator;
 //CallCtx *getCtx(SBCCallLeg *call){ return reinterpret_cast<CallCtx *>(call->getLogicData()); }
 Cdr *getCdr(CallCtx *ctx) { return ctx->cdr; }
 Cdr *getCdr(SBCCallLeg *call) { return getCdr(getCtx(call)); }
-
 
 static const char *callStatus2str(const CallLeg::CallStatus state)
 {
@@ -97,6 +117,7 @@ public:
 		DBG("logic control loaded.\n");
 		return 0;
 	}
+
 };
 
 EXPORT_PLUGIN_CLASS_FACTORY(YetiFactory, MOD_NAME);
@@ -170,7 +191,6 @@ bool Yeti::read_config(){
 }
 
 int Yeti::onLoad() {
-
 	if(!read_config()){
 		return -1;
 	}
@@ -225,7 +245,182 @@ int Yeti::onLoad() {
 
 	start_time = time(NULL);
 
+	init_xmlrpc_cmds();
+
 	return 0;
+}
+
+void Yeti::init_xmlrpc_cmds(){
+#define reg_leaf(parent,leaf,name,descr) \
+	e = new xmlrpc_entry(descr);\
+	parent[name] = e;\
+	AmArg &leaf = e->leaves;
+
+#define reg_method(parent,name,descr,func,func_descr) \
+	e = new xmlrpc_entry(descr,&Yeti::func,func_descr);\
+	parent[name] = e;
+
+#define reg_leaf_method(parent,leaf,name,descr,func,func_descr) \
+	reg_method(parent,name,descr,func,func_descr);\
+	AmArg &leaf = e->leaves;
+
+#define reg_method_arg(parent,name,descr,func,func_descr,arg, arg_descr) \
+	e = new xmlrpc_entry(descr,&Yeti::func,func_descr,arg, arg_descr);\
+	parent[name] = e;
+
+#define reg_leaf_method_arg(parent,leaf,name,descr,func,func_descr,arg, arg_descr) \
+	reg_method_arg(parent,name,descr,func,func_descr,arg, arg_descr);\
+	AmArg &leaf = e->leaves;
+
+	xmlrpc_entry *e;
+	e = new xmlrpc_entry("root");
+	xmlrpc_cmds = e->leaves;
+	AmArg &root = xmlrpc_cmds;
+
+	/* show */
+	reg_leaf(root,show,"show","read only queries");
+
+		reg_method(show,"version","show version",showVersion,"");
+
+		reg_leaf(show,show_router,"router","active router instance");
+			reg_method(show_router,"cache","show callprofile's cache state",ShowCache,"");
+
+		reg_leaf_method(show,show_calls,"calls","active calls",GetCalls,"show current active calls");
+			reg_method(show_calls,"count","active calls count",GetCallsCount,"");
+
+		reg_method_arg(show,"call","detailed view for certain active call",GetCall,
+					   "","<LOCAL-TAG>","retreive call by local_tag");
+
+		reg_method(show,"configuration","actual settings",GetConfig,"");
+
+		reg_method(show,"stats","runtime statistics",GetStats,"");
+
+		reg_leaf_method(show,show_registrations,"registrations","uac registrations",GetRegistrations,"show configured uac registrations");
+			reg_method(show_registrations,"count","active registrations count",GetRegistrationsCount,"");
+
+	/* request */
+	reg_leaf(root,request,"request","modify commands");
+		reg_leaf(request,request_router,"router","active router instance");
+
+			reg_method(request_router,"reload","reload active instance",reloadRouter,"");
+
+			reg_leaf(request_router,request_router_cdrwriter,"cdrwriter","CDR writer instance");
+				reg_method(request_router_cdrwriter,"close-files","immideatly close failover csv files",closeCdrFiles,"");
+
+			reg_leaf(request_router,request_router_translations,"translations","disconnect/internal_db codes translator");
+				reg_method(request_router_translations,"reload","reload translator",reloadTranslations,"");
+
+			reg_leaf(request_router,request_router_codec_groups,"codec-groups","codecs groups configuration");
+				reg_method(request_router_codec_groups,"reload","reload codecs-groups",reloadCodecsGroups,"");
+
+			reg_leaf(request_router,request_router_resources,"resources","resources actions configuration");
+				reg_method(request_router_resources,"reload","reload resources",reloadResources,"");
+
+			reg_leaf(request_router,request_router_cache,"cache","callprofile's cache");
+				reg_method(request_router_cache,"clear","clear cached profiles",ClearCache,"");
+
+		reg_leaf(request,request_registrations,"registrations","uac registrations");
+			reg_method(request_registrations,"reload","reload reqistrations preferences",reloadRegistrations,"");
+			reg_method_arg(request_registrations,"renew","renew registration",RenewRegistration,
+						   "","<ID>","renew registration by id");
+
+		reg_leaf(request,request_stats,"stats","runtime statistics");
+			reg_method(request_stats,"clear","clear all counters",ClearStats,"");
+
+		reg_leaf(request,request_call,"call","active calls control");
+			reg_method_arg(request_call,"disconnect","drop call",DropCall,
+						   "","<LOCAL-TAG>","drop call by local_tag");
+	/* set */
+	//reg_leaf(root,set,"set","heavy queries");
+
+#undef reg_leaf
+#undef reg_method
+#undef reg_leaf_method
+#undef reg_method_arg
+#undef reg_leaf_method_arg
+}
+
+void Yeti::process_xmlrpc_cmds(const AmArg cmds, const string& method, const AmArg& args, AmArg& ret){
+	const char *list_method = "_list";
+	//DBG("process_xmlrpc_cmds(%p,%s,...)",&cmds,method.c_str());
+	if(method==list_method){
+		switch(cmds.getType()){
+			case AmArg::Struct: {
+				//DBG("_list AmArg::Struct");
+				AmArg::ValueStruct::const_iterator it = cmds.begin();
+				for(;it!=cmds.end();++it){
+					const AmArg &am_e = it->second;
+					xmlrpc_entry *e = reinterpret_cast<xmlrpc_entry *>(am_e.asObject());
+					AmArg f;
+					f.push(it->first);
+					f.push(e->leaf_descr);
+					ret.push(f);
+				}
+			} break;
+
+			case AmArg::AObject: {
+				//DBG("_list AmArg::AObject");
+				xmlrpc_entry *e = reinterpret_cast<xmlrpc_entry *>(cmds.asObject());
+				if(!e->func_descr.empty()&&(!e->arg.empty()||e->hasLeafs())){
+					AmArg f;
+					f.push("[Enter]");
+					f.push(e->func_descr);
+					ret.push(f);
+				}
+				if(!e->arg.empty()){
+					AmArg f;
+					f.push(e->arg);
+					f.push(e->arg_descr);
+					ret.push(f);
+				}
+				if(e->hasLeafs()){
+					const AmArg &l = e->leaves;
+					AmArg::ValueStruct::const_iterator it = l.begin();
+					for(;it!=l.end();++it){
+						const AmArg &am_e = it->second;
+						xmlrpc_entry *e = reinterpret_cast<xmlrpc_entry *>(am_e.asObject());
+						AmArg f;
+						f.push(it->first);
+						f.push(e->leaf_descr);
+						ret.push(f);
+					}
+				}
+			} break;
+
+			default:
+				throw AmArg::TypeMismatchException();
+		}
+		return;
+	}
+
+	if(cmds.hasMember(method)){
+		//DBG("hasMember(%s)",method.c_str());
+		const AmArg &l = cmds[method];
+		if(l.getType()!=AmArg::AObject)
+			throw AmArg::TypeMismatchException();
+
+		xmlrpc_entry *e = reinterpret_cast<xmlrpc_entry *>(l.asObject());
+		//DBG("AmArg::AObject");
+		if(args.size()>0){
+			if(e->hasLeaf(args[0].asCStr())){
+				AmArg nargs = args,sub_method;
+				nargs.pop(sub_method);
+				process_xmlrpc_cmds(e->leaves,sub_method.asCStr(),nargs,ret);
+				return;
+			} else if(args[0]==list_method){
+				AmArg nargs = args,sub_method;
+				nargs.pop(sub_method);
+				process_xmlrpc_cmds(l,sub_method.asCStr(),nargs,ret);
+				return;
+			}
+		}
+		if(e->isMethod()){
+			(this->*(e->handler))(args,ret);
+			return;
+		}
+		throw AmDynInvoke::NotImplemented("missed arg");
+	}
+	throw AmDynInvoke::NotImplemented("no matches with methods tree");
 }
 
 void Yeti::replace(string& s, const string& from, const string& to){
@@ -335,7 +530,7 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
 	} else if(method == "closeCdrFiles"){
 		INFO ("closeCdrFiles received via xmlrpc2di");
 		closeCdrFiles(args,ret);
-	} else if(method == "_list"){
+	/*} else if(method == "_list"){
 		ret.push(AmArg("showVersion"));
 		ret.push(AmArg("getConfig"));
 		ret.push(AmArg("getStats"));
@@ -352,9 +547,15 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
 		ret.push(AmArg("getRegistrationsCount"));
 		ret.push(AmArg("reload"));
 		ret.push(AmArg("closeCdrFiles"));
+
+		ret.push(AmArg("show"));
+		ret.push(AmArg("request"));
+		//ret.push(AmArg("set"));*/
 	} else {
+		process_xmlrpc_cmds(xmlrpc_cmds,method,args,ret);
+	}/* else {
 		throw AmDynInvoke::NotImplemented(method);
-	}
+	}*/
 }
 
 
@@ -1621,6 +1822,63 @@ void Yeti::showVersion(const AmArg& args, AmArg& ret) {
 		ret.push(p);
 }
 
+bool Yeti::reload_config(AmArg &ret){
+	cfg = AmConfigReader();
+	if(!read_config()){
+		ret.push(500);
+		ret.push("config file reload failed");
+		return false;
+	}
+	return true;
+}
+
+bool Yeti::check_event_id(int event_id,AmArg &ret){
+	bool succ = false;
+	try {
+		DbConfig dbc;
+		string prefix("master");
+		dbc.cfg2dbcfg(cfg,prefix);
+		pqxx::connection c(dbc.conn_str());
+		c.set_variable("search_path",
+					   Yeti::instance()->config.routing_schema+", public");
+		pqxx::prepare::declaration d = c.prepare("check_event","SELECT * from check_event($1)");
+			d("integer",pqxx::prepare::treat_direct);
+		pqxx::nontransaction t(c);
+			pqxx::result r = t.prepared("check_event")(event_id).exec();
+		if(r[0][0].as<bool>(false)){
+			DBG("event_id checking succ");
+			succ = true;
+		} else {
+			WARN("no appropriate id in database");
+			ret.push(503);
+			ret.push(AmArg("no such event_id"));
+		}
+	} catch(pqxx::pqxx_exception &e){
+		DBG("e = %s",e.base().what());
+		ret.push(500);
+		ret.push(AmArg(string("can't check event id in database ")+e.base().what()));
+	} catch(...){
+		ret.push(500);
+		ret.push(AmArg("can't check event id in database"));
+	}
+	return succ;
+}
+
+bool Yeti::assert_event_id(const AmArg &args,AmArg &ret){
+	if(args.size()){
+		int event_id;
+		args.assertArrayFmt("s");
+		if(!str2int(args[1].asCStr(),event_id)){
+			ret.push(500);
+			ret.push(AmArg("invalid event id"));
+			return false;
+		}
+		if(!check_event_id(event_id,ret))
+				return false;
+	}
+	return true;
+}
+
 void Yeti::reload(const AmArg& args, AmArg& ret){
 	if(0==args.size()){
 		ret.push(400);
@@ -1644,46 +1902,13 @@ void Yeti::reload(const AmArg& args, AmArg& ret){
 		} else {
 			DBG("we have event_id = %d",event_id);
 			//check it
-			bool succ = false;
-			try {
-				DbConfig dbc;
-				string prefix("master");
-				dbc.cfg2dbcfg(cfg,prefix);
-				pqxx::connection c(dbc.conn_str());
-				c.set_variable("search_path",
-							   Yeti::instance()->config.routing_schema+", public");
-				pqxx::prepare::declaration d = c.prepare("check_event","SELECT * from check_event($1)");
-					d("integer",pqxx::prepare::treat_direct);
-				pqxx::nontransaction t(c);
-					pqxx::result r = t.prepared("check_event")(event_id).exec();
-				if(r[0][0].as<bool>(false)){
-					DBG("event_id checking succ");
-					succ = true;
-				} else {
-					WARN("no appropriate id in database");
-					ret.push(503);
-					ret.push(AmArg("no such event_id"));
-				}
-			} catch(pqxx::pqxx_exception &e){
-				DBG("e = %s",e.base().what());
-				ret.push(500);
-				ret.push(AmArg(string("can't check event id in database ")+e.base().what()));
-			} catch(...){
-				ret.push(500);
-				ret.push(AmArg("can't check event id in database"));
-			}
-			if(!succ){
+			if(!check_event_id(event_id,ret))
 				return;
-			}
 		}
 	}
 
-	cfg = AmConfigReader();
-	if(!read_config()){
-	  ret.push(500);
-	  ret.push("config file reload failed");
-	  return;
-	}
+	if(!reload_config(ret))
+		return;
 
 	string action = args[0].asCStr();
 	if(action=="resources"){
@@ -1759,6 +1984,95 @@ void Yeti::reload(const AmArg& args, AmArg& ret){
 		ret.push(400);
 		ret.push("unknown action");
 	}
+}
+
+void Yeti::reloadResources(const AmArg& args, AmArg& ret){
+	if(!assert_event_id(args,ret))
+		return;
+	rctl.configure_db(cfg);
+	if(rctl.reload()){
+		ret.push(200);
+		ret.push("OK");
+	} else {
+		ret.push(500);
+		ret.push("errors during resources config reload. there is empty resources config now");
+	}
+}
+
+void Yeti::reloadTranslations(const AmArg& args, AmArg& ret){
+	if(!assert_event_id(args,ret))
+		return;
+	CodesTranslator::instance()->configure_db(cfg);
+	if(CodesTranslator::instance()->reload()){
+		ret.push(200);
+		ret.push("OK");
+	} else {
+		ret.push(500);
+		ret.push("errors during translations config reload. there is empty translation hashes now");
+	}
+}
+
+void Yeti::reloadRegistrations(const AmArg& args, AmArg& ret){
+	if(!assert_event_id(args,ret))
+		return;
+	if(0==Registration::instance()->reload(cfg)){
+		ret.push(200);
+		ret.push("OK");
+	} else {
+		ret.push(500);
+		ret.push("errors during registrations config reload. there is empty registrations list now");
+	}
+}
+
+void Yeti::reloadCodecsGroups(const AmArg& args, AmArg& ret){
+	if(!assert_event_id(args,ret))
+		return;
+	CodecsGroups::instance()->configure_db(cfg);
+	if(CodecsGroups::instance()->reload()){
+		ret.push(200);
+		ret.push("OK");
+	} else {
+		ret.push(500);
+		ret.push("errors during codecs groups reload. there is empty resources config now");
+	}
+}
+
+void Yeti::reloadRouter(const AmArg& args, AmArg& ret){
+	if(!assert_event_id(args,ret))
+		return;
+	INFO("Allocate new SqlRouter instance");
+	SqlRouter *r = new SqlRouter();
+
+	INFO("Configure SqlRouter");
+	if (r->configure(cfg)){
+		ERROR("SqlRouter confgiure failed");
+		delete r;
+		ret.push(500);
+		ret.push("SqlRouter confgiure failed");
+		return;
+	}
+
+	INFO("Run SqlRouter");
+	if(r->run()){
+		ERROR("SqlRouter start failed");
+		delete r;
+		ret.push(500);
+		ret.push("SqlRouter start failed");
+		return;
+	}
+
+	INFO("replace current SqlRouter instance with newly created");
+	router_mutex.lock();
+		router->release(routers); //mark it or delete (may be deleted now if unused)
+		//replace main router pointer
+		//(old pointers still available throught existent CallCtx instances)
+		router = r;
+		routers.insert(router);
+	router_mutex.unlock();
+
+	INFO("SqlRouter reload successfull");
+	ret.push(200);
+	ret.push("OK");
 }
 
 void Yeti::closeCdrFiles(const AmArg& args, AmArg& ret){
