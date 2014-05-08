@@ -65,6 +65,8 @@
 #include <set>
 using std::set;
 #include <algorithm>
+#include <sstream>
+
 
 static inline void add_if_no_exist(std::vector<int> &v,int payload){
 	if(std::find(v.begin(),v.end(),payload)==v.end())
@@ -1339,7 +1341,7 @@ void AmRtpStream::debug()
 #define BOOL_STR(b) ((b) ? "yes" : "no")
 
   if(hasLocalSocket() > 0) {
-    DBG("\t<%i> <-> <%s:%i>", getLocalPort(),
+	DBG("\t<%i> <-> <%s:%i>", getLocalPort(),
         getRHost().c_str(), getRPort());
   } else {
     DBG("\t<unbound> <-> <%s:%i>",
@@ -1356,4 +1358,10 @@ void AmRtpStream::debug()
       BOOL_STR(mute), BOOL_STR(hold), BOOL_STR(receiving));
 
 #undef BOOL_STR
+}
+
+void AmRtpStream::getInfo(AmArg &ret){
+	std::stringstream s;
+	s << std::hex << this;
+	ret["self_ptr"] = s.str();
 }

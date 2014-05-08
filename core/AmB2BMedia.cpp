@@ -1253,6 +1253,16 @@ void AudioStreamData::debug()
     DBG("\t<null> <-> <null>");
 }
 
+void AudioStreamData::getInfo(AmArg &ret)
+{
+	ret["muted"] = muted;
+	ret["outgoing_payload"] = outgoing_payload_name;
+	ret["incoming_payload"] = incoming_payload_name;
+
+	AmArg &a = ret["stream"];
+	stream->getInfo(a);
+}
+
 // print debug info
 void AmB2BMedia::debug()
 {
@@ -1282,4 +1292,49 @@ void AmB2BMedia::debug()
     DBG(" - relay stream (B):\n");
     (*j)->b.debug();
   }
+}
+
+void AmB2BMedia::getInfo(AmArg &ret){
+	AmArg arg_audio, arg_relay_streams;
+
+	ret["a_tag"] = a ? a->getLocalTag() : "nullptr";
+	ret["b_tag"] = b ? b->getLocalTag() : "nullptr";
+
+	arg_audio.assertArray();
+	for (AudioStreamIterator i = audio.begin(); i != audio.end(); ++i) {
+		AmArg a,b,u;
+		i->a.getInfo(a);
+		i->b.getInfo(b);
+		u["a"] = a;
+		u["b"] = b;
+		arg_audio.push(u);
+	}
+	ret.push("audio",arg_audio);
+
+	arg_relay_streams.assertArray();
+
+	for (RelayStreamIterator j = relay_streams.begin(); j != relay_streams.end(); ++j) {
+		AmArg a,b,u;
+		(*j)->a.getInfo(a);
+		(*j)->b.getInfo(b);
+		u["a"] = a;
+		u["b"] = b;
+		arg_relay_streams.push(u);
+	}
+	ret.push("relay_streams",arg_relay_streams);
+
+#define add_sdp_info(var)\
+	if(have_##var){\
+		AmArg &a = ret[#var];\
+		var.getInfo(a);\
+	} else {\
+		ret[#var] = "empty";\
+	}
+
+	add_sdp_info(a_leg_local_sdp);
+	add_sdp_info(a_leg_remote_sdp);
+	add_sdp_info(b_leg_local_sdp);
+	add_sdp_info(b_leg_remote_sdp);
+
+#undef add_sdp_info
 }

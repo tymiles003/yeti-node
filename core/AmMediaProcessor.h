@@ -145,6 +145,8 @@ class AmMediaSession
      * Seems to be duplicate to isProcessingMedia(). It was kept to reduce
      * number of changes in existing code. */
     virtual bool isDetached() { return !isProcessingMedia(); }
+
+	virtual void getInfo(AmArg &ret) { ret = "not implemented"; }
 };
 
 /**
@@ -182,6 +184,7 @@ public:
   inline void postRequest(SchedRequest* sr);
   
   unsigned int getLoad();
+  void getInfo(AmArg &ret);
 };
 
 /**
@@ -234,6 +237,8 @@ public:
 
   void stop();
   static void dispose();
+
+  void getInfo(AmArg& ret);
 };
 
 

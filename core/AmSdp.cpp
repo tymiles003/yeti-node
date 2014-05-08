@@ -496,6 +496,27 @@ void AmSdp::clear()
   l_origin = SdpOrigin();
 }
 
+void AmSdp::getInfo(AmArg &ret){
+	ret.assertArray();
+	for(vector<SdpMedia>::const_iterator it = media.begin(); it != media.end(); ++it)	{
+		AmArg a;
+		const SdpMedia &m = *it;
+		a["type"] = media_t_2_str(m.type);
+		AmArg &payloads = a["payloads"];
+
+		std::vector<SdpPayload>::const_iterator pit= m.payloads.begin();
+		for(;pit!= m.payloads.end(); pit++) {
+			AmArg a;
+			const SdpPayload &p = *pit;
+			a["encoding_name"] = p.encoding_name;
+			a["clock_rate"] = p.clock_rate;
+			a["payload_type"] = p.payload_type;
+			payloads.push(a);
+		}
+		ret.push(a);
+	}
+}
+
 void SdpMedia::calcAnswer(const AmPayloadProvider* payload_prov,
 			  SdpMedia& answer) const
 {

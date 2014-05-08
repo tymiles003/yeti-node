@@ -523,6 +523,7 @@ public:
   void setLogger(msg_logger *_logger);
 
   void debug();
+  void getInfo(AmArg &ret);
 };
 
 #endif

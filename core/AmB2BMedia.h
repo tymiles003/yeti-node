@@ -214,6 +214,7 @@ class AudioStreamData {
     void setLogger(msg_logger *logger) { if (stream) stream->setLogger(logger); }
 
     void debug();
+	void getInfo(AmArg &ret);
 };
 
 /** \brief Class for control over media relaying and transcoding in a B2B session.
@@ -488,6 +489,8 @@ class AmB2BMedia: public AmMediaSession
 
     // print debug info
     void debug();
+
+	virtual void getInfo(AmArg &ret);
 };
 
 #endif

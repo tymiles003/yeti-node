@@ -25,11 +25,13 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include "AmConfig.h"
 #include "AmRtpAudio.h"
 #include <sys/time.h>
 #include <assert.h>
 #include "AmSession.h"
 #include "AmPlayoutBuffer.h"
+#include <sstream>
 
 AmAudioRtpFormat::AmAudioRtpFormat()
   : AmAudioFormat(-1),
@@ -404,6 +406,37 @@ unsigned int AmRtpAudio::conceal_loss(unsigned int ts_diff, unsigned char *buffe
   }
     
   return s;
+}
+
+void AmRtpAudio::getInfo(AmArg &ret){
+
+	std::stringstream s;
+	s << std::hex << this;
+	ret["self_ptr"] = s.str();
+
+	if(hasLocalSocket() > 0){
+		AmArg &a = ret["socket"];
+		a["local_ip"] = AmConfig::RTP_Ifs[l_if].getIP();
+		a["local_port"] = getLocalPort();
+		a["remote_host"] = getRHost();
+		a["remote_port"] = getRPort();
+	} else {
+		ret["socket"] = "unbound";
+	}
+
+	if(relay_stream) {
+		std::stringstream s;
+		s << std::hex << relay_stream;
+		ret["relay_ptr"] = s.str();
+	} else {
+		ret["relay_ptr"] = "nullptr";
+	}
+
+	ret["l_ssrc"] = int2hex(l_ssrc);
+	ret["mute"] = mute;
+	ret["hold"] = hold;
+	ret["receiving"] = receiving;
+
 }
 
 unsigned int AmRtpAudio::default_plc(unsigned char* out_buf,

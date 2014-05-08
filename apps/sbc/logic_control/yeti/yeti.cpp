@@ -9,6 +9,7 @@
 #include "AmArg.h"
 #include "AmSession.h"
 #include "AmUtils.h"
+#include "AmMediaProcessor.h"
 #include "SDPFilter.h"
 #include "CallLeg.h"
 #include "Version.h"
@@ -284,6 +285,9 @@ void Yeti::init_xmlrpc_cmds(){
 
 		reg_leaf(show,show_router,"router","active router instance");
 			reg_method(show_router,"cache","show callprofile's cache state",ShowCache,"");
+
+		reg_leaf(show,show_media,"media","media processor instance");
+			reg_method(show_media,"streams","active media streams info",showMediaStreams,"");
 
 		reg_leaf_method(show,show_calls,"calls","active calls",GetCalls,"show current active calls");
 			reg_method(show_calls,"count","active calls count",GetCallsCount,"");
@@ -2084,4 +2088,8 @@ void Yeti::closeCdrFiles(const AmArg& args, AmArg& ret){
 	router_mutex.unlock();
 	ret.push(200);
 	ret.push("OK");
+}
+
+void Yeti::showMediaStreams(const AmArg& args, AmArg& ret){
+	AmMediaProcessor::instance()->getInfo(ret);
 }

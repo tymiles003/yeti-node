@@ -164,6 +164,8 @@ public:
   // @return length in bytes of the recivered segment
   unsigned int conceal_loss(unsigned int ts_diff, unsigned char *out_buffer);
 
+  void getInfo(AmArg &ret);
+
 protected:
   int read(unsigned int user_ts, unsigned int size) { return 0; }
   int write(unsigned int user_ts, unsigned int size) { return 0; }

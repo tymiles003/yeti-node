@@ -201,6 +201,8 @@ protected:
 
 public:
   unsigned long _pid;
+  pid_t thread_pid;
+
   AmThread();
   virtual ~AmThread() {}
 

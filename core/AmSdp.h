@@ -33,6 +33,7 @@
 #include <vector>
 #include <netinet/in.h>
 #include "AmPlugIn.h"
+#include "AmArg.h"
 #include <memory>
 using std::string;
 
@@ -279,6 +280,8 @@ public:
    * Clear all parsed values.
    */
   void clear();
+
+  void getInfo(AmArg &ret);
 };
 
 #endif

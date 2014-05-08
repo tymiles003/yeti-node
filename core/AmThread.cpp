@@ -28,6 +28,7 @@
 #include "AmThread.h"
 #include "log.h"
 
+#include <sys/syscall.h>
 #include <unistd.h>
 #include "errno.h"
 #include <string>
@@ -62,6 +63,7 @@ void * AmThread::_start(void * _t)
 {
   AmThread* _this = (AmThread*)_t;
   _this->_pid = (unsigned long) _this->_td;
+  _this->thread_pid = syscall(SYS_gettid);
   DBG("Thread %lu is starting.\n", (unsigned long) _this->_pid);
   _this->run();
 
