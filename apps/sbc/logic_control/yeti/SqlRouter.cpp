@@ -46,6 +46,8 @@ SqlRouter::SqlRouter():
 {
   set(1);
   clearStats();
+
+  INFO("SqlRouter instance[%p] created",this);
 }
 
 SqlRouter::~SqlRouter()
@@ -62,6 +64,8 @@ SqlRouter::~SqlRouter()
   
   if (cache_enabled&&cache)
     delete cache;
+
+  INFO("SqlRouter instance[%p] destroyed",this);
 }
 
 void SqlRouter::stop()
