@@ -223,6 +223,8 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 	aleg_override_id = t["aleg_policy_id"].as<int>(0);
 	bleg_override_id = t["bleg_policy_id"].as<int>(0);
 
+	ringing_timeout = t["ringing_timeout"].as<int>(0);
+
 	DBG("Yeti: loaded SQL profile\n");
 
 	return true;
@@ -356,6 +358,8 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 		transcoder.infoPrint();
 
 		DBG("SBC:      time_limit: %i\n", time_limit);
+		DBG("SBC:      ringing_timeout: %i\n", ringing_timeout);
+
 		DBG("SBC:      resources: %s\n", resources.c_str());
 		for(ResourceList::const_iterator i = rl.begin();i!=rl.end();++i)
 			DBG("SBC:         resource: <%s>",(*i).print().c_str());

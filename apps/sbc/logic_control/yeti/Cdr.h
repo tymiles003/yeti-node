@@ -33,9 +33,11 @@ struct Cdr: public
 	int dump_level_id;
 
     int disconnect_initiator;
+	bool disconnect_initiator_writed;
 
     string disconnect_reason;
     int disconnect_code;
+	bool aleg_reason_writed;
     bool bleg_reason_writed;
 
 	string disconnect_internal_reason;

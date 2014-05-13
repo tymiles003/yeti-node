@@ -25,6 +25,7 @@
 #define YETI_ENABLE_PROFILING 1
 
 #define YETI_CALL_DURATION_TIMER SBC_TIMER_ID_CALL_TIMERS_START
+#define YETI_RINGING_TIMEOUT_TIMER (SBC_TIMER_ID_CALL_TIMERS_START+1)
 
 class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterface
 {
@@ -67,6 +68,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   void onServerShutdown(SBCCallLeg *call);
   CCChainProcessing onControlEvent(SBCCallLeg *call,SBCControlEvent *event);
   CCChainProcessing onSystemEvent(SBCCallLeg *call,AmSystemEvent* event);
+  CCChainProcessing onTimerEvent(SBCCallLeg *call,int timer_id);
   CCChainProcessing onTearDown(SBCCallLeg *call);
 
  public:

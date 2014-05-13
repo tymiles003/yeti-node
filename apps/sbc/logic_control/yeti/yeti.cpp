@@ -921,15 +921,31 @@ void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cau
 	getCtx_void();
 	SBCCallLeg::CallStatus status = call->getCallStatus();
 	Cdr *cdr = getCdr(ctx);
+	bool aleg = call->isALeg();
 	int internal_disconnect_code = 0;
 
 	DBG("Yeti::onStateChange(%p) a_leg = %d",
 		call,call->isALeg());
 
+	if(!aleg){
+		switch(status){
+		case CallLeg::Ringing: {
+			const SBCCallProfile &profile = call->getCallProfile();
+			if(profile.ringing_timeout > 0)
+			call->setTimer(YETI_RINGING_TIMEOUT_TIMER,profile.ringing_timeout);
+		} break;
+		case CallLeg::Connected:
+			call->removeTimer(YETI_RINGING_TIMEOUT_TIMER);
+			break;
+		default:
+			break;
+		}
+	}
+
 	switch(cause.reason){
 		case CallLeg::StatusChangeCause::SipReply:
 			if(cause.param.reply!=NULL){
-				if(!call->isALeg()&&call->getCallStatus()==CallLeg::Disconnected)
+				if(aleg && status==CallLeg::Disconnected)
 					cdr->update_bleg_reason(cause.param.reply->reason,
 												cause.param.reply->code);
 				reason = "SipReply. code = "+int2str(cause.param.reply->code);
@@ -938,7 +954,7 @@ void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cau
 			break;
 		case CallLeg::StatusChangeCause::SipRequest:
 			if(cause.param.request!=NULL){
-				if(!call->isALeg()&&call->getCallStatus()==CallLeg::Disconnected)
+				if(aleg && status==CallLeg::Disconnected)
 					cdr->update_bleg_reason(cause.param.request->method,
 												cause.param.request->method==SIP_METH_BYE?200:500);
 				reason = "SipRequest. method = "+cause.param.request->method;
@@ -979,7 +995,7 @@ void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cau
 			reason = "???";
 	}
 
-	if(call->isALeg() && internal_disconnect_code && status==CallLeg::Disconnected){
+	if(aleg && internal_disconnect_code && status==CallLeg::Disconnected){
 		unsigned int internal_code,response_code;
 		string internal_reason,response_reason;
 
@@ -991,8 +1007,8 @@ void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cau
 		cdr->update_internal_reason(DisconnectByTS,internal_reason,internal_code);
 	}
 
-	DBG("%s(%p,leg%s,state = %s, cause = %s)",FUNC_NAME,call,call->isALeg()?"A":"B",
-		callStatus2str(call->getCallStatus()),
+	DBG("%s(%p,leg%s,state = %s, cause = %s)",FUNC_NAME,call,aleg?"A":"B",
+		callStatus2str(status),
 		reason.c_str());
 
 }
@@ -1277,19 +1293,7 @@ CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
 			plugin_event->name.c_str(),
 			plugin_event->event_id);
 		if(plugin_event->name=="timer_timeout"){
-			int timer_id = plugin_event->data.get(0).asInt();
-			Cdr *cdr = getCdr(call);
-
-			DBG("%s() timer %d fired.\n",FUNC_NAME,timer_id);
-
-			if(timer_id==YETI_CALL_DURATION_TIMER){
-				cdr->update_internal_reason(DisconnectByTS,"Call duration limit reached",200);
-			} else {
-				DBG("%s() timer %d fired.\n",FUNC_NAME,timer_id);
-				cdr->update_internal_reason(DisconnectByTS,"Timer "+int2str(timer_id)+" fired",200);
-			}
-			cdr->update_aleg_reason("Bye",200);
-			cdr->update_bleg_reason("Bye",200);
+			onTimerEvent(call,plugin_event->data.get(0).asInt());
 		}
 	}
 
@@ -1338,6 +1342,30 @@ CCChainProcessing Yeti::onSystemEvent(SBCCallLeg *call,AmSystemEvent* event){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	if (event->sys_event == AmSystemEvent::ServerShutdown) {
 		onServerShutdown(call);
+	}
+	return ContinueProcessing;
+}
+
+CCChainProcessing Yeti::onTimerEvent(SBCCallLeg *call,int timer_id){
+	DBG("%s(%p,%d,leg%s)",FUNC_NAME,call,timer_id,call->isALeg()?"A":"B");
+
+	Cdr *cdr = getCdr(call);
+
+	switch(timer_id){
+	case YETI_CALL_DURATION_TIMER:
+		cdr->update_internal_reason(DisconnectByTS,"Call duration limit reached",200);
+		cdr->update_aleg_reason("Bye",200);
+		cdr->update_bleg_reason("Bye",200);
+		break;
+	case YETI_RINGING_TIMEOUT_TIMER:
+		cdr->update_internal_reason(DisconnectByTS,"Ringing timeout",408);
+		AmSessionContainer::instance()->postEvent(
+					call->getLocalTag(),
+					new B2BEvent(B2BTerminateLeg));
+		break;
+	default:
+		cdr->update_internal_reason(DisconnectByTS,"Timer "+int2str(timer_id)+" fired",200);
+		break;
 	}
 	return ContinueProcessing;
 }

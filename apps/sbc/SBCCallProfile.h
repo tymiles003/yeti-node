@@ -213,6 +213,8 @@ struct SBCCallProfile
   string aleg_outbound_interface;
   int aleg_outbound_interface_value;
 
+  int ringing_timeout;
+
   struct TranscoderSettings {
     // non-replaced parameters
     string callee_codec_capabilities_str, audio_codecs_str, 
@@ -353,7 +355,8 @@ struct SBCCallProfile
     log_sip(false),
     patch_ruri_next_hop(false),
     next_hop_1st_req(false),
-    next_hop_fixed(false)
+	next_hop_fixed(false),
+	ringing_timeout(0)
   { }
 
   bool readFromConfiguration(const string& name, const string profile_file_name);

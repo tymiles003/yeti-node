@@ -48,6 +48,8 @@ void Cdr::init(){
     suppress = false;
 	inserted2list = false;
 
+	disconnect_initiator_writed = false;
+	aleg_reason_writed = false;
 	bleg_reason_writed = false;
 	disconnect_reason = "";
 	disconnect_code = 0;
@@ -184,8 +186,11 @@ void Cdr::update_aleg_reason(string reason, int code){
 		reason.c_str(),code);
 	if(writed) return;
 	lock();
-	disconnect_rewrited_reason = reason;
-	disconnect_rewrited_code = code;
+	if(!aleg_reason_writed){
+		disconnect_rewrited_reason = reason;
+		disconnect_rewrited_code = code;
+		aleg_reason_writed = true;
+	}
 	unlock();
 }
 
@@ -196,9 +201,12 @@ void Cdr::update_internal_reason(DisconnectInitiator initiator,string reason, in
 	if(writed) return;
 	lock();
 	gettimeofday(&end_time, NULL);
-	disconnect_initiator = initiator;
-	disconnect_internal_reason = reason;
-	disconnect_internal_code = code;
+	if(!disconnect_initiator_writed){
+		disconnect_initiator = initiator;
+		disconnect_internal_reason = reason;
+		disconnect_internal_code = code;
+		disconnect_initiator_writed = true;
+	}
 	disconnect_rewrited_reason = reason;
 	disconnect_rewrited_code = code;
 	unlock();
