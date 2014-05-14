@@ -4,9 +4,9 @@
 #include "AmSipMsg.h"
 #include "AmAppTimer.h"
 #include "AmArg.h"
-#include "SqlCallProfile.h"
+#include "../SqlCallProfile.h"
 #include "MurmurHash.h"
-#include "UsedHeaderField.h"
+#include "../UsedHeaderField.h"
 
 using namespace std;
 

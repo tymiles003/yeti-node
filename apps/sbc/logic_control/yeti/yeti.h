@@ -12,7 +12,7 @@
 #include "SqlCallProfile.h"
 #include "cdr/Cdr.h"
 #include "SqlRouter.h"
-#include "cdr/CdrList.h"
+#include "hash/CdrList.h"
 #include "cdr/CdrWriter.h"
 #include "SBC.h"
 #include "resources/ResourceControl.h"

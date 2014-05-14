@@ -7,7 +7,7 @@
 #include "HeaderFilter.h"
 #include <algorithm>
 #include "cdr/CdrWriter.h"
-#include "ProfilesCache.h"
+#include "hash/ProfilesCache.h"
 #include "DbTypes.h"
 #include "cdr/Cdr.h"
 #include "CodesTranslator.h"
