@@ -6,10 +6,10 @@
 #include "AmUtils.h"
 #include "HeaderFilter.h"
 #include <algorithm>
-#include "CdrWriter.h"
+#include "cdr/CdrWriter.h"
 #include "ProfilesCache.h"
 #include "DbTypes.h"
-#include "Cdr.h"
+#include "cdr/Cdr.h"
 #include "CodesTranslator.h"
 #include "UsedHeaderField.h"
 #include "CallCtx.h"

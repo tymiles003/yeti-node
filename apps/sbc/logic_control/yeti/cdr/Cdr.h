@@ -2,9 +2,9 @@
 #define CDR_H
 #include "time.h"
 
-#include "SqlCallProfile.h"
+#include "../SqlCallProfile.h"
 #include "SBCCallLeg.h"
-#include "resources/Resource.h"
+#include "../resources/Resource.h"
 
 enum UpdateAction {
     Start,

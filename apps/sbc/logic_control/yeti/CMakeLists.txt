@@ -3,13 +3,10 @@ find_package(Hiredis REQUIRED)
 
 set (yeti_SRCS
 	yeti.cpp
-	CdrList.cpp
 	ProfilesCache.cpp
 	PgConnectionPool.cpp
-	CdrWriter.cpp
 	SqlRouter.cpp
 	DbConfig.cpp
-	Cdr.cpp
 	SqlCallProfile.cpp
 	CallCtx.cpp
 	CodesTranslator.cpp
@@ -22,6 +19,9 @@ set (yeti_SRCS
         resources/ResourceCache.cpp
         resources/ResourceControl.cpp
 	resources/Resource.cpp
+	cdr/Cdr.cpp
+	cdr/CdrWriter.cpp
+	cdr/CdrList.cpp
 )
 
 SET(yeti_config_files

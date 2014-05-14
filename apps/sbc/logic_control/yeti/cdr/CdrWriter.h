@@ -9,9 +9,9 @@
 #include <pqxx/pqxx>
 #include "Cdr.h"
 #include "SBCCallProfile.h"
-#include "DbConfig.h"
+#include "../DbConfig.h"
 #include "Cdr.h"
-#include "DbTypes.h"
+#include "../DbTypes.h"
 #include <fstream>
 #include <sstream>
 #include <cstdio>

@@ -2,8 +2,8 @@
 #include "log.h"
 #include "AmThread.h"
 #include <pqxx/pqxx>
-#include "Version.h"
-#include "yeti.h"
+#include "../Version.h"
+#include "../yeti.h"
 
 const static_field cdr_static_fields[] = {
 	{ "node_id", "integer" },

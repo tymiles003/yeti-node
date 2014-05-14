@@ -3,8 +3,8 @@
 
 #include <AmThread.h>
 #include "Cdr.h"
-#include "SqlRouter.h"
-#include "MurmurHash.h"
+#include "../SqlRouter.h"
+#include "../MurmurHash.h"
 
 class CdrList: public MurmurHash<string,string,Cdr> {
     public:
