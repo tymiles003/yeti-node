@@ -6,7 +6,7 @@
 #include <string>
 
 #define GETPROFILE_STATIC_FIELDS_COUNT 18
-#define WRITECDR_STATIC_FIELDS_COUNT 36
+#define WRITECDR_STATIC_FIELDS_COUNT 37
 
 struct static_field {
     const char *name;

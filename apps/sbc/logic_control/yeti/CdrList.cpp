@@ -126,6 +126,7 @@ void CdrList::cdr2arg(const Cdr *cdr,const SqlRouter *router, AmArg& arg){
 	add_field_to_ret(orig_call_id);
 	add_field_to_ret(term_call_id);
 	add_field_to_ret(local_tag);
+	add_field_to_ret(global_tag);
 
 	add_field_to_ret(time_limit);
 	add_field_to_ret(dump_level_id);

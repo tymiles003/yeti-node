@@ -42,6 +42,7 @@ const static_field cdr_static_fields[] = {
 	{ "legA_tx_bytes", "integer" },
 	{ "legB_rx_bytes", "integer" },
 	{ "legB_tx_bytes", "integer" },
+	{ "global_tag", "varchar" },
 };
 
 static string join_str_vector(const vector<string> v,const string delim){
@@ -560,6 +561,7 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr){
 		invoc_field(cdr->legA_bytes_sent);
 		invoc_field(cdr->legB_bytes_recvd);
 		invoc_field(cdr->legB_bytes_sent);
+		invoc_field(cdr->global_tag);
 
 		/* invocate dynamic fields  */
 		const size_t n = cdr->dyn_fields.size();
@@ -675,7 +677,9 @@ int CdrThread::writecdrtofile(Cdr* cdr){
 	wv(join_str_vector(cdr->legB_incoming_payloads,",")) <<
 	wv(join_str_vector(cdr->legB_outgoing_payloads,",")) <<
 	wv(cdr->legA_bytes_recvd) << wv(cdr->legA_bytes_sent) <<
-	wv(cdr->legB_bytes_recvd) << wv(cdr->legB_bytes_sent);
+	wv(cdr->legB_bytes_recvd) << wv(cdr->legB_bytes_sent) <<
+	wv(cdr->global_tag);
+
 		//dynamic fields
 	int n = cdr->dyn_fields.size()-1;
 	for(int k = 0;k<n;k++)

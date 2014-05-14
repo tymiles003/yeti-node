@@ -225,6 +225,8 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 
 	ringing_timeout = t["ringing_timeout"].as<int>(0);
 
+	global_tag = t["global_tag"].c_str();
+
 	DBG("Yeti: loaded SQL profile\n");
 
 	return true;
@@ -359,6 +361,7 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 
 		DBG("SBC:      time_limit: %i\n", time_limit);
 		DBG("SBC:      ringing_timeout: %i\n", ringing_timeout);
+		DBG("SBC:      global_tag: %s\n", global_tag.c_str());
 
 		DBG("SBC:      resources: %s\n", resources.c_str());
 		for(ResourceList::const_iterator i = rl.begin();i!=rl.end();++i)

@@ -901,12 +901,17 @@ bool Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
 	ctx->inc();
 
 	if(call->isALeg()){
-		ostringstream ss;
 		SBCCallProfile &profile = call->getCallProfile();
+
+		ostringstream ss;
 		ss <<	config.msg_logger_dir << '/' <<
 				call->getLocalTag() << "_" <<
 				int2str(config.node_id) << ".pcap";
 		profile.set_logger_path(ss.str());
+
+		if(profile.global_tag.empty())
+			profile.global_tag = call->getLocalTag();
+
 		cdr->update_sbc(profile);
 	} else {
 		SBCCallProfile &profile = call->getCallProfile();

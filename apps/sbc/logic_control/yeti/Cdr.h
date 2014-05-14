@@ -59,6 +59,7 @@ struct Cdr: public
     string orig_call_id;
     string term_call_id;
     string local_tag;
+	string global_tag;
     int time_limit;
 
     AmArg dyn_fields;

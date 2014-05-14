@@ -215,6 +215,8 @@ struct SBCCallProfile
 
   int ringing_timeout;
 
+  string global_tag;
+
   struct TranscoderSettings {
     // non-replaced parameters
     string callee_codec_capabilities_str, audio_codecs_str, 
