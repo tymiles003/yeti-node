@@ -5,7 +5,7 @@
 
 #include "Cdr.h"
 #include "SqlCallProfile.h"
-#include "Resource.h"
+#include "resources/Resource.h"
 #include "SqlRouter.h"
 class SqlRouter;
 

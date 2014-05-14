@@ -1,7 +1,7 @@
 #include "ResourceControl.h"
-#include "yeti.h"
+#include "../yeti.h"
 #include "AmUtils.h"
-#include "DbConfig.h"
+#include "../DbConfig.h"
 #include <pqxx/pqxx>
 
 void ResourceConfig::set_action(int a){

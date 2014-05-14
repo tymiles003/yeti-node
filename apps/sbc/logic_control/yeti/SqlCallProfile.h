@@ -5,7 +5,7 @@
 #include <pqxx/result>
 #include <string>
 
-#include "Resource.h"
+#include "resources/Resource.h"
 #include "DbTypes.h"
 
 #define LOG_SIP_MASK	0x1

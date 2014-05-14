@@ -15,7 +15,7 @@
 #include "CdrList.h"
 #include "CdrWriter.h"
 #include "SBC.h"
-#include "ResourceControl.h"
+#include "resources/ResourceControl.h"
 #include "CallCtx.h"
 #include "CodesTranslator.h"
 #include "CodecsGroup.h"
@@ -119,7 +119,6 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   bool reload_config(AmArg &ret);
   bool check_event_id(int event_id, AmArg &ret);
   bool assert_event_id(const AmArg &args,AmArg &ret);
-  void get_codec_cost(int codec_id, AmArg &cost);
 
         //!SBCLogicInterface handlers
   SBCCallProfile& getCallProfile( const AmSipRequest& req,

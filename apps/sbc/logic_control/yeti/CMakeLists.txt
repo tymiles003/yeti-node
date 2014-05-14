@@ -9,18 +9,19 @@ set (yeti_SRCS
 	CdrWriter.cpp
 	SqlRouter.cpp
 	DbConfig.cpp
-        RedisConnPool.cpp
-        ResourceCache.cpp
-        ResourceControl.cpp
 	Cdr.cpp
 	SqlCallProfile.cpp
-	Resource.cpp
 	CallCtx.cpp
 	CodesTranslator.cpp
 	Registration.cpp
 	UsedHeaderField.cpp
 	CodecsGroup.cpp
 	sdp_filter.cpp
+	codecs_bench.cpp
+	resources/RedisConnPool.cpp
+        resources/ResourceCache.cpp
+        resources/ResourceControl.cpp
+	resources/Resource.cpp
 )
 
 SET(yeti_config_files

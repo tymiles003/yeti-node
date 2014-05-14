@@ -1,5 +1,6 @@
 #include "yeti.h"
 #include "sdp_filter.h"
+#include "codecs_bench.h"
 
 #include <string.h>
 #include <ctime>
@@ -2130,40 +2131,24 @@ void Yeti::showMediaStreams(const AmArg& args, AmArg& ret){
 	AmMediaProcessor::instance()->getInfo(ret);
 }
 
-static int load_testing_source(){
-	AmAudioFile f;
-	AmPlugIn* plugin = AmPlugIn::instance();
-
-	string path = "/usr/lib/sems/audio/default_en.wav";
-	//string path = "/usr/lib/sems/audio/GE_ISR 1_1.wav";
-
-	if(f.open(path,AmAudioFile::Read)){
-		ERROR("can't open file");
-		return -1;
-	}
-
-	DBG("file length: %dms",f.getLength());
-
-	amci_codec_t *codec = plugin->codec(CODEC_PCM16);
-	if(!codec){
-		ERROR("no pcm16 codec");
-		return -1;
-	}
-
-	return 0;
-}
-
 void Yeti::showPayloads(const AmArg& args, AmArg& ret){
 	vector<SdpPayload> payloads;
+	unsigned char *buf;
+	int size = 0;
 
-	//bool compute_cost = args.size() && args[0] == "cost";
-	bool compute_cost = false;
+	bool compute_cost = args.size() && args[0] == "cost";
+	string path = args.size()>1 ? args[1].asCStr() : DEFAULT_BECH_FILE_PATH;
 
 	const AmPlugIn* plugin = AmPlugIn::instance();
 	plugin->getPayloads(payloads);
 
-	if(compute_cost)
-		compute_cost = (load_testing_source()==0);
+	if(compute_cost){
+		size = load_testing_source(path,buf);
+		for(int i = 0;i<size;i++){
+			DBG("0x%x: 0x%hhx",i,buf[i]);
+		}
+		compute_cost = size > 0;
+	}
 
 	AmArg p_list;
 	vector<SdpPayload>::const_iterator it = payloads.begin();
@@ -2173,71 +2158,10 @@ void Yeti::showPayloads(const AmArg& args, AmArg& ret){
 		a["payload_type"] = p.payload_type;
 		a["clock_rate"] = p.clock_rate;
 		if(compute_cost){
-			get_codec_cost(p.payload_type,a["cost"]);
+			get_codec_cost(p.payload_type,buf,size,a["cost"]);
 		}
 		p_list.push(p.encoding_name,a);
 	}
 	ret.push(200);
 	ret.push(p_list);
-}
-
-void Yeti::get_codec_cost(int payload_id,AmArg &cost){
-#define DEFAULT_SDP_PARAMS ""
-	AmPlugIn* plugin = AmPlugIn::instance();
-	long h_codec;
-	int frame_size;
-	int i=0;
-	double encode_cost = -1, decode_cost = -1;
-	amci_codec_t *codec = NULL;
-
-	amci_payload_t *payload = plugin->payload(payload_id);
-	if(!payload) goto fin;
-
-	DBG("payload = %p, codec_id = %d",payload,payload->codec_id);
-	/*amci_codec_t **/codec = plugin->codec(payload->codec_id);
-	if(!codec) goto fin;
-
-	DBG("codec = %p, codec.init = %p",codec,codec->init);
-	if(!codec->init) goto fin;
-
-	amci_codec_fmt_info_t fmt_i[4];
-	fmt_i[0].id = 0;
-	h_codec = (*codec->init)(DEFAULT_SDP_PARAMS, fmt_i);
-	if(-1==h_codec){
-		ERROR("can't init codec %d",payload_id);
-		goto fin;
-	}
-
-	while (fmt_i[i].id) {
-		switch (fmt_i[i].id) {
-		case AMCI_FMT_FRAME_LENGTH : {
-			DBG("AMCI_FMT_FRAME_LENGTH %d",fmt_i[i].value);
-		} break;
-		case AMCI_FMT_FRAME_SIZE: {
-			DBG("AMCI_FMT_FRAME_SIZE %d",fmt_i[i].value);
-			frame_size=fmt_i[i].value;
-		} break;
-		case AMCI_FMT_ENCODED_FRAME_SIZE: {
-			DBG("AMCI_FMT_ENCODED_FRAME_SIZE %d",fmt_i[i].value);
-		} break;
-		default: {
-		  DBG("Unknown codec format descriptor: %d\n", fmt_i[i].id);
-		} break;
-		}
-		i++;
-	}
-
-	/* encode cost */
-	if(codec->encode){
-	}
-
-	/* decode cost */
-	if(codec->decode){
-	}
-
-	if(codec->destroy)
-		(*codec->destroy)(h_codec);
-fin:
-	cost["encode"] = encode_cost;
-	cost["decode"] = decode_cost;
 }

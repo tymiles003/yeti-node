@@ -3,7 +3,7 @@
 #include "AmUtils.h"
 #include <sstream>
 
-#include "yeti.h"
+#include "../yeti.h"
 
 #define REDIS_STRING_ZERO "(null)"
 

@@ -4,7 +4,7 @@
 
 #include "SqlCallProfile.h"
 #include "SBCCallLeg.h"
-#include "Resource.h"
+#include "resources/Resource.h"
 
 enum UpdateAction {
     Start,
