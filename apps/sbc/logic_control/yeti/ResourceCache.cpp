@@ -235,7 +235,7 @@ void ResourceCache::run(){
 			write_pool.putConnection(write_ctx,RedisConnPool::CONN_STATE_OK);
 		} catch(GetReplyException &e){
 			ERROR("GetReplyException %s status: %d",e.what.c_str(),e.status);
-			freeReplyObject(reply);
+			//freeReplyObject(reply);
 			write_pool.putConnection(write_ctx,RedisConnPool::CONN_STATE_ERR);
 		} catch(ReplyTypeException &e){
 			ERROR("ReplyTypeException %s type: %d",e.what.c_str(),e.type);
@@ -318,8 +318,10 @@ bool ResourceCache::init_resources(){
 			state = redisGetReply(write_ctx,(void **)&reply);
 			if(state!=REDIS_OK)
 				throw GetReplyException("MULTI HSET redisGetReply() != REDIS_OK, state = %d",state);
+			if(reply==NULL)
+				throw GetReplyException("MULTI HSET reply == NULL",state);
 			if(reply->type!=desired){
-				throw ReplyTypeException("HINCRBY type not desired",reply->type);
+				throw ReplyTypeException("MULTI HSET type not desired",reply->type);
 			}
 			freeReplyObject(reply);
 		}
@@ -331,12 +333,13 @@ bool ResourceCache::init_resources(){
 	} catch(GetReplyException &e){
 		ERROR("GetReplyException: %s, status: %d",e.what.c_str(),e.status);
 	} catch(ReplyDataException &e){
+		freeReplyObject(reply);
 		ERROR("ReplyDataException: %s",e.what.c_str());
 	} catch(ReplyTypeException &e){
+		freeReplyObject(reply);
 		ERROR("ReplyTypeException %s type: %d",e.what.c_str(),e.type);
 	}
 
-	freeReplyObject(reply);
 	write_pool.putConnection(write_ctx,RedisConnPool::CONN_STATE_ERR);
 	return false;
 }
