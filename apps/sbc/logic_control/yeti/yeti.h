@@ -114,10 +114,12 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   xmlrpc_handler reloadCodecsGroups;
   xmlrpc_handler reloadRouter;
   xmlrpc_handler showMediaStreams;
+  xmlrpc_handler showPayloads;
 
   bool reload_config(AmArg &ret);
   bool check_event_id(int event_id, AmArg &ret);
   bool assert_event_id(const AmArg &args,AmArg &ret);
+  void get_codec_cost(int codec_id, AmArg &cost);
 
         //!SBCLogicInterface handlers
   SBCCallProfile& getCallProfile( const AmSipRequest& req,
