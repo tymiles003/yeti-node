@@ -290,7 +290,7 @@ void Yeti::init_xmlrpc_cmds(){
 
 		reg_leaf(show,show_media,"media","media processor instance");
 			reg_method(show_media,"streams","active media streams info",showMediaStreams,"");
-			reg_method_arg(show_media,"payloads","loaded codecs",showPayloads,"",
+			reg_method_arg(show_media,"payloads","loaded codecs",showPayloads,"show supported codecs",
 						"cost","compute transcoding cost for each codec");
 
 		reg_leaf_method(show,show_calls,"calls","active calls",GetCalls,"show current active calls");
