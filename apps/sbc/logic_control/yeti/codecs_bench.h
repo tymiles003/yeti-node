@@ -3,9 +3,9 @@
 
 #include "AmArg.h"
 
-#define DEFAULT_BECH_FILE_PATH "/usr/lib/sems/audio/GE_ISR 1_1.wav"
+#define DEFAULT_BECH_FILE_PATH "/usr/lib/sems/audio/default_en.wav"
 
 int load_testing_source(string path,unsigned char *&buf);
-void get_codec_cost(int payload_id,const unsigned char *buf, int size, AmArg &cost);
+void get_codec_cost(int payload_id,unsigned char *buf, int size, AmArg &cost);
 
 #endif // CODECS_BENCH_H

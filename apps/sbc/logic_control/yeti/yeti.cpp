@@ -2144,9 +2144,6 @@ void Yeti::showPayloads(const AmArg& args, AmArg& ret){
 
 	if(compute_cost){
 		size = load_testing_source(path,buf);
-		for(int i = 0;i<size;i++){
-			DBG("0x%x: 0x%hhx",i,buf[i]);
-		}
 		compute_cost = size > 0;
 	}
 
@@ -2158,10 +2155,14 @@ void Yeti::showPayloads(const AmArg& args, AmArg& ret){
 		a["payload_type"] = p.payload_type;
 		a["clock_rate"] = p.clock_rate;
 		if(compute_cost){
-			get_codec_cost(p.payload_type,buf,size,a["cost"]);
+			get_codec_cost(p.payload_type,buf,size,a);
 		}
 		p_list.push(p.encoding_name,a);
 	}
+
+	if(compute_cost)
+		delete[] buf;
+
 	ret.push(200);
 	ret.push(p_list);
 }
