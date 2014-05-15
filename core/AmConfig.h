@@ -123,6 +123,8 @@ struct AmConfig
     /** Highest local RTP port */
     int RtpHighPort;
 
+	unsigned int MediaSockOpts;
+
     RTP_interface();
 
     int getNextRtpPort();

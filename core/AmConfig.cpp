@@ -861,6 +861,26 @@ static int readRTPInterface(AmConfigReader& cfg, const string& i_name)
     }
   }
 
+  intf.MediaSockOpts = 0;
+  if(cfg.hasParameter("media_sock_opts" + suffix)){
+	vector<string> opt_strs = explode(cfg.getParameter("media_sock_opts" + suffix),",");
+	unsigned int opts = 0;
+	for(vector<string>::iterator it_opt = opt_strs.begin();
+	it_opt != opt_strs.end(); ++it_opt) {
+		if(*it_opt == "use_raw_sockets") {
+			if(AmConfig::UseRawSockets)
+				opts |= trsp_socket::use_raw_sockets;
+			else
+				WARN("raw sockets globally disabled but there is a try to enable for RTP interface %s",
+					 i_name.c_str());
+		} else {
+			WARN("unknown media socket option '%s' set on interface '%s'\n",
+				 it_opt->c_str(),i_name.c_str());
+		}
+	}
+	intf.MediaSockOpts = opts;
+  }
+
   if(!i_name.empty())
     intf.name = i_name;
   else
