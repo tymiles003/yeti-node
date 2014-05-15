@@ -12,6 +12,7 @@
 #include "AmUtils.h"
 #include "AmAudioFile.h"
 #include "AmMediaProcessor.h"
+#include "sip/transport.h"
 #include "SDPFilter.h"
 #include "CallLeg.h"
 #include "Version.h"
@@ -302,6 +303,8 @@ void Yeti::init_xmlrpc_cmds(){
 		reg_method(show,"configuration","actual settings",GetConfig,"");
 
 		reg_method(show,"stats","runtime statistics",GetStats,"");
+
+		reg_method(show,"interfaces","show network interfaces configuration",showInterfaces,"");
 
 		reg_leaf_method(show,show_registrations,"registrations","uac registrations",GetRegistrations,"show configured uac registrations");
 			reg_method(show_registrations,"count","active registrations count",GetRegistrationsCount,"");
@@ -2165,4 +2168,46 @@ void Yeti::showPayloads(const AmArg& args, AmArg& ret){
 
 	ret.push(200);
 	ret.push(p_list);
+}
+
+void Yeti::showInterfaces(const AmArg& args, AmArg& ret){
+	AmArg ifaces,rtp,sig;
+
+	for(int i=0; i<(int)AmConfig::SIP_Ifs.size(); i++) {
+		AmConfig::SIP_interface& iface = AmConfig::SIP_Ifs[i];
+		AmArg am_iface;
+		am_iface["sys_name"] = iface.NetIf;
+		am_iface["sys_idx"] = (int)iface.NetIfIdx;
+		am_iface["local_ip"] = iface.LocalIP;
+		am_iface["local_port"] = (int)iface.LocalPort;
+		am_iface["public_ip"] = iface.PublicIP;
+		am_iface["use_raw_sockets"] = (iface.SigSockOpts&trsp_socket::use_raw_sockets)!= 0;
+		am_iface["force_via_address"] = (iface.SigSockOpts&trsp_socket::force_via_address) != 0;
+		am_iface["force_outbound_if"] = (iface.SigSockOpts&trsp_socket::force_outbound_if) != 0;
+		sig[iface.name] = am_iface;
+	}
+	ifaces["sip"] = sig;
+	for(multimap<string,unsigned short>::iterator it = AmConfig::LocalSIPIP2If.begin();
+		it != AmConfig::LocalSIPIP2If.end(); ++it) {
+		AmConfig::SIP_interface& iface = AmConfig::SIP_Ifs[it->second];
+		ifaces["sip_map"][it->first] = iface.name.empty() ? "default" : iface.name;
+	}
+
+	for(int i=0; i<(int)AmConfig::RTP_Ifs.size(); i++) {
+		AmConfig::RTP_interface& iface = AmConfig::RTP_Ifs[i];
+		AmArg am_iface;
+		am_iface["sys_name"] = iface.NetIf;
+		am_iface["sys_idx"] = (int)iface.NetIfIdx;
+		am_iface["local_ip"] = iface.LocalIP;
+		am_iface["public_ip"] = iface.PublicIP;
+		am_iface["rtp_low_port"] = iface.RtpLowPort;
+		am_iface["rtp_high_port"] = iface.RtpHighPort;
+		am_iface["use_raw_sockets"] = (iface.MediaSockOpts&trsp_socket::use_raw_sockets)!= 0;
+		string name = iface.name.empty() ? "default" : iface.name;
+		rtp[name] = am_iface;
+	}
+	ifaces["media"] = rtp;
+
+	ret.push(200);
+	ret.push(ifaces);
 }

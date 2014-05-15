@@ -115,6 +115,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   xmlrpc_handler reloadRouter;
   xmlrpc_handler showMediaStreams;
   xmlrpc_handler showPayloads;
+  xmlrpc_handler showInterfaces;
 
   bool reload_config(AmArg &ret);
   bool check_event_id(int event_id, AmArg &ret);
