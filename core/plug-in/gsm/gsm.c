@@ -111,13 +111,13 @@ static int gsm_2_pcm16(unsigned char* out_buf, unsigned char* in_buf, unsigned i
 
   out_size = blocks.quot * 320;
 
-  if(out_size > AUDIO_BUFFER_SIZE){
+  /*if(out_size > AUDIO_BUFFER_SIZE){
 
     ERROR("gsm_2_pcm16: converting buffer would lead to buffer overrun:\n");
     ERROR("gsm_2_pcm16: input size=%u; needed output size=%u; buffer size=%u\n",
 	  size,out_size,AUDIO_BUFFER_SIZE);
     return -1;
-  }
+  }*/
 
   for (i=0;i<blocks.quot;i++) 
     gsm_decode(h_arr[1],in_buf + i*33,(gsm_signal*)(out_buf + i*320));
