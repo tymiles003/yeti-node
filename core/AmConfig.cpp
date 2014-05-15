@@ -169,7 +169,8 @@ AmConfig::RTP_interface::RTP_interface()
   : IP_interface(),
     RtpLowPort(RTP_LOWPORT),
     RtpHighPort(RTP_HIGHPORT),
-    next_rtp_port(-1)
+	next_rtp_port(-1),
+	MediaSockOpts(0)
 {
 }
 
@@ -861,7 +862,6 @@ static int readRTPInterface(AmConfigReader& cfg, const string& i_name)
     }
   }
 
-  intf.MediaSockOpts = 0;
   if(cfg.hasParameter("media_sock_opts" + suffix)){
 	vector<string> opt_strs = explode(cfg.getParameter("media_sock_opts" + suffix),",");
 	unsigned int opts = 0;
