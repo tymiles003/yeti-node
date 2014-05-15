@@ -6,7 +6,7 @@
 #include <string>
 
 #include "resources/Resource.h"
-#include "DbTypes.h"
+#include "db/DbTypes.h"
 
 #define LOG_SIP_MASK	0x1
 #define LOG_RTP_MASK	0x2

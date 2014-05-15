@@ -3,7 +3,7 @@
 
 #include "AmSession.h"
 #include "AmConfigReader.h"
-#include "DbConfig.h"
+#include "db/DbConfig.h"
 
 class Registration : public AmThread {
 	static Registration* _instance;

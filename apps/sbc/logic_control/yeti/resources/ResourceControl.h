@@ -6,7 +6,7 @@
 #include "AmArg.h"
 #include <map>
 #include "log.h"
-#include "../DbConfig.h"
+#include "../db/DbConfig.h"
 
 using namespace std;
 

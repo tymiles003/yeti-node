@@ -2,7 +2,7 @@
 #include "log.h"
 #include <string>
 #include "AmUtils.h"
-#include "yeti.h"
+#include "../yeti.h"
 
 PgConnection::PgConnection(const PGSTD::string &opts):
 	pqxx::connection(opts),

@@ -5,7 +5,7 @@
 #include "AmThread.h"
 #include "AmArg.h"
 #include <map>
-#include "DbConfig.h"
+#include "db/DbConfig.h"
 
 //fail codes for TS
 #define	FC_PARSE_FROM_FAILED		114

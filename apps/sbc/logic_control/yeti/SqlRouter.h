@@ -2,13 +2,13 @@
 #define _SQLRouter_
 
 #include "SBCCallProfile.h"
-#include "PgConnectionPool.h"
+#include "db/PgConnectionPool.h"
 #include "AmUtils.h"
 #include "HeaderFilter.h"
 #include <algorithm>
 #include "cdr/CdrWriter.h"
 #include "hash/ProfilesCache.h"
-#include "DbTypes.h"
+#include "db/DbTypes.h"
 #include "cdr/Cdr.h"
 #include "CodesTranslator.h"
 #include "UsedHeaderField.h"

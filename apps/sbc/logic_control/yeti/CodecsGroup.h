@@ -4,7 +4,7 @@
 #include "AmArg.h"
 #include <AmSdp.h>
 #include <HeaderFilter.h>
-#include "DbConfig.h"
+#include "db/DbConfig.h"
 #include "CodesTranslator.h"
 
 #include <string>

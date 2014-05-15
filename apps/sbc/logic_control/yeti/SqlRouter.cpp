@@ -11,9 +11,9 @@
 #include "SBCCallProfile.h"
 #include "sip/parse_nameaddr.h"
 #include "sip/parse_uri.h"
-#include "PgConnectionPool.h"
+#include "db/PgConnectionPool.h"
 #include "SqlRouter.h"
-#include "DbTypes.h"
+#include "db/DbTypes.h"
 #include "yeti.h"
 
 const static_field profile_static_fields[] = {
