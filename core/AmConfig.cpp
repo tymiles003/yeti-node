@@ -341,6 +341,13 @@ int AmConfig::readConfiguration()
   if(!ModConfigPath.empty() && (ModConfigPath[ModConfigPath.length()-1] != '/'))
     ModConfigPath += '/';
 
+  if(cfg.hasParameter("use_raw_sockets")) {
+	UseRawSockets = (cfg.getParameter("use_raw_sockets") == "yes");
+	if(UseRawSockets && (raw_sender::init() < 0)) {
+	  UseRawSockets = false;
+	}
+  }
+
   // Reads IP and port parameters
   if(readInterfaces(cfg) == -1)
     ret = -1;
@@ -365,13 +372,6 @@ int AmConfig::readConfiguration()
 
   if(cfg.hasParameter("force_outbound_if")) {
     ForceOutboundIf = (cfg.getParameter("force_outbound_if") == "yes");
-  }
-
-  if(cfg.hasParameter("use_raw_sockets")) {
-    UseRawSockets = (cfg.getParameter("use_raw_sockets") == "yes");
-    if(UseRawSockets && (raw_sender::init() < 0)) {
-      UseRawSockets = false;
-    }
   }
 
   if(cfg.hasParameter("ignore_notify_lower_cseq")) {
