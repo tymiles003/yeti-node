@@ -6,20 +6,18 @@
 int load_testing_source(string path,unsigned char *&buf){
 	AmAudioFile f;
 
-	int desired_length = 1; //seconds
-
 	if(f.open(path,AmAudioFile::Read)){
 		ERROR("can't open file");
 		return -1;
 	}
 
-	if(f.getLength()<(desired_length*1e3)){
-		ERROR("file should contain at least %ds but has length: %dms",
-			  desired_length,f.getLength());
+	int seconds = f.getLength()/1e3;
+	if(!seconds){
+		ERROR("file should contain at least one second but has length: %dms", f.getLength());
 		return -1;
 	}
 
-	unsigned int samples = desired_length*8e3; //one second length
+	unsigned int samples = seconds*8e3;
 	unsigned int buf_size = samples << 1;
 
 	buf = new unsigned char[buf_size];
@@ -88,10 +86,15 @@ void get_codec_cost(int payload_id,unsigned char *buf, int size, AmArg &cost){
 		return;
 	}
 
-	//DBG("codec->samples2bytes = %p",codec->samples2bytes);
+	unsigned int in_buf_samples = size >> 1;
+	cost["pcm16_samples"] = (int)in_buf_samples;
 
-	out_buf_size = codec->samples2bytes ? (*codec->samples2bytes)(h_codec,8e3) : size;
+	double pcm16_len = in_buf_samples/8e3;
+	cost["pcm16_len"] = pcm16_len;
+
+	out_buf_size = codec->samples2bytes ? (*codec->samples2bytes)(h_codec,in_buf_samples) : size;
 	out_buf = new unsigned char[out_buf_size];
+
 	//DBG("out_buf[%p,%d]",out_buf,out_buf_size);
 
 	gettimeofday(&start,NULL);
@@ -107,12 +110,12 @@ void get_codec_cost(int payload_id,unsigned char *buf, int size, AmArg &cost){
 	}
 
 	timersub(&end,&start,&diff);
-	double encode_cost = diff.tv_sec+diff.tv_usec/1e6;
-	double encode_chps = 1/encode_cost;
+	double encode_cost = (diff.tv_sec+diff.tv_usec/1e6);
+	double encode_ch = pcm16_len/encode_cost;
 
 	cost["encoded_size"] = ret;
 	cost["encode_cost"] = encode_cost;
-	cost["encode_chps"] = encode_chps;
+	cost["encode_ch"] = encode_ch;
 
 	/** decode cost */
 	tmp_buf = new unsigned char[size];
@@ -134,17 +137,17 @@ void get_codec_cost(int payload_id,unsigned char *buf, int size, AmArg &cost){
 	}
 	timersub(&end,&start,&diff);
 	double  decode_cost = diff.tv_sec+diff.tv_usec/1e6;
-	double  decode_chps = 1/decode_cost;
+	double  decode_ch = pcm16_len/decode_cost;
 
 	cost["decode_cost"] = decode_cost;
-	cost["decode_chps"] = decode_chps;
+	cost["decode_ch"] = decode_ch;
 
 	/** both cost */
 	double both_cost = decode_cost+encode_cost;
-	double both_chps = 1/both_cost;
+	double both_ch = pcm16_len/both_cost;
 
 	cost["both_cost"] = both_cost;
-	cost["both_chps"] = both_chps;
+	cost["both_ch"] = both_ch;
 
 	delete[] out_buf;
 }
