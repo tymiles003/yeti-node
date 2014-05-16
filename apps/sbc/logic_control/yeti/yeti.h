@@ -66,7 +66,6 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   AmConfigReader cfg;
   //config values
   int calls_show_limit;
-  void replace(string& s, const string& from, const string& to);
 
   void onLastLegDestroy(CallCtx *ctx,SBCCallLeg *call);
   /*! create new B leg (serial fork)*/

@@ -207,6 +207,132 @@ void Yeti::process_xmlrpc_cmds(const AmArg cmds, const string& method, const AmA
 	throw AmDynInvoke::NotImplemented("no matches with methods tree");
 }
 
+void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
+{
+	DBG("Yeti: %s(%s)\n", method.c_str(), AmArg::print(args).c_str());
+
+	if(method == "getLogicInterfaceHandler"){
+		SBCLogicInterface *i = (SBCLogicInterface *)this;
+		ret[0] = (AmObject *)i;
+	} else if(method == "getExtendedInterfaceHandler"){
+		ExtendedCCInterface *i = (ExtendedCCInterface *)this;
+		ret[0] = (AmObject *)i;
+	} else if(method == "start"){
+		SBCCallProfile* call_profile =
+			dynamic_cast<SBCCallProfile*>(args[CC_API_PARAMS_CALL_PROFILE].asObject());
+		start(
+			args[CC_API_PARAMS_CC_NAMESPACE].asCStr(),
+			args[CC_API_PARAMS_LTAG].asCStr(),
+			call_profile,
+			args[CC_API_PARAMS_TIMESTAMPS][CC_API_TS_START_SEC].asInt(),
+			args[CC_API_PARAMS_TIMESTAMPS][CC_API_TS_START_USEC].asInt(),
+			args[CC_API_PARAMS_CFGVALUES],
+			args[CC_API_PARAMS_TIMERID].asInt(),
+			ret
+		);
+	} else if(method == "connect"){
+		SBCCallProfile* call_profile =
+			dynamic_cast<SBCCallProfile*>(args[CC_API_PARAMS_CALL_PROFILE].asObject());
+		connect(
+			args[CC_API_PARAMS_CC_NAMESPACE].asCStr(),
+			args[CC_API_PARAMS_LTAG].asCStr(),
+			call_profile,
+			args[CC_API_PARAMS_OTHERID].asCStr(),
+			args[CC_API_PARAMS_TIMESTAMPS][CC_API_TS_CONNECT_SEC].asInt(),
+			args[CC_API_PARAMS_TIMESTAMPS][CC_API_TS_CONNECT_USEC].asInt()
+		);
+	} else if(method == "end"){
+		SBCCallProfile* call_profile =
+			dynamic_cast<SBCCallProfile*>(args[CC_API_PARAMS_CALL_PROFILE].asObject());
+		end(
+			args[CC_API_PARAMS_CC_NAMESPACE].asCStr(),
+			args[CC_API_PARAMS_LTAG].asCStr(),
+			call_profile,
+			args[CC_API_PARAMS_TIMESTAMPS][CC_API_TS_END_SEC].asInt(),
+			args[CC_API_PARAMS_TIMESTAMPS][CC_API_TS_END_USEC].asInt()
+		);
+	} else if(method == "ood_handling_terminated"){
+		oodHandlingTerminated(
+			dynamic_cast<AmSipRequest*>(args[1].asObject()),
+			dynamic_cast<SqlCallProfile*>(args[0].asObject())
+		);
+	} else if(method == "route"){
+		//
+	} else if (method == "dropCall"){
+		INFO ("dropCall received via xmlrpc2di");
+		DropCall(args,ret);
+	} else if (method == "getCall"){
+		INFO ("getCall received via xmlrpc2di");
+		GetCall(args,ret);
+	} else if (method == "getCalls"){
+		INFO ("getCalls received via xmlrpc2di");
+		GetCalls(args,ret);
+	} else if (method == "getCallsCount"){
+		INFO ("getCallsCount received via xmlrpc2di");
+		GetCallsCount(args,ret);
+	} else if (method == "getStats"){
+		INFO ("getStats received via xmlrpc2di");
+		GetStats(args,ret);
+	} else if (method == "clearStats"){
+		INFO ("clearStats received via xmlrpc2di");
+		ClearStats(args,ret);
+	} else if (method == "showCache"){
+		INFO ("showCache received via xmlrpc2di");
+		ShowCache(args,ret);
+	} else if (method == "clearCache"){
+		INFO ("clearCache received via xmlrpc2di");
+		ClearCache(args,ret);
+	} else if (method == "getRegistration"){
+		INFO("getRegistration via xmlrpc2di");
+		GetRegistration(args,ret);
+	} else if (method == "renewRegistration"){
+		INFO("renewRegistration via xmlrpc2di");
+		RenewRegistration(args,ret);
+	} else if (method == "getRegistrations"){
+		INFO("getRegistrations via xmlrpc2di");
+		GetRegistrations(args,ret);
+	} else if (method == "getRegistrationsCount"){
+		INFO("getRegistrationsCount via xmlrpc2di");
+		GetRegistrationsCount(args,ret);
+	} else if (method == "getConfig"){
+		INFO ("getConfig received via xmlrpc2di");
+		GetConfig(args,ret);
+	} else if (method == "showVersion"){
+		INFO ("showVersion received via xmlrpc2di");
+		showVersion(args, ret);
+	} else if(method == "reload"){
+		INFO ("reload received via xmlrpc2di");
+		reload(args,ret);
+	} else if(method == "closeCdrFiles"){
+		INFO ("closeCdrFiles received via xmlrpc2di");
+		closeCdrFiles(args,ret);
+	/*} else if(method == "_list"){
+		ret.push(AmArg("showVersion"));
+		ret.push(AmArg("getConfig"));
+		ret.push(AmArg("getStats"));
+		ret.push(AmArg("clearStats"));
+		ret.push(AmArg("clearCache"));
+		ret.push(AmArg("showCache"));
+		ret.push(AmArg("dropCall"));
+		ret.push(AmArg("getCall"));
+		ret.push(AmArg("getCalls"));
+		ret.push(AmArg("getCallsCount"));
+		ret.push(AmArg("getRegistration"));
+		ret.push(AmArg("renewRegistration"));
+		ret.push(AmArg("getRegistrations"));
+		ret.push(AmArg("getRegistrationsCount"));
+		ret.push(AmArg("reload"));
+		ret.push(AmArg("closeCdrFiles"));
+
+		ret.push(AmArg("show"));
+		ret.push(AmArg("request"));
+		//ret.push(AmArg("set"));*/
+	} else {
+		process_xmlrpc_cmds(xmlrpc_cmds,method,args,ret);
+	}/* else {
+		throw AmDynInvoke::NotImplemented(method);
+	}*/
+}
 
 /****************************************
  * 				aux funcs				*

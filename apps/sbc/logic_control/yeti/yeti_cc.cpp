@@ -28,6 +28,13 @@
 inline Cdr *getCdr(CallCtx *ctx) { return ctx->cdr; }
 inline Cdr *getCdr(SBCCallLeg *call) { return getCdr(getCtx(call)); }
 
+inline void replace(string& s, const string& from, const string& to){
+	size_t pos = 0;
+	while ((pos = s.find(from, pos)) != string::npos) {
+		s.replace(pos, from.length(), to);
+		pos += s.length();
+	}
+}
 
 static const char *callStatus2str(const CallLeg::CallStatus state)
 {
@@ -75,6 +82,61 @@ void Yeti::end(const string& cc_name, const string& ltag,
 			int end_ts_sec, int end_ts_usec)
 {
 	DBG("%s(%p,%s)",FUNC_NAME,call_profile,ltag.c_str());
+}
+
+/****************************************
+ * 		SBCLogicInterface handlers		*
+ ****************************************/
+SBCCallProfile& Yeti::getCallProfile(	const AmSipRequest& req,
+										ParamReplacerCtx& ctx )
+{
+	return *profile;
+}
+
+SBCCallLeg *Yeti::getCallLeg(	const AmSipRequest& req,
+								ParamReplacerCtx& ctx,
+								CallLegCreator *leg_creator )
+{
+	DBG("%s()",FUNC_NAME);
+	router_mutex.lock();
+	SqlRouter *r = router;
+	router_mutex.unlock();
+	CallCtx *call_ctx = new CallCtx(r);
+
+	PROF_START(gprof);
+
+	r->getprofiles(req,*call_ctx);
+
+	SqlCallProfile *profile = call_ctx->getFirstProfile();
+	if(NULL == profile){
+		r->release(routers);
+		delete call_ctx;
+		throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
+	}
+
+	PROF_END(gprof);
+	PROF_PRINT("getting profile",gprof);
+
+	Cdr *cdr = call_ctx->cdr;
+
+	ctx.call_profile = profile;
+	if(check_and_refuse(profile,cdr,req,ctx,true)) {
+		if(!call_ctx->SQLexception)	//avoid to write cdr on failed getprofile()
+			r->write_cdr(cdr,true);
+		r->release(routers);
+		delete call_ctx;
+		return NULL;
+	}
+
+	SBCCallProfile& call_profile = *profile;
+
+	profile->cc_interfaces.push_back(self_iface);
+
+	SBCCallLeg* b2b_dlg = leg_creator->create(call_profile);
+
+	b2b_dlg->setLogicData(reinterpret_cast<void *>(call_ctx));
+
+	return b2b_dlg;
 }
 
 /****************************************
