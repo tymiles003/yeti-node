@@ -3,6 +3,7 @@ find_package(Hiredis REQUIRED)
 
 set (yeti_SRCS
 	yeti.cpp
+	yeti_xmlrpc.cpp
 	SqlRouter.cpp
 	SqlCallProfile.cpp
 	CallCtx.cpp
