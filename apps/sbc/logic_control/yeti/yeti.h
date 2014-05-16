@@ -27,6 +27,22 @@
 #define YETI_CALL_DURATION_TIMER SBC_TIMER_ID_CALL_TIMERS_START
 #define YETI_RINGING_TIMEOUT_TIMER (SBC_TIMER_ID_CALL_TIMERS_START+1)
 
+#if YETI_ENABLE_PROFILING
+
+#define PROF_START(var) clock_t prof_start_##var = clock();
+#define PROF_END(var) clock_t prof_end_##var = clock();
+#define PROF_DIFF(var) ((prof_end_##var-prof_start_##var)/(double)CLOCKS_PER_SEC)
+#define PROF_PRINT(descr,var) DBG(descr" took %f",PROF_DIFF(var));
+
+#else
+
+#define PROF_START(var) ;
+#define PROF_END(var) ;
+#define PROF_DIFF(var) (-1)
+#define PROF_PRINT(descr,var) ;
+
+#endif
+
 class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterface
 {
   static Yeti* _instance;
