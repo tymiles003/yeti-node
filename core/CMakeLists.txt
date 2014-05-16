@@ -5,6 +5,7 @@ FILE (GLOB sems_SRCS "*.cpp" "sip/*.cpp")
 set (audio_files
 beep.wav
 default_en.wav
+codecs_bench.wav
 )
 
 INCLUDE_DIRECTORIES (ampi)
