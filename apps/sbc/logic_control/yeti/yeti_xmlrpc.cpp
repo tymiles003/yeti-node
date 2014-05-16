@@ -58,14 +58,10 @@ void Yeti::init_xmlrpc_cmds(){
 
 		reg_leaf(show,show_media,"media","media processor instance");
 			reg_method(show_media,"streams","active media streams info",showMediaStreams,"");
-			reg_method_arg(show_media,"payloads","loaded codecs",showPayloads,"show supported codecs",
-						"cost","compute transcoding cost for each codec");
 
-		reg_leaf_method(show,show_calls,"calls","active calls",GetCalls,"show current active calls");
+		reg_leaf_method_arg(show,show_calls,"calls","active calls",GetCalls,"show current active calls",
+						"<LOCAL-TAG>","retreive call by local_tag");
 			reg_method(show_calls,"count","active calls count",GetCallsCount,"");
-
-		reg_method_arg(show,"call","detailed view for certain active call",GetCall,
-					   "","<LOCAL-TAG>","retreive call by local_tag");
 
 		reg_method(show,"configuration","actual settings",GetConfig,"");
 
@@ -108,6 +104,11 @@ void Yeti::init_xmlrpc_cmds(){
 		reg_leaf(request,request_call,"call","active calls control");
 			reg_method_arg(request_call,"disconnect","drop call",DropCall,
 						   "","<LOCAL-TAG>","drop call by local_tag");
+
+		reg_leaf(request,request_media,"media","media processor instance");
+			reg_method_arg(request_media,"payloads","loaded codecs",showPayloads,"show supported codecs",
+						   "cost","compute transcoding cost for each codec");
+
 	/* set */
 	//reg_leaf(root,set,"set","heavy queries");
 
