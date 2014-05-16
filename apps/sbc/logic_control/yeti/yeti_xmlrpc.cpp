@@ -1,4 +1,9 @@
 #include "yeti.h"
+#include "Version.h"
+#include "Registration.h"
+#include "codecs_bench.h"
+
+#include "sip/transport.h"
 
 typedef void (Yeti::*YetiRpcHandler)(const AmArg& args, AmArg& ret);
 
@@ -201,3 +206,628 @@ void Yeti::process_xmlrpc_cmds(const AmArg cmds, const string& method, const AmA
 	}
 	throw AmDynInvoke::NotImplemented("no matches with methods tree");
 }
+
+
+/****************************************
+ * 				aux funcs				*
+ ****************************************/
+
+bool Yeti::reload_config(AmArg &ret){
+	cfg = AmConfigReader();
+	if(!read_config()){
+		ret.push(500);
+		ret.push("config file reload failed");
+		return false;
+	}
+	return true;
+}
+
+bool Yeti::check_event_id(int event_id,AmArg &ret){
+	bool succ = false;
+	try {
+		DbConfig dbc;
+		string prefix("master");
+		dbc.cfg2dbcfg(cfg,prefix);
+		pqxx::connection c(dbc.conn_str());
+		c.set_variable("search_path",
+					   Yeti::instance()->config.routing_schema+", public");
+		pqxx::prepare::declaration d = c.prepare("check_event","SELECT * from check_event($1)");
+			d("integer",pqxx::prepare::treat_direct);
+		pqxx::nontransaction t(c);
+			pqxx::result r = t.prepared("check_event")(event_id).exec();
+		if(r[0][0].as<bool>(false)){
+			DBG("event_id checking succ");
+			succ = true;
+		} else {
+			WARN("no appropriate id in database");
+			ret.push(503);
+			ret.push(AmArg("no such event_id"));
+		}
+	} catch(pqxx::pqxx_exception &e){
+		DBG("e = %s",e.base().what());
+		ret.push(500);
+		ret.push(AmArg(string("can't check event id in database ")+e.base().what()));
+	} catch(...){
+		ret.push(500);
+		ret.push(AmArg("can't check event id in database"));
+	}
+	return succ;
+}
+
+bool Yeti::assert_event_id(const AmArg &args,AmArg &ret){
+	if(args.size()){
+		int event_id;
+		args.assertArrayFmt("s");
+		if(!str2int(args[1].asCStr(),event_id)){
+			ret.push(500);
+			ret.push(AmArg("invalid event id"));
+			return false;
+		}
+		if(!check_event_id(event_id,ret))
+				return false;
+	}
+	return true;
+}
+
+/****************************************
+ * 				xmlrpc handlers			*
+ ****************************************/
+
+void Yeti::GetCallsCount(const AmArg& args, AmArg& ret) {
+	string r;
+	std::stringstream ss;
+
+	ss << cdr_list.get_count();
+	r = ss.str();
+
+	ret.push(200);
+	ret.push(AmArg(r));
+}
+
+void Yeti::GetCall(const AmArg& args, AmArg& ret) {
+	AmArg call;
+	string local_tag;
+
+	if (!args.size()) {
+		ret.push(500);
+		ret.push("Parameters error: expected local tag of requested cdr ");
+		return;
+	}
+
+	local_tag = args[0].asCStr();
+	if(cdr_list.getCall(local_tag,call,router)){
+		ret.push(200);
+		ret.push(call);
+	} else {
+		ret.push(404);
+		ret.push("Have no CDR with such local tag");
+	}
+}
+
+void Yeti::GetCalls(const AmArg& args, AmArg& ret) {
+	AmArg calls;
+
+	if(args.size()){
+		string local_tag = args[0].asCStr();
+		if(cdr_list.getCall(local_tag,calls,router)){
+			ret.push(200);
+			ret.push(calls);
+		} else {
+			ret.push(404);
+			ret.push("Have no CDR with such local tag");
+		}
+	} else {
+		cdr_list.getCalls(calls,calls_show_limit,router);
+	}
+
+	ret.push(200);
+	ret.push(calls);
+}
+
+void Yeti::GetRegistration(const AmArg& args, AmArg& ret){
+	AmArg reg;
+	string reg_id_str;
+	int reg_id;
+
+	if (!args.size()) {
+		ret.push(500);
+		ret.push(AmArg("Parameters error: expected id of requested registration"));
+		return;
+	}
+
+	reg_id_str = args[0].asCStr();
+	if(!str2int(reg_id_str,reg_id)){
+		ret.push(500);
+		ret.push(AmArg("Non integer value passed as registrations id"));
+		return;
+	}
+
+	if(Registration::instance()->get_registration_info(reg_id,reg)){
+		ret.push(200);
+		ret.push(reg);
+	} else {
+		ret.push(404);
+		ret.push("Have no registration with such id");
+	}
+}
+
+void Yeti::RenewRegistration(const AmArg& args, AmArg& ret){
+	string reg_id_str;
+	int reg_id;
+
+	if (!args.size()) {
+		ret.push(500);
+		ret.push(AmArg("Parameters error: expected id of active registration"));
+		return;
+	}
+
+	reg_id_str = args[0].asCStr();
+	if(!str2int(reg_id_str,reg_id)){
+		ret.push(500);
+		ret.push(AmArg("Non integer value passed as registrations id"));
+		return;
+	}
+
+	if(Registration::instance()->reregister(reg_id)){
+		ret.push(200);
+		ret.push(AmArg("OK"));
+	} else {
+		ret.push(404);
+		ret.push("Have no registration with such id and in appropriate state");
+	}
+}
+
+void Yeti::GetRegistrations(const AmArg& args, AmArg& ret){
+	AmArg regs;
+
+	Registration::instance()->list_registrations(regs);
+
+	ret.push(200);
+	ret.push(regs);
+}
+
+void Yeti::GetRegistrationsCount(const AmArg& args, AmArg& ret){
+	ret.push(200);
+	ret.push(Registration::instance()->get_registrations_count());
+}
+
+void Yeti::ClearStats(const AmArg& args, AmArg& ret){
+	AmLock l(router_mutex);
+	if(router)
+		router->clearStats();
+	rctl.clearStats();
+	ret.push(200);
+	ret.push("OK");
+}
+
+void Yeti::ClearCache(const AmArg& args, AmArg& ret){
+	AmLock l(router_mutex);
+	if(router)
+		router->clearCache();
+	ret.push(200);
+	ret.push("OK");
+}
+
+void Yeti::ShowCache(const AmArg& args, AmArg& ret){
+	AmLock l(router_mutex);
+	if(router)
+		router->showCache(ret);
+}
+
+void Yeti::GetStats(const AmArg& args, AmArg& ret){
+	AmArg stats,u;
+	time_t now;
+	ret.push(200);
+
+	/* Yeti stats */
+	stats["calls_show_limit"] = (int)calls_show_limit;
+	now = time(NULL);
+	stats["localtime"] = now;
+	stats["uptime"] = difftime(now,start_time);
+
+	/* sql_router stats */
+	router_mutex.lock();
+	AmArg routers_stats;
+	stats["active_routers_count"] = (long int)routers.size();
+	set<SqlRouter *>::const_iterator i = routers.begin();
+	for(;i!=routers.end();++i){
+		u.clear();
+		SqlRouter *r = *i;
+		if(r){
+			r->getStats(u);
+			if(r == router){
+				routers_stats.push("active",u);
+			} else {
+				routers_stats.push("old",u);
+			}
+		}
+	}
+	router_mutex.unlock();
+	stats.push("routers",routers_stats);
+
+	u.clear();
+	AmSessionContainer::instance()->getStats(u);
+	stats.push("AmSessionContainer",u);
+
+	u.clear();
+	u["SessionNum"] = (int)AmSession::getSessionNum();
+	u["MaxSessionNum"] = (int)AmSession::getMaxSessionNum();
+	u["AvgSessionNum"] = (int)AmSession::getAvgSessionNum();
+	stats.push("AmSession",u);
+
+
+	u.clear();
+	const trans_stats &tstats = trans_layer::instance()->get_stats();
+	u["rx_replies"] = (long)tstats.get_received_replies();
+	u["tx_replies"] = (long)tstats.get_sent_replies();
+	u["tx_replies_retrans"] = (long)tstats.get_sent_reply_retrans();
+	u["rx_requests"] =(long) tstats.get_received_requests();
+	u["tx_requests"] = (long)tstats.get_sent_requests();
+	u["tx_requests_retrans"] = (long)tstats.get_sent_request_retrans();
+	stats.push("trans_layer",u);
+
+	u.clear();
+	rctl.getStats(u);
+	stats.push("resource_control",u);
+
+	u.clear();
+	CodesTranslator::instance()->getStats(u);
+	stats.push("translator",u);
+
+	ret.push(stats);
+}
+
+void Yeti::GetConfig(const AmArg& args, AmArg& ret) {
+	AmArg u,s;
+	ret.push(200);
+
+	s["calls_show_limit"] = calls_show_limit;
+	s["node_id"] = config.node_id;
+	s["pop_id"] = config.pop_id;
+
+	router_mutex.lock();
+	if(router){
+		router->getConfig(u);
+		s.push("router",u);
+	}
+	router_mutex.unlock();
+
+	u.clear();
+	CodesTranslator::instance()->GetConfig(u);
+	s.push("translator",u);
+
+	u.clear();
+	rctl.GetConfig(u);
+	s.push("resources_control",u);
+
+	u.clear();
+	CodecsGroups::instance()->GetConfig(u);
+	s.push("codecs_groups",u);
+
+	ret.push(s);
+}
+
+void Yeti::DropCall(const AmArg& args, AmArg& ret){
+	SBCControlEvent* evt;
+	string local_tag;
+
+	if (!args.size()) {
+		ret.push(500);
+		ret.push("Parameters error: expected local tag of active call");
+		return;
+	}
+	local_tag = args[0].asCStr();
+
+	evt = new SBCControlEvent("teardown");
+
+	if (!AmSessionContainer::instance()->postEvent(local_tag, evt)) {
+		ret.push(404);
+		ret.push("Not found");
+	} else {
+		ret.push(202);
+		ret.push("Accepted");
+	}
+}
+
+void Yeti::showVersion(const AmArg& args, AmArg& ret) {
+		AmArg p;
+
+		ret.push(200);
+		p["build"] = YETI_VERSION;
+		p["compiled_at"] = YETI_BUILD_DATE;
+		p["compiled_by"] = YETI_BUILD_USER;
+		ret.push(p);
+}
+
+/* obsolete function !!! */
+void Yeti::reload(const AmArg& args, AmArg& ret){
+	if(0==args.size()){
+		ret.push(400);
+		ret.push(AmArg());
+		ret[1].push("resources");
+		ret[1].push("translations");
+		ret[1].push("registrations");
+		ret[1].push("codecs_groups");
+		ret[1].push("router");
+		return;
+	}
+	args.assertArrayFmt("s");
+
+	if(args.size()>1){
+		int event_id;
+		args.assertArrayFmt("ss");
+		if(!str2int(args[1].asCStr(),event_id)){
+			ret.push(500);
+			ret.push(AmArg("invalid event id"));
+			return;
+		} else {
+			DBG("we have event_id = %d",event_id);
+			//check it
+			if(!check_event_id(event_id,ret))
+				return;
+		}
+	}
+
+	if(!reload_config(ret))
+		return;
+
+	string action = args[0].asCStr();
+	if(action=="resources"){
+		rctl.configure_db(cfg);
+		if(rctl.reload()){
+			ret.push(200);
+			ret.push("OK");
+		} else {
+			ret.push(500);
+			ret.push("errors during resources config reload. there is empty resources config now");
+		}
+	} else if(action == "translations"){
+		CodesTranslator::instance()->configure_db(cfg);
+		if(CodesTranslator::instance()->reload()){
+			ret.push(200);
+			ret.push("OK");
+		} else {
+			ret.push(500);
+			ret.push("errors during translations config reload. there is empty translation hashes now");
+		}
+	} else if(action == "registrations"){
+		if(0==Registration::instance()->reload(cfg)){
+			ret.push(200);
+			ret.push("OK");
+		} else {
+			ret.push(500);
+			ret.push("errors during registrations config reload. there is empty registrations list now");
+		}
+	} else if(action=="codecs_groups"){
+		CodecsGroups::instance()->configure_db(cfg);
+		if(CodecsGroups::instance()->reload()){
+			ret.push(200);
+			ret.push("OK");
+		} else {
+			ret.push(500);
+			ret.push("errors during codecs groups reload. there is empty resources config now");
+		}
+	} else if(action == "router"){
+		//create & configure & run new instance
+		INFO("Allocate new SqlRouter instance");
+		SqlRouter *r =new SqlRouter();
+
+		INFO("Configure SqlRouter");
+		if (r->configure(cfg)){
+			ERROR("SqlRouter confgiure failed");
+			delete r;
+			ret.push(500);
+			ret.push("SqlRouter confgiure failed");
+			return;
+		}
+
+		INFO("Run SqlRouter");
+		if(r->run()){
+			ERROR("SqlRouter start failed");
+			delete r;
+			ret.push(500);
+			ret.push("SqlRouter start failed");
+			return;
+		}
+
+		INFO("replace current SqlRouter instance with newly created");
+		router_mutex.lock();
+			router->release(routers); //mark it or delete (may be deleted now if unused)
+			//replace main router pointer
+			//(old pointers still available throught existent CallCtx instances)
+			router = r;
+			routers.insert(router);
+		router_mutex.unlock();
+		INFO("SqlRouter reload successfull");
+		ret.push(200);
+		ret.push("OK");
+	} else {
+		ret.push(400);
+		ret.push("unknown action");
+	}
+}
+
+void Yeti::reloadResources(const AmArg& args, AmArg& ret){
+	if(!assert_event_id(args,ret))
+		return;
+	rctl.configure_db(cfg);
+	if(rctl.reload()){
+		ret.push(200);
+		ret.push("OK");
+	} else {
+		ret.push(500);
+		ret.push("errors during resources config reload. there is empty resources config now");
+	}
+}
+
+void Yeti::reloadTranslations(const AmArg& args, AmArg& ret){
+	if(!assert_event_id(args,ret))
+		return;
+	CodesTranslator::instance()->configure_db(cfg);
+	if(CodesTranslator::instance()->reload()){
+		ret.push(200);
+		ret.push("OK");
+	} else {
+		ret.push(500);
+		ret.push("errors during translations config reload. there is empty translation hashes now");
+	}
+}
+
+void Yeti::reloadRegistrations(const AmArg& args, AmArg& ret){
+	if(!assert_event_id(args,ret))
+		return;
+	if(0==Registration::instance()->reload(cfg)){
+		ret.push(200);
+		ret.push("OK");
+	} else {
+		ret.push(500);
+		ret.push("errors during registrations config reload. there is empty registrations list now");
+	}
+}
+
+void Yeti::reloadCodecsGroups(const AmArg& args, AmArg& ret){
+	if(!assert_event_id(args,ret))
+		return;
+	CodecsGroups::instance()->configure_db(cfg);
+	if(CodecsGroups::instance()->reload()){
+		ret.push(200);
+		ret.push("OK");
+	} else {
+		ret.push(500);
+		ret.push("errors during codecs groups reload. there is empty resources config now");
+	}
+}
+
+void Yeti::reloadRouter(const AmArg& args, AmArg& ret){
+	if(!assert_event_id(args,ret))
+		return;
+	INFO("Allocate new SqlRouter instance");
+	SqlRouter *r = new SqlRouter();
+
+	INFO("Configure SqlRouter");
+	if (r->configure(cfg)){
+		ERROR("SqlRouter confgiure failed");
+		delete r;
+		ret.push(500);
+		ret.push("SqlRouter confgiure failed");
+		return;
+	}
+
+	INFO("Run SqlRouter");
+	if(r->run()){
+		ERROR("SqlRouter start failed");
+		delete r;
+		ret.push(500);
+		ret.push("SqlRouter start failed");
+		return;
+	}
+
+	INFO("replace current SqlRouter instance with newly created");
+	router_mutex.lock();
+		router->release(routers); //mark it or delete (may be deleted now if unused)
+		//replace main router pointer
+		//(old pointers still available throught existent CallCtx instances)
+		router = r;
+		routers.insert(router);
+	router_mutex.unlock();
+
+	INFO("SqlRouter reload successfull");
+	ret.push(200);
+	ret.push("OK");
+}
+
+void Yeti::closeCdrFiles(const AmArg& args, AmArg& ret){
+	router_mutex.lock();
+		set<SqlRouter *>::const_iterator i = routers.begin();
+		for(;i!=routers.end();++i){
+			if(*i) (*i)->closeCdrFiles();
+		}
+	router_mutex.unlock();
+	ret.push(200);
+	ret.push("OK");
+}
+
+void Yeti::showMediaStreams(const AmArg& args, AmArg& ret){
+	AmMediaProcessor::instance()->getInfo(ret);
+}
+
+void Yeti::showPayloads(const AmArg& args, AmArg& ret){
+	vector<SdpPayload> payloads;
+	unsigned char *buf;
+	int size = 0;
+
+	bool compute_cost = args.size() && args[0] == "cost";
+	string path = args.size()>1 ? args[1].asCStr() : DEFAULT_BECH_FILE_PATH;
+
+	const AmPlugIn* plugin = AmPlugIn::instance();
+	plugin->getPayloads(payloads);
+
+	if(compute_cost){
+		size = load_testing_source(path,buf);
+		compute_cost = size > 0;
+	}
+	DBG("compute_cost = %d",compute_cost);
+
+	AmArg p_list;
+	vector<SdpPayload>::const_iterator it = payloads.begin();
+	for(;it!=payloads.end();++it){
+		const SdpPayload &p = *it;
+		AmArg a;
+		a["payload_type"] = p.payload_type;
+		a["clock_rate"] = p.clock_rate;
+		if(compute_cost){
+			get_codec_cost(p.payload_type,buf,size,a);
+		}
+		p_list.push(p.encoding_name,a);
+	}
+
+	if(compute_cost)
+		delete[] buf;
+
+	ret.push(200);
+	ret.push(p_list);
+}
+
+void Yeti::showInterfaces(const AmArg& args, AmArg& ret){
+	AmArg ifaces,rtp,sig;
+
+	for(int i=0; i<(int)AmConfig::SIP_Ifs.size(); i++) {
+		AmConfig::SIP_interface& iface = AmConfig::SIP_Ifs[i];
+		AmArg am_iface;
+		am_iface["sys_name"] = iface.NetIf;
+		am_iface["sys_idx"] = (int)iface.NetIfIdx;
+		am_iface["local_ip"] = iface.LocalIP;
+		am_iface["local_port"] = (int)iface.LocalPort;
+		am_iface["public_ip"] = iface.PublicIP;
+		am_iface["use_raw_sockets"] = (iface.SigSockOpts&trsp_socket::use_raw_sockets)!= 0;
+		am_iface["force_via_address"] = (iface.SigSockOpts&trsp_socket::force_via_address) != 0;
+		am_iface["force_outbound_if"] = (iface.SigSockOpts&trsp_socket::force_outbound_if) != 0;
+		sig[iface.name] = am_iface;
+	}
+	ifaces["sip"] = sig;
+	for(multimap<string,unsigned short>::iterator it = AmConfig::LocalSIPIP2If.begin();
+		it != AmConfig::LocalSIPIP2If.end(); ++it) {
+		AmConfig::SIP_interface& iface = AmConfig::SIP_Ifs[it->second];
+		ifaces["sip_map"][it->first] = iface.name.empty() ? "default" : iface.name;
+	}
+
+	for(int i=0; i<(int)AmConfig::RTP_Ifs.size(); i++) {
+		AmConfig::RTP_interface& iface = AmConfig::RTP_Ifs[i];
+		AmArg am_iface;
+		am_iface["sys_name"] = iface.NetIf;
+		am_iface["sys_idx"] = (int)iface.NetIfIdx;
+		am_iface["local_ip"] = iface.LocalIP;
+		am_iface["public_ip"] = iface.PublicIP;
+		am_iface["rtp_low_port"] = iface.RtpLowPort;
+		am_iface["rtp_high_port"] = iface.RtpHighPort;
+		am_iface["use_raw_sockets"] = (iface.MediaSockOpts&trsp_socket::use_raw_sockets)!= 0;
+		string name = iface.name.empty() ? "default" : iface.name;
+		rtp[name] = am_iface;
+	}
+	ifaces["media"] = rtp;
+
+	ret.push(200);
+	ret.push(ifaces);
+}
+
+
