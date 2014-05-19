@@ -2,7 +2,7 @@
 
 #aptitude install python-yaml
 
-import os, sys, xmlrpclib, pprint, ConfigParser
+import os, sys, signal, xmlrpclib, pprint, ConfigParser
 from cmd import Cmd
 
 class shell(Cmd):
@@ -11,6 +11,11 @@ class shell(Cmd):
 	cfg_path = '/etc/sems/etc/yeticmd.yaml'
 	cfg = dict()
 	node_id = None
+
+
+	def sigint_handler(self, signum, frame):
+		self.stdout.write('\n'+self.prompt)
+		self.stdout.flush()
 
 	def rpc_do(self,args):
 		if self.node_id is None:
@@ -39,6 +44,10 @@ class shell(Cmd):
 
 	def default(self,line):
 		self.rpc_command(line)
+
+	def do_EOF(self,line):
+		print ''
+		sys.exit()
 
 	def do_all(self,line):
 		'apply rpc_cmd for all nodes from config'
@@ -98,6 +107,7 @@ class shell(Cmd):
 
 	def preloop(self):	
 		self.read_cfg()		
+		signal.signal(signal.SIGINT, self.sigint_handler)
 	
 if __name__ == '__main__':
 	try:
