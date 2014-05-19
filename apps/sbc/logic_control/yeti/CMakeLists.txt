@@ -31,8 +31,14 @@ SET(yeti_config_files
 	oodprofile.yeti.dist
 )
 
+INSTALL(FILES
+	etc/yeticmd.yaml.dist
+	DESTINATION ${SEMS_CFG_PREFIX}/etc/sems/etc/
+)
+
 INSTALL(PROGRAMS
 	tools/yetictl
+	tools/yeticmd
 	tools/yeti-version
 	tools/yeti-stats
 	tools/yeti-callscount

@@ -1,0 +1,108 @@
+#!/usr/bin/python
+
+#aptitude install python-yaml
+
+import os, sys, xmlrpclib, pprint, ConfigParser
+from cmd import Cmd
+
+class shell(Cmd):
+	prompt = 'YETI> '
+	doc_header = ''
+	cfg_path = '/etc/sems/etc/yeticmd.yaml'
+	cfg = dict()
+	node_id = None
+
+	def rpc_do(self,args):
+		if self.node_id is None:
+			return None
+		addr = self.cfg['nodes'][self.node_id]
+		s = xmlrpclib.ServerProxy(addr) 
+		data = s.di('yeti',*args)
+		return data
+
+	def rpc_complete(self,args):
+		try:
+			a = args[:]
+			a.append('_list')	
+			return [c[0] for c in self.rpc_do(a)]
+		except BaseException as err:
+			return None
+
+
+	def rpc_command(self,line):
+		try:
+			if self.node_id is None:
+				raise BaseException("you should choose node first")
+			pprint.PrettyPrinter(indent=4).pprint(self.rpc_do(line.split()))
+		except BaseException as err:
+			print err
+
+	def default(self,line):
+		self.rpc_command(line)
+
+	def do_all(self,line):
+		'apply rpc_cmd for all nodes from config'
+		tmp_node_id = self.node_id
+		for n in self.cfg['nodes']:
+			print "{}: ".format(n)
+			self.node_id = n
+			self.rpc_command(line)
+		self.node_id = tmp_node_id	
+
+	def completenames(self, text, *ignored):
+		if self.node_id is None:
+			return []
+ 		return [a for a in self.rpc_complete([]) if a.startswith(text)]
+
+	def completedefault(self, text, line, begidx, endidx):
+		if self.node_id is None:
+			return []
+		q = line.split()
+		c = self.rpc_complete(q)
+		if c is None:
+			p = self.rpc_complete(q[:-1])
+			c = [] if p is None else p
+		return [a for a in c if a.startswith(text)]
+
+	def emptyline(self):
+		pass
+
+	def do_exit(self,arg):
+		'exit shell'
+		sys.exit()
+	
+	def do_list(self,arg):
+		'list available nodes'
+		for (n,a) in self.cfg['nodes'].items():
+			print "{}{}\t{}".format("*" if n == self.node_id else '',n,a)
+		pass
+
+	def do_use(self,arg):
+		'use <node_id> - set current node'
+		try:
+			if not len(arg):
+				raise BaseException('cmd requires node_id')
+			if int(arg) not in self.cfg['nodes']:
+				raise BaseException('invalid node id. use list to see available')
+			prev_node_id = self.node_id
+			self.node_id = int(arg)
+			self.prompt = "YETI:{}> ".format(self.node_id)
+			print "node changed from {} to {}".format(prev_node_id,self.node_id)
+		except BaseException as err:
+			print err
+		pass
+	
+	def read_cfg(self):
+		import yaml
+		self.cfg = yaml.load(open(self.cfg_path))
+
+	def preloop(self):	
+		self.read_cfg()		
+	
+if __name__ == '__main__':
+	try:
+		shell().cmdloop()
+	except IOError as e:
+		print e
+	except KeyboardInterrupt as e:
+		print ''
