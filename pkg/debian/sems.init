@@ -22,6 +22,9 @@ DESC=sems
 PARAMS=""
 SEMS_PIDDIR=""
 
+MONIT_BIN=/usr/bin/monit
+MONIT_CFG=/etc/monit/conf.d/sems
+
 if test "$SEMS_PIDFILE" ; then
   PARAMS="$PARAMS -P $SEMS_PIDFILE"
   SEMS_PIDDIR=$(dirname $SEMS_PIDFILE)
@@ -60,6 +63,26 @@ set -e
 
 . /lib/lsb/init-functions
 
+arg2=$2
+
+check_monit() {
+	if [ -e $MONIT_BIN ] &&		#monit is installed
+	   [ -e $MONIT_CFG ] &&		#we have out config for monit
+	   [ "$arg2" != "monit" ]	#script is not called from monit
+	then
+		return 0
+	fi
+	return 1
+}
+
+monitor() {
+	check_monit && monit monitor sems &> /dev/null
+}
+
+unmonitor() {
+	check_monit && monit unmonitor sems &> /dev/null	
+}
+
 case "$1" in
   start)
 	if [ ! -d $SEMS_PIDDIR ]; then
@@ -71,14 +94,10 @@ case "$1" in
 	start-stop-daemon --start --quiet --oknodo --pidfile $SEMS_PIDFILE \
 		--exec $DAEMON -- $PARAMS
 	log_end_msg $?
-	if [ -e /usr/bin/monit ] &&		#monit is installed
-	   [ -e /etc/monit/conf.d/sems ] &&	#we have out config for monit
-	   [ "$2" != "monit" ]			#script is not called from monit
-	then
-		monit monitor sems &> /dev/null
-	fi
+	monitor
 	;;
   stop)
+	unmonitor
 	log_daemon_msg "Stopping $DESC: $NAME"
 	start-stop-daemon --oknodo --stop --retry 60 --quiet --pidfile $SEMS_PIDFILE \
 		--exec $DAEMON
@@ -97,6 +116,7 @@ case "$1" in
 	#	$SEMS_PIDFILE --exec $DAEMON
   #;;
   graceful-stop|gstop)
+	unmonitor
 	log_daemon_msg "Stopping  gracefully $DESC: $NAME"
 	start-stop-daemon --oknodo --stop --signal 2 --retry 60 --quiet --pidfile $SEMS_PIDFILE \
 		--exec $DAEMON
