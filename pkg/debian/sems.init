@@ -86,7 +86,7 @@ monitor() {
 }
 
 unmonitor() {
-	check_monit && monit unmonitor sems &> /dev/null	
+	check_monit && for a in sems sems_bin sems_pid; do monit unmonitor $a; done &> /dev/null	
 }
 
 case "$1" in
