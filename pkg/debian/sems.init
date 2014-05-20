@@ -22,6 +22,8 @@ DESC=sems
 PARAMS=""
 SEMS_PIDDIR=""
 
+ULIMIT_FILES=650000
+
 MONIT_BIN=/usr/bin/monit
 MONIT_CFG=/etc/monit/conf.d/sems
 
@@ -49,6 +51,10 @@ if test "$SEMS_CREATE_CORE" = "yes" ; then
 	chmod 777 $SEMS_COREDIR
 	echo "$SEMS_COREDIR/core.%e.sig%s.%p" > /proc/sys/kernel/core_pattern
 	ulimit -c unlimited
+fi
+
+if test "$SEMS_ULIMIT_FILES" ; then
+	ULIMIT_FILES=$SEMS_ULIMIT_FILES
 fi
 
 if ! test -f $DAEMON ; then
@@ -89,6 +95,8 @@ case "$1" in
 		mkdir -p $SEMS_PIDDIR &&
 		chown $SEMS_USER $SEMS_PIDDIR
 	fi
+
+	ulimit -n $ULIMIT_FILES || true  
 
 	log_daemon_msg "Starting $DESC: $NAME"
 	start-stop-daemon --start --quiet --oknodo --pidfile $SEMS_PIDFILE \
