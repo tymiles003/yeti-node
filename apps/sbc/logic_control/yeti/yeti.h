@@ -29,10 +29,10 @@
 
 #if YETI_ENABLE_PROFILING
 
-#define PROF_START(var) clock_t prof_start_##var = clock();
-#define PROF_END(var) clock_t prof_end_##var = clock();
-#define PROF_DIFF(var) ((prof_end_##var-prof_start_##var)/(double)CLOCKS_PER_SEC)
-#define PROF_PRINT(descr,var) DBG(descr" took %f",PROF_DIFF(var));
+#define PROF_START(var) timeval prof_start_##var; gettimeofday(&prof_start_##var,NULL);
+#define PROF_END(var) timeval prof_end_##var; gettimeofday(&prof_end_##var,NULL);
+#define PROF_DIFF(var) timeval prof_diff_##var; timersub(&prof_end_##var,&prof_start_##var,&prof_diff_##var);
+#define PROF_PRINT(descr,var) PROF_DIFF(var); DBG(descr" took %f",prof_diff_##var.tv_sec+prof_diff_##var.tv_usec/1e6);
 
 #else
 
