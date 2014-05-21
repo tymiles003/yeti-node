@@ -112,7 +112,7 @@ void Yeti::init_xmlrpc_cmds(){
 
 		reg_leaf(request,request_media,"media","media processor instance");
 			reg_method_arg(request_media,"payloads","loaded codecs",showPayloads,"show supported codecs",
-						   "cost","compute transcoding cost for each codec");
+						   "benchmark","compute transcoding cost for each codec");
 
 	/* set */
 	//reg_leaf(root,set,"set","heavy queries");
@@ -882,7 +882,7 @@ void Yeti::showPayloads(const AmArg& args, AmArg& ret){
 	unsigned char *buf;
 	int size = 0;
 
-	bool compute_cost = args.size() && args[0] == "cost";
+	bool compute_cost = args.size() && args[0] == "benchmark";
 	string path = args.size()>1 ? args[1].asCStr() : DEFAULT_BECH_FILE_PATH;
 
 	const AmPlugIn* plugin = AmPlugIn::instance();
@@ -892,7 +892,6 @@ void Yeti::showPayloads(const AmArg& args, AmArg& ret){
 		size = load_testing_source(path,buf);
 		compute_cost = size > 0;
 	}
-	DBG("compute_cost = %d",compute_cost);
 
 	AmArg p_list;
 	vector<SdpPayload>::const_iterator it = payloads.begin();
