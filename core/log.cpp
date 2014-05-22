@@ -222,7 +222,7 @@ void unregister_log_hook(AmLoggingFacility* fac){
 
 bool has_higher_levels(int log_level_arg){
 	AmLock lock(log_hooks_mutex);
-	if(!log_hooks.empty()) {
+	if(log_hooks.empty()) {
 		return false;
 	}
 	for (vector<AmLoggingFacility*>::iterator it = log_hooks.begin();
