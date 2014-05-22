@@ -462,12 +462,10 @@ void Yeti::GetCalls(const AmArg& args, AmArg& ret) {
 
 	if(args.size()){
 		string local_tag = args[0].asCStr();
-		if(cdr_list.getCall(local_tag,calls,router)){
-			ret.push(200);
-			ret.push(calls);
-		} else {
+		if(!cdr_list.getCall(local_tag,calls,router)){
 			ret.push(404);
 			ret.push("Have no CDR with such local tag");
+			return;
 		}
 	} else {
 		cdr_list.getCalls(calls,calls_show_limit,router);
