@@ -107,6 +107,8 @@ class shell(Cmd):
 
 	def preloop(self):	
 		self.read_cfg()		
+		if 'default_node' in self.cfg:
+			self.do_use(str(self.cfg['default_node']))
 		signal.signal(signal.SIGINT, self.sigint_handler)
 	
 if __name__ == '__main__':
