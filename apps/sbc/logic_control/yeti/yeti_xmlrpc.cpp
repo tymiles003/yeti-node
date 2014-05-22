@@ -4,6 +4,7 @@
 #include "codecs_bench.h"
 
 #include "sip/transport.h"
+#include "AmPlugIn.h"
 
 typedef void (Yeti::*YetiRpcHandler)(const AmArg& args, AmArg& ret);
 
@@ -117,6 +118,11 @@ void Yeti::init_xmlrpc_cmds(){
 			reg_method_arg(request_media,"payloads","loaded codecs",showPayloads,"show supported codecs",
 						   "benchmark","compute transcoding cost for each codec");
 
+		reg_leaf(request,request_system,"system","system commands");
+			reg_leaf(request_system,request_system_log,"log","logging facilities control");
+				reg_leaf(request_system_log,request_system_log_di_log,"di_log","memory ringbuffer logging facility");
+					reg_method_arg(request_system_log_di_log,"dump","drop call",requestSystemLogDump,
+								   "","<path>","save memory log to path");
 	/* set */
 	//reg_leaf(root,set,"set","heavy queries");
 
@@ -974,4 +980,22 @@ void Yeti::showRouterCdrWriterOpenedFiles(const AmArg& args, AmArg& ret){
 	router_mutex.unlock();
 	ret.push(200);
 	ret.push(r);
+}
+
+void Yeti::requestSystemLogDump(const AmArg& args, AmArg& ret){
+	if(!args.size()){
+		ret.push(500);
+		ret.push("missed path for dump");
+		return;
+	}
+
+	AmDynInvokeFactory* di_log = AmPlugIn::instance()->getFactory4Di("di_log");
+	if(0==di_log){
+		ret.push(404);
+		ret.push("di_log module not loaded");
+		return;
+	}
+
+	ret.push(200);
+	di_log->getInstance()->invoke("dumplogtodisk",args,ret);
 }
