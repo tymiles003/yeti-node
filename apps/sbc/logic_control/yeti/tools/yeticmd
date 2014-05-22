@@ -29,7 +29,7 @@ class shell(Cmd):
 		try:
 			a = args[:]
 			a.append('_list')	
-			return [c[0] for c in self.rpc_do(a)]
+			return [c[0]+' ' for c in self.rpc_do(a)]
 		except BaseException as err:
 			return None
 
