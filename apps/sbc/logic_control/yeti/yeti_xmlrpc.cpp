@@ -61,6 +61,9 @@ void Yeti::init_xmlrpc_cmds(){
 		reg_leaf(show,show_router,"router","active router instance");
 			reg_method(show_router,"cache","show callprofile's cache state",ShowCache,"");
 
+			reg_leaf(show_router,show_router_cdrwriter,"cdrwriter","cdrwriter");
+				reg_method(show_router_cdrwriter,"opened-files","show opened csv files",showRouterCdrWriterOpenedFiles,"");
+
 		reg_leaf(show,show_media,"media","media processor instance");
 			reg_method(show_media,"streams","active media streams info",showMediaStreams,"");
 
@@ -955,4 +958,20 @@ void Yeti::showInterfaces(const AmArg& args, AmArg& ret){
 	ret.push(ifaces);
 }
 
-
+void Yeti::showRouterCdrWriterOpenedFiles(const AmArg& args, AmArg& ret){
+	AmArg r;
+	router_mutex.lock();
+		set<SqlRouter *>::const_iterator i = routers.begin();
+		for(;i!=routers.end();++i){
+			if(*i) {
+				AmArg a;
+				ostringstream ss;
+				ss << hex << *i;
+				(*i)->showOpenedFiles(a);
+				r[ss.str()] = a;
+			}
+		}
+	router_mutex.unlock();
+	ret.push(200);
+	ret.push(r);
+}

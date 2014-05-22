@@ -41,6 +41,7 @@ public:
   void closeCdrFiles();
   void getStats(AmArg &arg);
   void getConfig(AmArg &arg);
+  void showOpenedFiles(AmArg &arg);
 
   const DynFieldsT &getDynFields() const { return dyn_fields; }
 

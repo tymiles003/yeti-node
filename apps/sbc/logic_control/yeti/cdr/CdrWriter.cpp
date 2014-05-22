@@ -156,6 +156,17 @@ void CdrWriter::getConfig(AmArg &arg){
 	}
 }
 
+void CdrWriter::showOpenedFiles(AmArg &arg){
+	cdrthreadpool_mut.lock();
+	for(vector<CdrThread*>::iterator it = cdrthreadpool.begin();it != cdrthreadpool.end();it++){
+		AmArg a;
+		(*it)->showOpenedFiles(a);
+		if(a.getType()!=AmArg::Undef)
+			arg.push(a);
+	}
+	cdrthreadpool_mut.unlock();
+}
+
 void CdrWriter::closeFiles(){
 	for(vector<CdrThread*>::iterator it = cdrthreadpool.begin();it != cdrthreadpool.end();it++){
 		(*it)->closefile();
@@ -218,6 +229,14 @@ void CdrThread::getStats(AmArg &arg){
 	arg["db_exceptions"] = stats.db_exceptions;
 	arg["writed_cdrs"] = stats.writed_cdrs;
 	arg["tried_cdrs"] = stats.tried_cdrs;
+}
+
+void CdrThread::showOpenedFiles(AmArg &arg){
+	if(wfp.get()&&wfp->is_open()){
+		arg = write_path;
+	} else {
+		arg = AmArg();
+	}
 }
 
 void CdrThread::clearStats(){

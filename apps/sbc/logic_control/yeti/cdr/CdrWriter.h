@@ -72,6 +72,7 @@ public:
 	void clearStats();
 	void closefile();
 	void getStats(AmArg &arg);
+	void showOpenedFiles(AmArg &arg);
 	void postcdr(Cdr* cdr);
 	int configure(CdrThreadCfg& cfg);
 	void run();
@@ -87,6 +88,7 @@ public:
 	void closeFiles();
 	void getStats(AmArg &arg);
 	void getConfig(AmArg &arg);
+	void showOpenedFiles(AmArg &arg);
 	void postcdr(Cdr* cdr);
 	int configure(CdrWriterCfg& cfg);
 	void start();

@@ -650,6 +650,12 @@ void SqlRouter::getConfig(AmArg &arg){
 
 }
 
+void SqlRouter::showOpenedFiles(AmArg &arg){
+	if(cdr_writer){
+		cdr_writer->showOpenedFiles(arg);
+	}
+}
+
 void SqlRouter::getStats(AmArg &arg){
   AmArg underlying_stats;
       /* SqlRouter stats */
