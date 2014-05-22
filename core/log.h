@@ -35,7 +35,6 @@
 #include <pthread.h>	/* pthread_self() */
 #include <execinfo.h>   /* backtrace_symbols() */
 
-
 #ifdef __cplusplus
 extern "C" {
 # if 0
@@ -185,7 +184,11 @@ void log_stacktrace(int ll);
 class AmLoggingFacility;
 void register_log_hook(AmLoggingFacility*);
 void unregister_log_hook(AmLoggingFacility*);
+
+bool has_higher_levels(int log_level_arg);
+
 void set_log_level(int log_level_arg);
+
 #endif
 
 #endif /* !_log_h_ */

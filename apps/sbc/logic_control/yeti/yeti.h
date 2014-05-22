@@ -134,6 +134,13 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   xmlrpc_handler showRouterCdrWriterOpenedFiles;
   xmlrpc_handler requestSystemLogDump;
 
+  xmlrpc_handler showSystemLogLevel;
+  xmlrpc_handler setSystemLogSyslogLevel;
+  xmlrpc_handler setSystemLogDiLogLevel;
+
+  xmlrpc_handler requestSystemShudown;
+  xmlrpc_handler requestSystemShudownImmediate;
+
   bool reload_config(AmArg &ret);
   bool check_event_id(int event_id, AmArg &ret);
   bool assert_event_id(const AmArg &args,AmArg &ret);

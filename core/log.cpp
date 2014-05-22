@@ -176,6 +176,7 @@ void init_logging()
 
 #ifndef DISABLE_SYSLOG_LOG
   register_log_hook(&syslog_log);
+  AmPlugIn::instance()->registerLoggingFacility(syslog_log.getName(),&syslog_log);
 #endif
 
   INFO("Logging initialized\n");
@@ -219,9 +220,24 @@ void unregister_log_hook(AmLoggingFacility* fac){
 		log_hooks.erase(fac_it);
 }
 
+bool has_higher_levels(int log_level_arg){
+	AmLock lock(log_hooks_mutex);
+	if(!log_hooks.empty()) {
+		return false;
+	}
+	for (vector<AmLoggingFacility*>::iterator it = log_hooks.begin();
+		   it != log_hooks.end(); ++it) {
+		if(log_level_arg < (*it)->getLogLevel()){
+			return true;
+		}
+	}
+	return false;
+}
+
 void set_log_level(int log_level_arg){
 	syslog_log.setLogLevel(log_level_arg);
 }
+
 
 /**
  * Print stack-trace through logging function

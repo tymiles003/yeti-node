@@ -159,6 +159,27 @@ AmLoggingFacility::AmLoggingFacility(const string& name,int log_level)
 {
 }
 
+void AmLoggingFacility::setLogLevel(int log_level_arg){
+	//ignore if the same
+	if(log_level_arg == _log_level)
+		return;
+
+	INFO("%s: change loglevel from %d to %d",getName().c_str(),
+		_log_level,log_level_arg);
+
+	//set own and adjust global logging level
+	if(log_level_arg > _log_level){
+		_log_level = log_level_arg;
+		if(_log_level > log_level) log_level = _log_level;
+	} else {
+		_log_level = log_level_arg;
+		if(!has_higher_levels(_log_level))
+			log_level = _log_level;
+	}
+
+	INFO("global loglevel ajusted to %d",log_level);
+}
+
 void AmLoggingFacility::on_destroy(){
   unregister_log_hook(this);
 }

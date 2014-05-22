@@ -6,6 +6,9 @@
 #include "sip/transport.h"
 #include "AmPlugIn.h"
 
+#include <sys/types.h>
+#include <signal.h>
+
 typedef void (Yeti::*YetiRpcHandler)(const AmArg& args, AmArg& ret);
 
 struct xmlrpc_entry: public AmObject {
@@ -81,6 +84,9 @@ void Yeti::init_xmlrpc_cmds(){
 		reg_leaf_method(show,show_registrations,"registrations","uac registrations",GetRegistrations,"show configured uac registrations");
 			reg_method(show_registrations,"count","active registrations count",GetRegistrationsCount,"");
 
+		reg_leaf(show,show_system,"system","system cmds");
+			reg_method(show_system,"log-level","loglevels",showSystemLogLevel,"");
+
 	/* request */
 	reg_leaf(root,request,"request","modify commands");
 		reg_leaf(request,request_router,"router","active router instance");
@@ -119,12 +125,24 @@ void Yeti::init_xmlrpc_cmds(){
 						   "benchmark","compute transcoding cost for each codec");
 
 		reg_leaf(request,request_system,"system","system commands");
+
+			reg_leaf_method(request_system,request_system_shutdown,"shutdown","shutdown switch",
+							requestSystemShudown,"");
+				reg_method(request_system_shutdown,"immediate","don't wait for active calls",
+						   requestSystemShudownImmediate,"");
+
 			reg_leaf(request_system,request_system_log,"log","logging facilities control");
 				reg_leaf(request_system_log,request_system_log_di_log,"di_log","memory ringbuffer logging facility");
-					reg_method_arg(request_system_log_di_log,"dump","drop call",requestSystemLogDump,
+					reg_method_arg(request_system_log_di_log,"dump","",requestSystemLogDump,
 								   "","<path>","save memory log to path");
 	/* set */
-	//reg_leaf(root,set,"set","heavy queries");
+	reg_leaf(root,lset,"set","set");
+		reg_leaf(lset,set_system,"system","system commands");
+			reg_leaf(set_system,set_system_log_level,"log-level","logging facilities level");
+				reg_method_arg(set_system_log_level,"di_log","",setSystemLogDiLogLevel,
+							   "","<log_level>","set new log level");
+				reg_method_arg(set_system_log_level,"syslog","",setSystemLogSyslogLevel,
+							   "","<log_level>","set new log level");
 
 #undef reg_leaf
 #undef reg_method
@@ -999,3 +1017,72 @@ void Yeti::requestSystemLogDump(const AmArg& args, AmArg& ret){
 	ret.push(200);
 	di_log->getInstance()->invoke("dumplogtodisk",args,ret);
 }
+
+static void addLoggingFacilityLogLevel(AmArg& ret,const string &facility_name){
+	AmLoggingFacility* fac = AmPlugIn::instance()->getFactory4LogFaclty(facility_name);
+	if(0==fac)
+		return;
+	ret[fac->getName()] = fac->getLogLevel();
+}
+
+static void setLoggingFacilityLogLevel(const AmArg& args, AmArg& ret,const string &facility_name){
+	int log_level;
+	if(!args.size()){
+		ret.push(500);
+		ret.push("missed new log_level");
+		return;
+	}
+	args.assertArrayFmt("s");
+	if(!str2int(args.get(0).asCStr(),log_level)){
+		ret.push(500);
+		ret.push("invalid log_level fmt");
+		return;
+	}
+
+	AmLoggingFacility* fac = AmPlugIn::instance()->getFactory4LogFaclty(facility_name);
+	if(0==fac){
+		ret.push(404);
+		ret.push("logging facility not loaded");
+		return;
+	}
+
+	fac->setLogLevel(log_level);
+
+	ret.push(200);
+	ret.push("OK");
+}
+
+void Yeti::showSystemLogLevel(const AmArg& args, AmArg& ret){
+	AmArg r,fac;
+
+	r["log_level"] = log_level;
+
+	addLoggingFacilityLogLevel(fac,"syslog");
+	addLoggingFacilityLogLevel(fac,"di_log");
+	r["facilities"] = fac;
+
+	ret.push(200);
+	ret.push(r);
+}
+
+void Yeti::setSystemLogSyslogLevel(const AmArg& args, AmArg& ret){
+	setLoggingFacilityLogLevel(args,ret,"syslog");
+}
+
+void Yeti::setSystemLogDiLogLevel(const AmArg& args, AmArg& ret){
+	setLoggingFacilityLogLevel(args,ret,"di_log");
+}
+
+void Yeti::requestSystemShudown(const AmArg& args, AmArg& ret){
+	kill(getpid(),SIGINT);
+	ret.push(200);
+	ret.push("OK");
+
+}
+
+void Yeti::requestSystemShudownImmediate(const AmArg& args, AmArg& ret){
+	kill(getpid(),SIGTERM);
+	ret.push(200);
+	ret.push("OK");
+}
+
