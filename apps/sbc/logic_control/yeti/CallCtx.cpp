@@ -1,5 +1,9 @@
 #include "CallCtx.h"
 
+inline void propagate_common_fields(list<SqlCallProfile *>::iterator &new_profile,const list<SqlCallProfile *>::iterator &old_profile){
+	(*new_profile)->global_tag = (*old_profile)->global_tag;
+}
+
 CallCtx *getCtx(SBCCallLeg *call){
 	return reinterpret_cast<CallCtx *>(call->getLogicData());
 }
@@ -34,6 +38,8 @@ SqlCallProfile *CallCtx::getNextProfile(bool early_state){
 		attempt_num++;
 		cdr = new Cdr(*cdr,**next_profile);
 	}
+
+	propagate_common_fields(next_profile,current_profile);
 	current_profile = next_profile;
 	return *current_profile;
 }

@@ -150,9 +150,9 @@ bool Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
 
 	ctx->inc();
 
-	if(call->isALeg()){
-		SBCCallProfile &profile = call->getCallProfile();
+	SBCCallProfile &profile = call->getCallProfile();
 
+	if(call->isALeg()){
 		ostringstream ss;
 		ss <<	config.msg_logger_dir << '/' <<
 				call->getLocalTag() << "_" <<
@@ -164,7 +164,6 @@ bool Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
 
 		cdr->update_sbc(profile);
 	} else {
-		SBCCallProfile &profile = call->getCallProfile();
 		if(!profile.callid.empty()){
 			string id = AmSession::getNewId();
 			replace(profile.callid,"%uuid",id);
@@ -461,6 +460,10 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 			ctx->attempt_num,cdr->msg_logger_path.c_str());
 		log_stacktrace(L_ERR);
 		throw AmSession::Exception(500,SIP_REPLY_SERVER_INTERNAL_ERROR);
+	}
+
+	if(!call_profile.append_headers.empty()){
+		replace(call_profile.append_headers,"%global_tag",call_profile.global_tag);
 	}
 
 	} catch(InternalException &e) {
@@ -917,6 +920,9 @@ bool Yeti::connectCallee(SBCCallLeg *call,const AmSipRequest &orig_req){
 	if (!call_profile.evaluate(ctx, orig_req)) {
 		ERROR("call profile evaluation failed\n");
 		throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
+	}
+	if(!call_profile.append_headers.empty()){
+		replace(call_profile.append_headers,"%global_tag",call_profile.global_tag);
 	}
 
 	if(call_profile.contact_hiding) {

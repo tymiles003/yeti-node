@@ -90,7 +90,6 @@ void Cdr::update_sql(const SqlCallProfile &profile){
 void Cdr::update_sbc(const SBCCallProfile &profile){
 	DBG("Cdr::%s(SBCCallProfile)",FUNC_NAME);
 	msg_logger_path = profile.get_logger_path();
-	global_tag = profile.global_tag;
 }
 
 void Cdr::update(const AmSipRequest &req){
@@ -275,6 +274,7 @@ Cdr::Cdr(const Cdr& cdr,const SqlCallProfile &profile){
 
 	orig_call_id = cdr.orig_call_id;
 	local_tag = cdr.local_tag;
+	global_tag = cdr.global_tag;
 
 	msg_logger_path = cdr.msg_logger_path;
 	dump_level_id = cdr.dump_level_id;
