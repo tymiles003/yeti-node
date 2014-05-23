@@ -155,6 +155,7 @@ void Yeti::process_xmlrpc_cmds(const AmArg cmds, const string& method, const AmA
 	const char *list_method = "_list";
 	//DBG("process_xmlrpc_cmds(%p,%s,...)",&cmds,method.c_str());
 	if(method==list_method){
+		ret.assertArray();
 		switch(cmds.getType()){
 			case AmArg::Struct: {
 				//DBG("_list AmArg::Struct");
@@ -226,6 +227,8 @@ void Yeti::process_xmlrpc_cmds(const AmArg cmds, const string& method, const AmA
 			}
 		}
 		if(e->isMethod()){
+			if(args.size()&&strcmp(args.back().asCStr(),list_method)==0)
+				return;
 			(this->*(e->handler))(args,ret);
 			return;
 		}
