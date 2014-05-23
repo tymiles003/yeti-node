@@ -228,7 +228,7 @@ void Yeti::process_xmlrpc_cmds(const AmArg cmds, const string& method, const AmA
 		}
 		if(e->isMethod()){
 			if(args.size()&&strcmp(args.back().asCStr(),list_method)==0){
-				if(!e->hasLeafs())
+				if(!e->hasLeafs()&&e->arg.empty())
 					ret.assertArray();
 				return;
 			}
