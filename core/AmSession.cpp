@@ -38,6 +38,9 @@
 #include "AmPlayoutBuffer.h"
 #include "AmAppTimer.h"
 
+#include "signal.h"
+#include "sys/types.h"
+
 #ifdef WITH_ZRTP
 #include "AmZRTP.h"
 #endif
@@ -547,6 +550,10 @@ void AmSession::session_stopped() {
   avg_last_timestamp = now;
   //current session number
   session_num--;
+  if(AmConfig::ShutdownMode&&!session_num){
+	//commit suicide if shutdown mode is enabled
+	kill(getpid(),SIGINT);
+  }
   session_num_mut.unlock();
 }
 
