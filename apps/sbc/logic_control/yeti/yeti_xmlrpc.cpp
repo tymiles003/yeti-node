@@ -157,7 +157,7 @@ void Yeti::init_xmlrpc_cmds(){
 
 void Yeti::process_xmlrpc_cmds(const AmArg cmds, const string& method, const AmArg& args, AmArg& ret){
 	const char *list_method = "_list";
-	DBG("process_xmlrpc_cmds(%p,%s,...)",&cmds,method.c_str());
+	//DBG("process_xmlrpc_cmds(%p,%s,...)",&cmds,method.c_str());
 	if(method==list_method){
 		ret.assertArray();
 		switch(cmds.getType()){
@@ -208,22 +208,18 @@ void Yeti::process_xmlrpc_cmds(const AmArg cmds, const string& method, const AmA
 	}
 
 	if(cmds.hasMember(method)){
-		DBG("cmds.hasMember(method)");
 		const AmArg &l = cmds[method];
 		if(l.getType()!=AmArg::AObject)
 			throw AmArg::TypeMismatchException();
 
 		xmlrpc_entry *e = reinterpret_cast<xmlrpc_entry *>(l.asObject());
 		if(args.size()>0){
-			DBG("if(args.size()>0)");
 			if(e->hasLeaf(args[0].asCStr())){
-				DBG("if(e->hasLeaf(args[0].asCStr())){");
 				AmArg nargs = args,sub_method;
 				nargs.pop(sub_method);
 				process_xmlrpc_cmds(e->leaves,sub_method.asCStr(),nargs,ret);
 				return;
 			} else if(args[0]==list_method){
-				DBG("} else if(args[0]==list_method){");
 				AmArg nargs = args,sub_method;
 				nargs.pop(sub_method);
 				process_xmlrpc_cmds(l,sub_method.asCStr(),nargs,ret);
@@ -231,9 +227,7 @@ void Yeti::process_xmlrpc_cmds(const AmArg cmds, const string& method, const AmA
 			}
 		}
 		if(e->isMethod()){
-			DBG("if(e->isMethod()){");
 			if(args.size()&&strcmp(args.back().asCStr(),list_method)==0){
-				DBG("if(args.size()&&strcmp(args.back().asCStr(),list_method)==0){");
 				if(!e->hasLeafs())
 					ret.assertArray();
 				return;
@@ -241,10 +235,8 @@ void Yeti::process_xmlrpc_cmds(const AmArg cmds, const string& method, const AmA
 			(this->*(e->handler))(args,ret);
 			return;
 		}
-		DBG("missed arg");
 		throw AmDynInvoke::NotImplemented("missed arg");
 	}
-	DBG("no matches with methods tree");
 	throw AmDynInvoke::NotImplemented("no matches with methods tree");
 }
 
@@ -699,6 +691,7 @@ void Yeti::showVersion(const AmArg& args, AmArg& ret) {
 
 		ret.push(200);
 		p["build"] = YETI_VERSION;
+		p["build_commit"] = YETI_COMMIT;
 		p["compiled_at"] = YETI_BUILD_DATE;
 		p["compiled_by"] = YETI_BUILD_USER;
 		ret.push(p);
