@@ -86,7 +86,7 @@ void Yeti::init_xmlrpc_cmds(){
 
 		reg_leaf(show,show_system,"system","system cmds");
 			reg_method(show_system,"log-level","loglevels",showSystemLogLevel,"");
-
+			reg_method(show_system,"status","system alarms and states",showSystemStatus,"");
 	/* request */
 	reg_leaf(root,request,"request","modify commands");
 		reg_leaf(request,request_router,"router","active router instance");
@@ -127,9 +127,13 @@ void Yeti::init_xmlrpc_cmds(){
 		reg_leaf(request,request_system,"system","system commands");
 
 			reg_leaf_method(request_system,request_system_shutdown,"shutdown","shutdown switch",
-							requestSystemShudown,"");
+							requestSystemShutdown,"unclean shutdown");
 				reg_method(request_system_shutdown,"immediate","don't wait for active calls",
-						   requestSystemShudownImmediate,"");
+						   requestSystemShutdownImmediate,"");
+				reg_method(request_system_shutdown,"graceful","disable new calls, wait till active calls end",
+						   requestSystemShutdownGraceful,"");
+				reg_method(request_system_shutdown,"cancel","cancel graceful shutdown",
+						   requestSystemShutdownCancel,"");
 
 			reg_leaf(request_system,request_system_log,"log","logging facilities control");
 				reg_leaf(request_system_log,request_system_log_di_log,"di_log","memory ringbuffer logging facility");
@@ -153,12 +157,11 @@ void Yeti::init_xmlrpc_cmds(){
 
 void Yeti::process_xmlrpc_cmds(const AmArg cmds, const string& method, const AmArg& args, AmArg& ret){
 	const char *list_method = "_list";
-	//DBG("process_xmlrpc_cmds(%p,%s,...)",&cmds,method.c_str());
+	DBG("process_xmlrpc_cmds(%p,%s,...)",&cmds,method.c_str());
 	if(method==list_method){
 		ret.assertArray();
 		switch(cmds.getType()){
 			case AmArg::Struct: {
-				//DBG("_list AmArg::Struct");
 				AmArg::ValueStruct::const_iterator it = cmds.begin();
 				for(;it!=cmds.end();++it){
 					const AmArg &am_e = it->second;
@@ -171,7 +174,6 @@ void Yeti::process_xmlrpc_cmds(const AmArg cmds, const string& method, const AmA
 			} break;
 
 			case AmArg::AObject: {
-				//DBG("_list AmArg::AObject");
 				xmlrpc_entry *e = reinterpret_cast<xmlrpc_entry *>(cmds.asObject());
 				if(!e->func_descr.empty()&&(!e->arg.empty()||e->hasLeafs())){
 					AmArg f;
@@ -206,20 +208,22 @@ void Yeti::process_xmlrpc_cmds(const AmArg cmds, const string& method, const AmA
 	}
 
 	if(cmds.hasMember(method)){
-		//DBG("hasMember(%s)",method.c_str());
+		DBG("cmds.hasMember(method)");
 		const AmArg &l = cmds[method];
 		if(l.getType()!=AmArg::AObject)
 			throw AmArg::TypeMismatchException();
 
 		xmlrpc_entry *e = reinterpret_cast<xmlrpc_entry *>(l.asObject());
-		//DBG("AmArg::AObject");
 		if(args.size()>0){
+			DBG("if(args.size()>0)");
 			if(e->hasLeaf(args[0].asCStr())){
+				DBG("if(e->hasLeaf(args[0].asCStr())){");
 				AmArg nargs = args,sub_method;
 				nargs.pop(sub_method);
 				process_xmlrpc_cmds(e->leaves,sub_method.asCStr(),nargs,ret);
 				return;
 			} else if(args[0]==list_method){
+				DBG("} else if(args[0]==list_method){");
 				AmArg nargs = args,sub_method;
 				nargs.pop(sub_method);
 				process_xmlrpc_cmds(l,sub_method.asCStr(),nargs,ret);
@@ -227,13 +231,20 @@ void Yeti::process_xmlrpc_cmds(const AmArg cmds, const string& method, const AmA
 			}
 		}
 		if(e->isMethod()){
-			if(args.size()&&strcmp(args.back().asCStr(),list_method)==0)
+			DBG("if(e->isMethod()){");
+			if(args.size()&&strcmp(args.back().asCStr(),list_method)==0){
+				DBG("if(args.size()&&strcmp(args.back().asCStr(),list_method)==0){");
+				if(!e->hasLeafs())
+					ret.assertArray();
 				return;
+			}
 			(this->*(e->handler))(args,ret);
 			return;
 		}
+		DBG("missed arg");
 		throw AmDynInvoke::NotImplemented("missed arg");
 	}
+	DBG("no matches with methods tree");
 	throw AmDynInvoke::NotImplemented("no matches with methods tree");
 }
 
@@ -1074,16 +1085,55 @@ void Yeti::setSystemLogDiLogLevel(const AmArg& args, AmArg& ret){
 	setLoggingFacilityLogLevel(args,ret,"di_log");
 }
 
-void Yeti::requestSystemShudown(const AmArg& args, AmArg& ret){
+void Yeti::showSystemStatus(const AmArg& args, AmArg& ret){
+	AmArg s;
+
+	s["shutdown_mode"] = (bool)AmConfig::ShutdownMode;
+	ret.push(200);
+	ret.push(s);
+
+}
+
+inline void graceful_suicide(){
 	kill(getpid(),SIGINT);
-	ret.push(200);
-	ret.push("OK");
-
 }
 
-void Yeti::requestSystemShudownImmediate(const AmArg& args, AmArg& ret){
+inline void immediate_suicide(){
 	kill(getpid(),SIGTERM);
+}
+
+static void set_system_shutdown(bool shutdown){
+	AmConfig::ShutdownMode = shutdown;
+	INFO("ShutDownMode changed to %d",AmConfig::ShutdownMode);
+
+	if(AmConfig::ShutdownMode&&!AmSession::getSessionNum()){
+		//commit suicide immediatly
+		INFO("no active session on graceful shutdown command. exit immediatly");
+		graceful_suicide();
+	}
+}
+
+void Yeti::requestSystemShutdown(const AmArg& args, AmArg& ret){
+	graceful_suicide();
+	ret.push(200);
+	ret.push("OK");
+
+}
+
+void Yeti::requestSystemShutdownImmediate(const AmArg& args, AmArg& ret){
+	immediate_suicide();
 	ret.push(200);
 	ret.push("OK");
 }
 
+void Yeti::requestSystemShutdownGraceful(const AmArg& args, AmArg& ret){
+	set_system_shutdown(true);
+	ret.push(200);
+	ret.push("OK");
+}
+
+void Yeti::requestSystemShutdownCancel(const AmArg& args, AmArg& ret){
+	set_system_shutdown(false);
+	ret.push(200);
+	ret.push("OK");
+}

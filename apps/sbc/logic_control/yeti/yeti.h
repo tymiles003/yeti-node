@@ -138,8 +138,12 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   xmlrpc_handler setSystemLogSyslogLevel;
   xmlrpc_handler setSystemLogDiLogLevel;
 
-  xmlrpc_handler requestSystemShudown;
-  xmlrpc_handler requestSystemShudownImmediate;
+  xmlrpc_handler requestSystemShutdown;
+  xmlrpc_handler requestSystemShutdownImmediate;
+  xmlrpc_handler requestSystemShutdownGraceful;
+  xmlrpc_handler requestSystemShutdownCancel;
+
+  xmlrpc_handler showSystemStatus;
 
   bool reload_config(AmArg &ret);
   bool check_event_id(int event_id, AmArg &ret);
