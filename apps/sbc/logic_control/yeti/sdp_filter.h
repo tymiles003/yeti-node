@@ -22,13 +22,11 @@ void fix_dynamic_payloads(AmSdp &sdp,PayloadIdMapping &mapping);
  * @param[in] static_payloads desired codecs configuration
  * @param[in] add_codecs add codecs which nonexistent in incoming SDP,
  * but present in static_codecs
- * @param[in] single_codec
  * @return 0 if succ. negative value with error code on errors
  */
 int filter_arrange_SDP(AmSdp& sdp,
 					   const std::vector<SdpPayload> static_payloads,
-					   bool add_codecs,
-					   bool single_codec);
+					   bool add_codecs);
 
 
 /**
@@ -38,14 +36,12 @@ int filter_arrange_SDP(AmSdp& sdp,
  * @param[in] body
  * @param[out] negotiated_media
  * @param[in] method
- * @param[in] single_codec
  * @param[in] static_codecs_id
  * @return 0 if succ. negative value with error code on errors
  */
 int negotiateRequestSdp(SBCCallProfile &call_profile,
 					AmSipRequest &req, vector<SdpMedia> &negotiated_media,
 					const string &method,
-					bool single_codec,
 					int static_codecs_id);
 
 /**
@@ -74,6 +70,7 @@ int filterRequestSdp(SBCCallLeg *call,
 int filterReplySdp(SBCCallLeg *call,
                    AmMimeBody &body,
                    const string &method,
-                   const vector<SdpMedia> &negotiated_media);
+				   const vector<SdpMedia> &negotiated_media,
+				   bool single_codec);
 
 #endif // SDP_FILTER_H

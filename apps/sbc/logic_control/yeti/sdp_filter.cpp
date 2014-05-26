@@ -54,11 +54,9 @@ void fix_dynamic_payloads(AmSdp &sdp,PayloadIdMapping &mapping){
 
 int filter_arrange_SDP(AmSdp& sdp,
 							  const std::vector<SdpPayload> static_payloads,
-							  bool add_codecs,
-							  bool single_codec)
+							  bool add_codecs)
 {
-	DBG("filter_arrange_SDP() add_codecs = %s, single_codec = %s",
-		add_codecs?"yes":"no",single_codec?"yes":"no");
+	DBG("filter_arrange_SDP() add_codecs = %s", add_codecs?"yes":"no");
 
 	bool media_line_filtered_out = false;
 	bool media_line_left = false;
@@ -89,35 +87,18 @@ int filter_arrange_SDP(AmSdp& sdp,
 				c = p_it->encoding_name;
 				std::transform(c.begin(), c.end(), c.begin(), ::toupper);
 				if(c==p){
-					//DBG("filter_arrange_SDP() matched %s. add to new payload",c.c_str());
-					//new_pl.push_back(*p_it);
 					matched = true;
 					break; //each codec occurs in sdp only once, huh ?
 				}
 			}
 
 			if(matched){	//is codec founded in original SDP ?
-				//add matched codec from sdp
-				if(!single_codec ||
-					(single_codec &&
-						(new_pl.empty()||c==DTMF_ENCODING_NAME)
-					 )
-				) new_pl.push_back(*p_it);
+				new_pl.push_back(*p_it);
 			} else if(add_codecs) {
-				//add codec from static list anyway
-				if(!single_codec ||
-					(single_codec &&
-						(new_pl.empty()||f_it->encoding_name==DTMF_ENCODING_NAME)
-					 )
-				) new_pl.push_back(*f_it);
-			}
-			/*if(add_codecs && !matched) {
-				//we should add new codecs if it not matched in sdp
-				//DBG("filter_arrange_SDP() add nonexistent payload '%s'",p.c_str());
 				new_pl.push_back(*f_it);
-			}*/
+			}
 		}
-		dump_SdpPayload(new_pl);
+		//dump_SdpPayload(new_pl);
 
 		if(!new_pl.size() && media.payloads.size()) {
 			new_pl.push_back(*media.payloads.begin());
@@ -143,7 +124,6 @@ int filter_arrange_SDP(AmSdp& sdp,
 int negotiateRequestSdp(SBCCallProfile &call_profile,
 					AmSipRequest &req, vector<SdpMedia> &negotiated_media,
 					const string &method,
-					bool single_codec,
 					int static_codecs_id)
 {
 	DBG("negotiateRequestSdp() method = %s\n",method.c_str());
@@ -168,8 +148,7 @@ int negotiateRequestSdp(SBCCallProfile &call_profile,
 
 	vector<SdpPayload> static_codecs_filter = codecs_group.get_payloads();
 
-	res = filter_arrange_SDP(sdp,static_codecs_filter,
-							 false,single_codec);
+	res = filter_arrange_SDP(sdp,static_codecs_filter, false);
 	filterSDPalines(sdp, call_profile.sdpalinesfilter);
 
 	//save negotiated result for the future usage
@@ -214,11 +193,6 @@ int filterRequestSdp(SBCCallLeg *call,
 	normalizeSDP(sdp, false, "");
 
 	CodecsGroupEntry codecs_group;
-/*	int group_id = !a_leg ?
-			call_profile.static_codecs_aleg_id : call_profile.static_codecs_bleg_id;*/
-
-	/*vector<SdpMedia> &negotiated_media = !a_leg ?
-			ctx->bleg_negotiated_media : ctx->aleg_negotiated_media;*/
 	try {
 		CodecsGroups::instance()->get(static_codecs_id,codecs_group);
 	} catch(...){
@@ -230,8 +204,7 @@ int filterRequestSdp(SBCCallLeg *call,
 
 	std::vector<SdpPayload> &static_codecs = codecs_group.get_payloads();
 
-	filter_arrange_SDP(sdp,static_codecs,
-					   true,false/*TODO: implement 'bleg_single_codec processing*/);
+	filter_arrange_SDP(sdp,static_codecs, true);
 	fix_dynamic_payloads(sdp,call->getTranscoderMapping());
 
 	filterSDPalines(sdp, call_profile.sdpalinesfilter);
@@ -244,10 +217,14 @@ int filterRequestSdp(SBCCallLeg *call,
 	return res;
 }
 
+inline bool should_add_codec(const std::vector<SdpPayload> &pl,const string &name,bool single_codec){
+	return !single_codec || (single_codec && (pl.empty() || name==DTMF_ENCODING_NAME));
+}
 
 int filterReplySdp(SBCCallLeg *call,
 				   AmMimeBody &body, const string &method,
-				   const vector<SdpMedia> &negotiated_media)
+				   const vector<SdpMedia> &negotiated_media,
+				   bool single_codec)
 {
 	bool a_leg = call->isALeg();
 	SBCCallProfile &call_profile = call->getCallProfile();
@@ -284,16 +261,16 @@ int filterReplySdp(SBCCallLeg *call,
 		}
 
 		int stream_idx = 0;
-		vector<SdpMedia>::const_iterator aleg_media_it = negotiated_media.begin();
+		vector<SdpMedia>::const_iterator other_media_it = negotiated_media.begin();
 		for (vector<SdpMedia>::iterator m_it = sdp.media.begin();
-			m_it != sdp.media.end(); ++m_it, ++aleg_media_it)
+			m_it != sdp.media.end(); ++m_it, ++other_media_it)
 		{
-			const SdpMedia &aleg_m = *aleg_media_it;
+			const SdpMedia &other_m = *other_media_it;
 			SdpMedia& m = *m_it;
 
-			if(m.type!=aleg_m.type){
+			if(m.type!=other_m.type){
 				ERROR("filterReplySdp() streams types not matched idx = %d",stream_idx);
-				dump_SdpPayload(aleg_m.payloads,"aleg_m payload "+int2str(stream_idx));
+				dump_SdpPayload(other_m.payloads,"other_m payload "+int2str(stream_idx));
 				return -488;
 			}
 
@@ -303,8 +280,63 @@ int filterReplySdp(SBCCallLeg *call,
 			if(m.type!=MT_AUDIO)
 				continue;
 
-			m.payloads = aleg_m.payloads;
-			//m.attributes.clear();
+			//dump_SdpPayload(m.payloads,"m.payloads");
+			//dump_SdpPayload(other_m.payloads,"other_m.payloads");
+
+			std::vector<SdpPayload> new_pl;
+			if(!call_profile.avoid_transcoding){
+				//clear all except of first codec and dtmf
+				std::vector<SdpPayload>::const_iterator p_it = other_m.payloads.begin();
+				for (;p_it != other_m.payloads.end(); p_it++){
+					string c = p_it->encoding_name;
+					std::transform(c.begin(), c.end(), c.begin(), ::toupper);
+					if(should_add_codec(new_pl,c,single_codec)){
+						new_pl.push_back(*p_it);
+					}
+				}
+			} else {
+				//arrange previously negotiated codecs according to received sdp
+
+				/* fill with codecs from received sdp
+				 * which exists in negotiated payload */
+				std::vector<SdpPayload>::const_iterator f_it = m.payloads.begin();
+				for(;f_it!=m.payloads.end();f_it++){
+					const SdpPayload &sp = *f_it;
+					string p = sp.encoding_name;
+					std::transform(p.begin(), p.end(), p.begin(), ::toupper);
+					std::vector<SdpPayload>::const_iterator p_it = other_m.payloads.begin();
+					for (;p_it != other_m.payloads.end(); p_it++){
+						string c = p_it->encoding_name;
+						std::transform(c.begin(), c.end(), c.begin(), ::toupper);
+						if(c==p){
+							if(should_add_codec(new_pl,c,single_codec)){
+								new_pl.push_back(*p_it);
+							}
+							break;
+						}
+					}
+				}
+				/* add codecs from negotiated payload
+				 * which doesn't exists in recevied sdp
+				 * to the tail */
+				std::vector<SdpPayload>::const_iterator p_it = other_m.payloads.begin();
+				for (;p_it != other_m.payloads.end(); p_it++){
+					string c = p_it->encoding_name;
+					std::transform(c.begin(), c.end(), c.begin(), ::toupper);
+					std::vector<SdpPayload>::const_iterator f_it = m.payloads.begin();
+					for(;f_it!=m.payloads.end();f_it++){
+						string p = f_it->encoding_name;
+						std::transform(p.begin(), p.end(), p.begin(), ::toupper);
+						if(c==p) break;
+					}
+					if(f_it==m.payloads.end()){
+						if(should_add_codec(new_pl,c,single_codec)){
+							new_pl.push_back(*p_it);
+						}
+					}
+				}
+			}
+			m.payloads = new_pl;
 
 			stream_idx++;
 		}

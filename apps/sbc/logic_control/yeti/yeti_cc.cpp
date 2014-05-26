@@ -429,7 +429,6 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 							  req,
 							  ctx->aleg_negotiated_media,
 							  req.method,
-							  call_profile.aleg_single_codec,
 							  call_profile.static_codecs_aleg_id);
 	if(res < 0){
 		INFO("onInitialInvite() Not acceptable codecs");
@@ -771,18 +770,15 @@ int Yeti::relayEvent(SBCCallLeg *call, AmEvent *e){
 
 			int static_codecs_negotiate_id;
 			int static_codecs_filter_id;
-			bool single_codec;
 			vector<SdpMedia> * negotiated_media;
 
 			if(a_leg){
 				static_codecs_negotiate_id = call_profile.static_codecs_aleg_id;
 				static_codecs_filter_id = call_profile.static_codecs_bleg_id;
-				single_codec = call_profile.aleg_single_codec;
 				negotiated_media = &ctx->aleg_negotiated_media;
 			} else {
 				static_codecs_negotiate_id = call_profile.static_codecs_bleg_id;
 				static_codecs_filter_id = call_profile.static_codecs_aleg_id;
-				single_codec = call_profile.bleg_single_codec;
 				negotiated_media = &ctx->bleg_negotiated_media;
 			}
 
@@ -790,7 +786,6 @@ int Yeti::relayEvent(SBCCallLeg *call, AmEvent *e){
 										  req_ev->req,
 										  *negotiated_media,
 										  req_ev->req.method,
-										  single_codec,
 										  static_codecs_negotiate_id);
 			if (res < 0) {
 				delete e;
@@ -812,9 +807,22 @@ int Yeti::relayEvent(SBCCallLeg *call, AmEvent *e){
 
 			DBG("Yeti::relayEvent(%p) filtering body for reply '%s' (c/t '%s')\n",
 				call,reply_ev->trans_method.c_str(), reply_ev->reply.body.getCTStr().c_str());
+
+			SBCCallProfile &call_profile = call->getCallProfile();
+			vector<SdpMedia> * negotiated_media;
+			bool single_codec;
+			if(a_leg){
+				negotiated_media = &ctx->bleg_negotiated_media;
+				single_codec = call_profile.bleg_single_codec;
+			} else {
+				negotiated_media = &ctx->aleg_negotiated_media;
+				single_codec = call_profile.aleg_single_codec;
+			}
+
 			filterReplySdp(call,
 						   reply_ev->reply.body, reply_ev->reply.cseq_method,
-						   call->isALeg() ? ctx->bleg_negotiated_media : ctx->aleg_negotiated_media);
+						   *negotiated_media,
+						   single_codec);
 		} break;
 	} //switch(e->event_id)
 	return 0;

@@ -394,131 +394,131 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
   INFO("SBC: loaded SBC profile '%s' - MD5: %s\n", name.c_str(), md5hash.c_str());
 
   if (!refuse_with.empty()) {
-    INFO("SBC:      refusing calls with '%s'\n", refuse_with.c_str());
+	INFO("refusing calls with '%s'\n", refuse_with.c_str());
   } else {
-    INFO("SBC:      RURI      = '%s'\n", ruri.c_str());
-    INFO("SBC:      RURI-host = '%s'\n", ruri_host.c_str());
-    INFO("SBC:      From = '%s'\n", from.c_str());
-    INFO("SBC:      To   = '%s'\n", to.c_str());
+	INFO("RURI      = '%s'\n", ruri.c_str());
+	INFO("RURI-host = '%s'\n", ruri_host.c_str());
+	INFO("From = '%s'\n", from.c_str());
+	INFO("To   = '%s'\n", to.c_str());
     // if (!contact.empty()) {
-    //   INFO("SBC:      Contact   = '%s'\n", contact.c_str());
+	//   INFO("Contact   = '%s'\n", contact.c_str());
     // }
     if (!callid.empty()) {
-      INFO("SBC:      Call-ID   = '%s'\n", callid.c_str());
+	  INFO("Call-ID   = '%s'\n", callid.c_str());
     }
 
-    INFO("SBC:      force outbound proxy: %s\n", force_outbound_proxy?"yes":"no");
-    INFO("SBC:      outbound proxy = '%s'\n", outbound_proxy.c_str());
+	INFO("force outbound proxy: %s\n", force_outbound_proxy?"yes":"no");
+	INFO("outbound proxy = '%s'\n", outbound_proxy.c_str());
 
     if (!outbound_interface.empty()) {
-      INFO("SBC:      outbound interface = '%s'\n", outbound_interface.c_str());
+	  INFO("outbound interface = '%s'\n", outbound_interface.c_str());
     }
     
     if (!aleg_outbound_interface.empty()) {
-      INFO("SBC:      A leg outbound interface = '%s'\n", aleg_outbound_interface.c_str());
+	  INFO("A leg outbound interface = '%s'\n", aleg_outbound_interface.c_str());
     }
 
-    INFO("SBC:      A leg force outbound proxy: %s\n", aleg_force_outbound_proxy?"yes":"no");
-    INFO("SBC:      A leg outbound proxy = '%s'\n", aleg_outbound_proxy.c_str());
+	INFO("A leg force outbound proxy: %s\n", aleg_force_outbound_proxy?"yes":"no");
+	INFO("A leg outbound proxy = '%s'\n", aleg_outbound_proxy.c_str());
 
     if (!next_hop.empty()) {
-      INFO("SBC:      next hop = %s (%s, %s)\n", next_hop.c_str(),
+	  INFO("next hop = %s (%s, %s)\n", next_hop.c_str(),
 	   next_hop_1st_req ? "1st req" : "all reqs", next_hop_fixed?"fixed":"not fixed");
     }
 
     if (!aleg_next_hop.empty()) {
-      INFO("SBC:      A leg next hop = %s\n", aleg_next_hop.c_str());
+	  INFO("A leg next hop = %s\n", aleg_next_hop.c_str());
     }
 
     string filter_type; size_t filter_elems;
     filter_type = headerfilter.size() ?
       FilterType2String(headerfilter.back().filter_type) : "disabled";
     filter_elems = headerfilter.size() ? headerfilter.back().filter_list.size() : 0;
-    INFO("SBC:      header filter  is %s, %zd items in list\n",
+	INFO("header filter  is %s, %zd items in list\n",
 	 filter_type.c_str(), filter_elems);
 
     filter_type = messagefilter.size() ?
       FilterType2String(messagefilter.back().filter_type) : "disabled";
     filter_elems = messagefilter.size() ? messagefilter.back().filter_list.size() : 0;
-    INFO("SBC:      message filter is %s, %zd items in list\n",
+	INFO("message filter is %s, %zd items in list\n",
 	 filter_type.c_str(), filter_elems);
 
     filter_type = sdpfilter.size() ?
       FilterType2String(sdpfilter.back().filter_type) : "disabled";
     filter_elems = sdpfilter.size() ? sdpfilter.back().filter_list.size() : 0;
-    INFO("SBC:      SDP filter is %sabled, %s, %zd items in list, %sanonymizing SDP\n",
+	INFO("SDP filter is %sabled, %s, %zd items in list, %sanonymizing SDP\n",
 	 sdpfilter.size()?"en":"dis", filter_type.c_str(), filter_elems,
 	 anonymize_sdp?"":"not ");
 
     filter_type = sdpalinesfilter.size() ?
       FilterType2String(sdpalinesfilter.back().filter_type) : "disabled";
     filter_elems = sdpalinesfilter.size() ? sdpalinesfilter.back().filter_list.size() : 0;
-    INFO("SBC:      SDP alines-filter is %sabled, %s, %zd items in list\n",
+	INFO("SDP alines-filter is %sabled, %s, %zd items in list\n",
 	 sdpalinesfilter.size()?"en":"dis", filter_type.c_str(), filter_elems);
     
     filter_type = mediafilter.size() ?
       FilterType2String(mediafilter.back().filter_type) : "disabled";
     filter_elems = mediafilter.size() ? mediafilter.back().filter_list.size() : 0;
-    INFO("SBC:      SDP filter is %sabled, %s, %zd items in list\n",
+	INFO("SDP filter is %sabled, %s, %zd items in list\n",
 	 mediafilter.size()?"en":"dis", filter_type.c_str(), filter_elems);
 
-    INFO("SBC:      RTP relay %sabled\n", rtprelay_enabled?"en":"dis");
+	INFO("RTP relay %sabled\n", rtprelay_enabled?"en":"dis");
     if (rtprelay_enabled) {
       if (!force_symmetric_rtp.empty()) {
-	INFO("SBC:      RTP force symmetric RTP: %s\n",
+	INFO("RTP force symmetric RTP: %s\n",
 	     force_symmetric_rtp.c_str());
       }
       if (msgflags_symmetric_rtp) {
-	INFO("SBC:      P-MsgFlags symmetric RTP detection enabled\n");
+	INFO("P-MsgFlags symmetric RTP detection enabled\n");
       }
       if (!aleg_rtprelay_interface.empty()) {
-	INFO("SBC:      RTP Relay interface A leg '%s'\n", aleg_rtprelay_interface.c_str());
+	INFO("RTP Relay interface A leg '%s'\n", aleg_rtprelay_interface.c_str());
       }
       if (!rtprelay_interface.empty()) {
-	INFO("SBC:      RTP Relay interface B leg '%s'\n", rtprelay_interface.c_str());
+	INFO("RTP Relay interface B leg '%s'\n", rtprelay_interface.c_str());
       }
 
-      INFO("SBC:      RTP Relay %s seqno\n",
+	  INFO("RTP Relay %s seqno\n",
 	   rtprelay_transparent_seqno?"transparent":"opaque");
-      INFO("SBC:      RTP Relay %s SSRC\n",
+	  INFO("RTP Relay %s SSRC\n",
 	   rtprelay_transparent_ssrc?"transparent":"opaque");
-      INFO("SBC:      RTP Relay RTP DTMF filtering %sabled\n",
+	  INFO("RTP Relay RTP DTMF filtering %sabled\n",
 	   rtprelay_dtmf_filtering?"en":"dis");
-      INFO("SBC:      RTP Relay RTP DTMF detection %sabled\n",
+	  INFO("RTP Relay RTP DTMF detection %sabled\n",
 	   rtprelay_dtmf_detection?"en":"dis");
     }
 
-    INFO("SBC:      SST on A leg enabled: '%s'\n", sst_aleg_enabled.empty() ?
+	INFO("SST on A leg enabled: '%s'\n", sst_aleg_enabled.empty() ?
 	 "no" : sst_aleg_enabled.c_str());
     if (sst_aleg_enabled.size() && sst_aleg_enabled != "no") {
-      INFO("SBC:              session_expires=%s\n",
+	  INFO("        session_expires=%s\n",
 	   sst_a_cfg.getParameter("session_expires").c_str());
-      INFO("SBC:              minimum_timer=%s\n",
+	  INFO("        minimum_timer=%s\n",
 	   sst_a_cfg.getParameter("minimum_timer").c_str());
-      INFO("SBC:              maximum_timer=%s\n",
+	  INFO("        maximum_timer=%s\n",
 	   sst_a_cfg.getParameter("maximum_timer").c_str());
-      INFO("SBC:              session_refresh_method=%s\n",
+	  INFO("        session_refresh_method=%s\n",
 	   sst_a_cfg.getParameter("session_refresh_method").c_str());
-      INFO("SBC:              accept_501_reply=%s\n",
+	  INFO("        accept_501_reply=%s\n",
 	   sst_a_cfg.getParameter("accept_501_reply").c_str());
     }
-    INFO("SBC:      SST on B leg enabled: '%s'\n", sst_enabled.empty() ?
+	INFO("SST on B leg enabled: '%s'\n", sst_enabled.empty() ?
 	 "no" : sst_enabled.c_str());
     if (sst_enabled.size() && sst_enabled != "no") {
-      INFO("SBC:              session_expires=%s\n",
+	  INFO("        session_expires=%s\n",
 	   sst_b_cfg.getParameter("session_expires").c_str());
-      INFO("SBC:              minimum_timer=%s\n",
+	  INFO("        minimum_timer=%s\n",
 	   sst_b_cfg.getParameter("minimum_timer").c_str());
-      INFO("SBC:              maximum_timer=%s\n",
+	  INFO("        maximum_timer=%s\n",
 	   sst_b_cfg.getParameter("maximum_timer").c_str());
-      INFO("SBC:              session_refresh_method=%s\n",
+	  INFO("        session_refresh_method=%s\n",
 	   sst_b_cfg.getParameter("session_refresh_method").c_str());
-      INFO("SBC:              accept_501_reply=%s\n",
+	  INFO("        accept_501_reply=%s\n",
 	   sst_b_cfg.getParameter("accept_501_reply").c_str());
     }
 
-    INFO("SBC:      SIP auth %sabled\n", auth_enabled?"en":"dis");
-    INFO("SBC:      SIP auth for A leg %sabled\n", auth_aleg_enabled?"en":"dis");
+	INFO("SIP auth %sabled\n", auth_enabled?"en":"dis");
+	INFO("SIP auth for A leg %sabled\n", auth_aleg_enabled?"en":"dis");
 
     if (cc_interfaces.size()) {
       string cc_if_names;
@@ -526,7 +526,7 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
 	     cc_interfaces.begin(); it != cc_interfaces.end(); it++) {
 	cc_if_names = it->cc_name+",";
 	cc_if_names.erase(cc_if_names.size()-1,1);
-	INFO("SBC:      Call Control: %s\n", cc_if_names.c_str());
+	INFO("Call Control: %s\n", cc_if_names.c_str());
       }
     }
 
@@ -536,17 +536,17 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
 	    reply_translations.begin(); it != reply_translations.end(); it++)
 	reply_trans_codes += int2str(it->first)+", ";
       reply_trans_codes.erase(reply_trans_codes.length()-2);
-      INFO("SBC:      reply translation for  %s\n", reply_trans_codes.c_str());
+	  INFO("reply translation for  %s\n", reply_trans_codes.c_str());
     }
   }
 
   if (append_headers.size()) {
-    INFO("SBC:      append headers '%s'\n", append_headers.c_str());
+	INFO("append headers '%s'\n", append_headers.c_str());
   }
 
-  INFO("SBC:      reg-caching: '%s'\n", reg_caching ? "yes" : "no");
-  INFO("SBC:      min_reg_expires: %i\n", min_reg_expires);
-  INFO("SBC:      max_ua_expires: %i\n", max_ua_expires);
+  INFO("reg-caching: '%s'\n", reg_caching ? "yes" : "no");
+  INFO("min_reg_expires: %i\n", min_reg_expires);
+  INFO("max_ua_expires: %i\n", max_ua_expires);
 
   codec_prefs.infoPrint();
   transcoder.infoPrint();
@@ -1414,10 +1414,10 @@ bool SBCCallProfile::CodecPreferences::readConfig(AmConfigReader &cfg)
 
 void SBCCallProfile::CodecPreferences::infoPrint() const
 {
-  DBG("SBC:      A leg codec preference: %s\n", aleg_payload_order_str.c_str());
-  DBG("SBC:      A leg prefer existing codecs: %s\n", aleg_prefer_existing_payloads_str.c_str());
-  DBG("SBC:      B leg codec preference: %s\n", bleg_payload_order_str.c_str());
-  DBG("SBC:      B leg prefer existing codecs: %s\n", bleg_prefer_existing_payloads_str.c_str());
+  DBG("A leg codec preference: %s\n", aleg_payload_order_str.c_str());
+  DBG("A leg prefer existing codecs: %s\n", aleg_prefer_existing_payloads_str.c_str());
+  DBG("B leg codec preference: %s\n", bleg_payload_order_str.c_str());
+  DBG("B leg prefer existing codecs: %s\n", bleg_prefer_existing_payloads_str.c_str());
 }
 
 bool SBCCallProfile::CodecPreferences::operator==(const CodecPreferences& rhs) const
@@ -1507,11 +1507,11 @@ bool SBCCallProfile::TranscoderSettings::readDTMFMode(const std::string &src)
 
 void SBCCallProfile::TranscoderSettings::infoPrint() const
 {
-  DBG("SBC:      transcoder audio codecs: %s\n", audio_codecs_str.c_str());
-  DBG("SBC:      callee codec capabilities: %s\n", callee_codec_capabilities_str.c_str());
-  DBG("SBC:      enable transcoder: %s\n", transcoder_mode_str.c_str());
-  DBG("SBC:      norelay audio codecs: %s\n", audio_codecs_norelay_str.c_str());
-  DBG("SBC:      norelay audio codecs (aleg): %s\n", audio_codecs_norelay_aleg_str.c_str());
+  DBG("transcoder audio codecs: %s\n", audio_codecs_str.c_str());
+  DBG("callee codec capabilities: %s\n", callee_codec_capabilities_str.c_str());
+  DBG("enable transcoder: %s\n", transcoder_mode_str.c_str());
+  DBG("norelay audio codecs: %s\n", audio_codecs_norelay_str.c_str());
+  DBG("norelay audio codecs (aleg): %s\n", audio_codecs_norelay_aleg_str.c_str());
 }
 
 bool SBCCallProfile::TranscoderSettings::readConfig(AmConfigReader &cfg)
