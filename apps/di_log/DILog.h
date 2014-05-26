@@ -4,7 +4,7 @@
 #include <stdarg.h>
 
 #define MAX_LINES 700000
-#define MAX_LINE_LEN 256
+#define MAX_LINE_LEN 512
 
 class DILog : public AmLoggingFacility, public AmDynInvoke, public AmDynInvokeFactory
 {
