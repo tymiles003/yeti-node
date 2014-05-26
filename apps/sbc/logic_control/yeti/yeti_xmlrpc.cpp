@@ -11,6 +11,9 @@
 
 typedef void (Yeti::*YetiRpcHandler)(const AmArg& args, AmArg& ret);
 
+
+#define handler_log() INFO("execute handler: %s(%s)",FUNC_NAME,args.print(args).c_str());
+
 struct xmlrpc_entry: public AmObject {
   YetiRpcHandler handler;
   string leaf_descr,func_descr,arg,arg_descr;
@@ -435,7 +438,7 @@ bool Yeti::assert_event_id(const AmArg &args,AmArg &ret){
 void Yeti::GetCallsCount(const AmArg& args, AmArg& ret) {
 	string r;
 	std::stringstream ss;
-
+	handler_log();
 	ss << cdr_list.get_count();
 	r = ss.str();
 
@@ -446,7 +449,7 @@ void Yeti::GetCallsCount(const AmArg& args, AmArg& ret) {
 void Yeti::GetCall(const AmArg& args, AmArg& ret) {
 	AmArg call;
 	string local_tag;
-
+	handler_log();
 	if (!args.size()) {
 		ret.push(500);
 		ret.push("Parameters error: expected local tag of requested cdr ");
@@ -465,7 +468,7 @@ void Yeti::GetCall(const AmArg& args, AmArg& ret) {
 
 void Yeti::GetCalls(const AmArg& args, AmArg& ret) {
 	AmArg calls;
-
+	handler_log();
 	if(args.size()){
 		string local_tag = args[0].asCStr();
 		if(!cdr_list.getCall(local_tag,calls,router)){
@@ -485,7 +488,7 @@ void Yeti::GetRegistration(const AmArg& args, AmArg& ret){
 	AmArg reg;
 	string reg_id_str;
 	int reg_id;
-
+	handler_log();
 	if (!args.size()) {
 		ret.push(500);
 		ret.push(AmArg("Parameters error: expected id of requested registration"));
@@ -511,7 +514,7 @@ void Yeti::GetRegistration(const AmArg& args, AmArg& ret){
 void Yeti::RenewRegistration(const AmArg& args, AmArg& ret){
 	string reg_id_str;
 	int reg_id;
-
+	handler_log();
 	if (!args.size()) {
 		ret.push(500);
 		ret.push(AmArg("Parameters error: expected id of active registration"));
@@ -536,7 +539,7 @@ void Yeti::RenewRegistration(const AmArg& args, AmArg& ret){
 
 void Yeti::GetRegistrations(const AmArg& args, AmArg& ret){
 	AmArg regs;
-
+	handler_log();
 	Registration::instance()->list_registrations(regs);
 
 	ret.push(200);
@@ -544,11 +547,13 @@ void Yeti::GetRegistrations(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::GetRegistrationsCount(const AmArg& args, AmArg& ret){
+	handler_log();
 	ret.push(200);
 	ret.push(Registration::instance()->get_registrations_count());
 }
 
 void Yeti::ClearStats(const AmArg& args, AmArg& ret){
+	handler_log();
 	AmLock l(router_mutex);
 	if(router)
 		router->clearStats();
@@ -558,6 +563,7 @@ void Yeti::ClearStats(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::ClearCache(const AmArg& args, AmArg& ret){
+	handler_log();
 	AmLock l(router_mutex);
 	if(router)
 		router->clearCache();
@@ -566,6 +572,7 @@ void Yeti::ClearCache(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::ShowCache(const AmArg& args, AmArg& ret){
+	handler_log();
 	AmLock l(router_mutex);
 	if(router)
 		router->showCache(ret);
@@ -574,6 +581,8 @@ void Yeti::ShowCache(const AmArg& args, AmArg& ret){
 void Yeti::GetStats(const AmArg& args, AmArg& ret){
 	AmArg stats,u;
 	time_t now;
+	handler_log();
+
 	ret.push(200);
 
 	/* Yeti stats */
@@ -637,7 +646,7 @@ void Yeti::GetStats(const AmArg& args, AmArg& ret){
 void Yeti::GetConfig(const AmArg& args, AmArg& ret) {
 	AmArg u,s;
 	ret.push(200);
-
+	handler_log();
 	s["calls_show_limit"] = calls_show_limit;
 	s["node_id"] = config.node_id;
 	s["pop_id"] = config.pop_id;
@@ -667,7 +676,7 @@ void Yeti::GetConfig(const AmArg& args, AmArg& ret) {
 void Yeti::DropCall(const AmArg& args, AmArg& ret){
 	SBCControlEvent* evt;
 	string local_tag;
-
+	handler_log();
 	if (!args.size()) {
 		ret.push(500);
 		ret.push("Parameters error: expected local tag of active call");
@@ -688,7 +697,7 @@ void Yeti::DropCall(const AmArg& args, AmArg& ret){
 
 void Yeti::showVersion(const AmArg& args, AmArg& ret) {
 		AmArg p;
-
+		handler_log();
 		ret.push(200);
 		p["build"] = YETI_VERSION;
 		p["build_commit"] = YETI_COMMIT;
@@ -699,6 +708,7 @@ void Yeti::showVersion(const AmArg& args, AmArg& ret) {
 
 /* obsolete function !!! */
 void Yeti::reload(const AmArg& args, AmArg& ret){
+	handler_log();
 	if(0==args.size()){
 		ret.push(400);
 		ret.push(AmArg());
@@ -806,6 +816,7 @@ void Yeti::reload(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::reloadResources(const AmArg& args, AmArg& ret){
+	handler_log();
 	if(!assert_event_id(args,ret))
 		return;
 	rctl.configure_db(cfg);
@@ -819,6 +830,7 @@ void Yeti::reloadResources(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::reloadTranslations(const AmArg& args, AmArg& ret){
+	handler_log();
 	if(!assert_event_id(args,ret))
 		return;
 	CodesTranslator::instance()->configure_db(cfg);
@@ -832,6 +844,7 @@ void Yeti::reloadTranslations(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::reloadRegistrations(const AmArg& args, AmArg& ret){
+	handler_log();
 	if(!assert_event_id(args,ret))
 		return;
 	if(0==Registration::instance()->reload(cfg)){
@@ -844,6 +857,7 @@ void Yeti::reloadRegistrations(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::reloadCodecsGroups(const AmArg& args, AmArg& ret){
+	handler_log();
 	if(!assert_event_id(args,ret))
 		return;
 	CodecsGroups::instance()->configure_db(cfg);
@@ -857,6 +871,7 @@ void Yeti::reloadCodecsGroups(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::reloadRouter(const AmArg& args, AmArg& ret){
+	handler_log();
 	if(!assert_event_id(args,ret))
 		return;
 	INFO("Allocate new SqlRouter instance");
@@ -895,6 +910,7 @@ void Yeti::reloadRouter(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::closeCdrFiles(const AmArg& args, AmArg& ret){
+	handler_log();
 	router_mutex.lock();
 		set<SqlRouter *>::const_iterator i = routers.begin();
 		for(;i!=routers.end();++i){
@@ -906,6 +922,7 @@ void Yeti::closeCdrFiles(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::showMediaStreams(const AmArg& args, AmArg& ret){
+	handler_log();
 	AmMediaProcessor::instance()->getInfo(ret);
 }
 
@@ -913,7 +930,7 @@ void Yeti::showPayloads(const AmArg& args, AmArg& ret){
 	vector<SdpPayload> payloads;
 	unsigned char *buf;
 	int size = 0;
-
+	handler_log();
 	bool compute_cost = args.size() && args[0] == "benchmark";
 	string path = args.size()>1 ? args[1].asCStr() : DEFAULT_BECH_FILE_PATH;
 
@@ -947,7 +964,7 @@ void Yeti::showPayloads(const AmArg& args, AmArg& ret){
 
 void Yeti::showInterfaces(const AmArg& args, AmArg& ret){
 	AmArg ifaces,rtp,sig;
-
+	handler_log();
 	for(int i=0; i<(int)AmConfig::SIP_Ifs.size(); i++) {
 		AmConfig::SIP_interface& iface = AmConfig::SIP_Ifs[i];
 		AmArg am_iface;
@@ -989,6 +1006,7 @@ void Yeti::showInterfaces(const AmArg& args, AmArg& ret){
 
 void Yeti::showRouterCdrWriterOpenedFiles(const AmArg& args, AmArg& ret){
 	AmArg r;
+	handler_log();
 	router_mutex.lock();
 		set<SqlRouter *>::const_iterator i = routers.begin();
 		for(;i!=routers.end();++i){
@@ -1006,6 +1024,8 @@ void Yeti::showRouterCdrWriterOpenedFiles(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::requestSystemLogDump(const AmArg& args, AmArg& ret){
+	handler_log();
+
 	if(!args.size()){
 		ret.push(500);
 		ret.push("missed path for dump");
@@ -1060,6 +1080,7 @@ static void setLoggingFacilityLogLevel(const AmArg& args, AmArg& ret,const strin
 void Yeti::showSystemLogLevel(const AmArg& args, AmArg& ret){
 	AmArg r,fac;
 
+	handler_log();
 	r["log_level"] = log_level;
 
 	addLoggingFacilityLogLevel(fac,"syslog");
@@ -1071,16 +1092,18 @@ void Yeti::showSystemLogLevel(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::setSystemLogSyslogLevel(const AmArg& args, AmArg& ret){
+	handler_log();
 	setLoggingFacilityLogLevel(args,ret,"syslog");
 }
 
 void Yeti::setSystemLogDiLogLevel(const AmArg& args, AmArg& ret){
+	handler_log();
 	setLoggingFacilityLogLevel(args,ret,"di_log");
 }
 
 void Yeti::showSystemStatus(const AmArg& args, AmArg& ret){
 	AmArg s;
-
+	handler_log();
 	s["shutdown_mode"] = (bool)AmConfig::ShutdownMode;
 	ret.push(200);
 	ret.push(s);
@@ -1107,6 +1130,8 @@ static void set_system_shutdown(bool shutdown){
 }
 
 void Yeti::requestSystemShutdown(const AmArg& args, AmArg& ret){
+	handler_log();
+	INFO("executecalled %s",FUNC_NAME);
 	graceful_suicide();
 	ret.push(200);
 	ret.push("OK");
@@ -1114,18 +1139,21 @@ void Yeti::requestSystemShutdown(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::requestSystemShutdownImmediate(const AmArg& args, AmArg& ret){
+	handler_log();
 	immediate_suicide();
 	ret.push(200);
 	ret.push("OK");
 }
 
 void Yeti::requestSystemShutdownGraceful(const AmArg& args, AmArg& ret){
+	handler_log();
 	set_system_shutdown(true);
 	ret.push(200);
 	ret.push("OK");
 }
 
 void Yeti::requestSystemShutdownCancel(const AmArg& args, AmArg& ret){
+	handler_log();
 	set_system_shutdown(false);
 	ret.push(200);
 	ret.push("OK");
