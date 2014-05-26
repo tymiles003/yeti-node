@@ -58,6 +58,9 @@ class shell(Cmd):
 			self.rpc_command(line)
 		self.node_id = tmp_node_id	
 
+	def complete_all(self, text, line, begidx, endidx):
+		return self.completedefault(text,' '.join(line.split()[1:]),begidx,endidx)
+
 	def completenames(self, text, *ignored):
 		if self.node_id is None:
 			return []
@@ -100,7 +103,7 @@ class shell(Cmd):
 		except BaseException as err:
 			print err
 		pass
-	
+
 	def read_cfg(self):
 		import yaml
 		self.cfg = yaml.load(open(self.cfg_path))
