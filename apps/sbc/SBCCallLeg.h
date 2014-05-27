@@ -80,9 +80,11 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
 		     const string &from, const AmSipRequest &original_invite, 
 		     const AmSipRequest &invite_req);
 */
-//  int filterSdp(AmMimeBody &body, const string &method);
+/*
+  int filterSdp(AmMimeBody &body, const string &method);
   void appendTranscoderCodecs(AmSdp &sdp);
   void savePayloadIDs(AmSdp &sdp);
+*/
 
   /** apply A leg configuration from call profile */
   //void applyAProfile();
@@ -129,7 +131,7 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
   virtual void onStart();
   virtual void onBeforeDestroy();
 
-  int filterSdp(AmMimeBody &body, const string &method);
+  //int filterSdp(AmMimeBody &body, const string &method);
   void connectCallee(const string& remote_party, const string& remote_uri,
 			 const string &from, const AmSipRequest &original_invite,
 			 const AmSipRequest &invite_req);

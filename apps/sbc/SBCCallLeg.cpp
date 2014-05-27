@@ -649,7 +649,7 @@ void SBCCallLeg::updateLocalSdp(AmSdp &sdp)
   if (call_profile.anonymize_sdp) normalizeSDP(sdp, call_profile.anonymize_sdp, advertisedIP());
 
   // remember transcodable payload IDs
-  if (call_profile.transcoder.isActive()) savePayloadIDs(sdp);
+  //if (call_profile.transcoder.isActive()) savePayloadIDs(sdp);
   CallLeg::updateLocalSdp(sdp);
 }
 
@@ -1383,6 +1383,7 @@ void SBCCallLeg::logCanceledCall()
 //////////////////////////////////////////////////////////////////////////////////////////
 // body filtering
 
+/*
 int SBCCallLeg::filterSdp(AmMimeBody &body, const string &method)
 {
   DBG("filtering body\n");
@@ -1480,7 +1481,9 @@ int SBCCallLeg::filterSdp(AmMimeBody &body, const string &method)
 
   return res;
 }
+*/
 
+/*
 void SBCCallLeg::appendTranscoderCodecs(AmSdp &sdp)
 {
   // append codecs for transcoding, remember the added ones to be able to filter
@@ -1552,7 +1555,9 @@ void SBCCallLeg::appendTranscoderCodecs(AmSdp &sdp)
   // on other hand it might be useful to use the same payload ID if offer/answer
   // is repeated in the other direction next time
 }
+*/
 
+/*
 void SBCCallLeg::savePayloadIDs(AmSdp &sdp)
 {
   unsigned stream_idx = 0;
@@ -1574,6 +1579,7 @@ void SBCCallLeg::savePayloadIDs(AmSdp &sdp)
     stream_idx++; // count chosen media type only
   }
 }
+*/
 
 bool SBCCallLeg::reinvite(const AmSdp &sdp, unsigned &request_cseq)
 {
