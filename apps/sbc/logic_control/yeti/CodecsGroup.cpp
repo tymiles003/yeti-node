@@ -63,7 +63,7 @@ bool CodecsGroupEntry::add_codec(string c){
 	SdpPayload p;
 	AmPlugIn* plugin = AmPlugIn::instance();
 
-	std::transform(c.begin(), c.end(), c.begin(), ::toupper);
+	//std::transform(c.begin(), c.end(), c.begin(), ::toupper);
 	//codecs_filter.filter_list.insert(c);
 	if (!readPayload(p, c)){
 		ERROR("CodecsGroupEntry() can't read payload '%s'",c.c_str());
