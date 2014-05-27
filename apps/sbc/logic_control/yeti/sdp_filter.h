@@ -27,7 +27,7 @@ void fix_dynamic_payloads(AmSdp &sdp,PayloadIdMapping &mapping);
  * @return 0 if succ. negative value with error code on errors
  */
 int filter_arrange_SDP(AmSdp& sdp,
-					   const std::vector<SdpPayload> static_payloads,
+					   const std::vector<SdpPayload> &static_payloads,
 					   bool add_codecs);
 
 

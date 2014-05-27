@@ -741,14 +741,12 @@ void Yeti::onRTPStreamDestroy(SBCCallLeg *call,AmRtpStream *stream){
 
 void Yeti::onSdpCompleted(SBCCallLeg *call, AmSdp& offer, AmSdp& answer){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
-	//dump_SdpMedia(offer.media,"offer");
-	//dump_SdpMedia(answer.media,"answer");
 	if(call->isALeg()){
 		//fix sdp for relay mask computing in B -> A direction
 		answer.media = getCtx(call)->aleg_negotiated_media;
 	}
-	//dump_SdpMedia(offer.media,"offer_after");
-	//dump_SdpMedia(answer.media,"answer_after");
+	//dump_SdpMedia(offer.media,"offer");
+	//dump_SdpMedia(answer.media,"answer");
 }
 
 int Yeti::relayEvent(SBCCallLeg *call, AmEvent *e){

@@ -36,9 +36,39 @@ void dump_SdpMedia(const vector<SdpMedia> &m,string prefix){
 	}
 }
 
-void fix_dynamic_payloads(AmSdp &sdp,PayloadIdMapping &mapping){
-	DBG("fix_dynamic_payloads()");
+static const SdpPayload *findPayload(const std::vector<SdpPayload>& payloads, const SdpPayload &payload, int transport)
+{
+	string pname = payload.encoding_name;
+	transform(pname.begin(), pname.end(), pname.begin(), ::tolower);
 
+	for (vector<SdpPayload>::const_iterator p = payloads.begin(); p != payloads.end(); ++p) {
+		// fix for clients using non-standard names for static payload type (SPA504g: G729a)
+		/*if (transport == TP_RTPAVP && payload.payload_type < 20) {
+			DBG("if (payload.payload_type != p->payload_type) %d %d",
+				payload.payload_type,p->payload_type);
+
+			if (payload.payload_type != p->payload_type) continue;
+		} else {*/
+			string s = p->encoding_name;
+			transform(s.begin(), s.end(), s.begin(), ::tolower);
+			DBG("before if (s != pname) continue;");
+			if (s != pname) continue;
+		//}
+
+		if (p->clock_rate != payload.clock_rate) continue;
+		if ((p->encoding_param >= 0) && (payload.encoding_param >= 0) &&
+			(p->encoding_param != payload.encoding_param)) continue;
+		return &(*p);
+	}
+	return NULL;
+}
+
+static bool containsPayload(const std::vector<SdpPayload>& payloads, const SdpPayload &payload, int transport)
+{
+	return findPayload(payloads, payload, transport) != NULL;
+}
+
+void fix_dynamic_payloads(AmSdp &sdp,PayloadIdMapping &mapping){
 	unsigned stream_idx = 0;
 	for (vector<SdpMedia>::iterator m = sdp.media.begin(); m != sdp.media.end(); ++m) {
 		if (m->type == MT_AUDIO) {
@@ -65,7 +95,7 @@ void fix_dynamic_payloads(AmSdp &sdp,PayloadIdMapping &mapping){
 }
 
 int filter_arrange_SDP(AmSdp& sdp,
-							  const std::vector<SdpPayload> static_payloads,
+							  const std::vector<SdpPayload> &static_payloads,
 							  bool add_codecs)
 {
 	DBG("filter_arrange_SDP() add_codecs = %s", add_codecs?"yes":"no");
@@ -89,23 +119,9 @@ int filter_arrange_SDP(AmSdp& sdp,
 		for(vector<SdpPayload>::const_iterator f_it = static_payloads.begin();
 			f_it != static_payloads.end(); ++f_it)
 		{ //iterate over arranged(!) filter entries
-			const SdpPayload &sp = *f_it;
-			string p = sp.encoding_name,c;
-			std::transform(p.begin(), p.end(), p.begin(), ::toupper);
-			bool matched = false;
-			std::vector<SdpPayload>::iterator p_it = media.payloads.begin();
-			for (;p_it != media.payloads.end(); p_it++)
-			{ //iterate over Sdp entries of certain SdpMedia
-				c = p_it->encoding_name;
-				std::transform(c.begin(), c.end(), c.begin(), ::toupper);
-				if(c==p){
-					matched = true;
-					break; //each codec occurs in sdp only once, huh ?
-				}
-			}
-
-			if(matched){	//is codec founded in original SDP ?
-				new_pl.push_back(*p_it);
+			const SdpPayload *p = findPayload(media.payloads,*f_it,media.transport);
+			if(p!=NULL){
+				new_pl.push_back(*p);
 			} else if(add_codecs) {
 				new_pl.push_back(*f_it);
 			}
@@ -165,8 +181,9 @@ int negotiateRequestSdp(SBCCallProfile &call_profile,
 
 	//save negotiated result for the future usage
 	negotiated_media = sdp.media;
-	DBG("negotiated media size: %ld, sdp_size: %ld",
-		negotiated_media.size(),sdp.media.size());
+
+	dump_SdpPayload(static_codecs_filter,"static_codecs_filter");
+	dump_SdpMedia(negotiated_media,"negotiateRequestSdp");
 
 	string n_body;
 	sdp.print(n_body);
@@ -229,8 +246,21 @@ int filterRequestSdp(SBCCallLeg *call,
 	return res;
 }
 
-inline bool should_add_codec(const std::vector<SdpPayload> &pl,const string &name,bool single_codec){
-	return !single_codec || (single_codec && (pl.empty() || name==DTMF_ENCODING_NAME));
+//add payload into payloads list with checking
+inline void add_codec(std::vector<SdpPayload> &pl,const SdpPayload &p,bool single_codec){
+	if(!single_codec){
+		pl.push_back(p);
+	} else {
+		if(pl.empty()){
+			pl.push_back(p);
+		} else {
+			string c = p.encoding_name;
+			std::transform(c.begin(), c.end(), c.begin(), ::toupper);
+			if(c==DTMF_ENCODING_NAME){
+				pl.push_back(p);
+			}
+		}
+	}
 }
 
 int filterReplySdp(SBCCallLeg *call,
@@ -297,14 +327,11 @@ int filterReplySdp(SBCCallLeg *call,
 
 			std::vector<SdpPayload> new_pl;
 			if(!call_profile.avoid_transcoding){
+				DBG("<<<< if(!call_profile.avoid_transcoding){");
 				//clear all except of first codec and dtmf
 				std::vector<SdpPayload>::const_iterator p_it = other_m.payloads.begin();
 				for (;p_it != other_m.payloads.end(); p_it++){
-					string c = p_it->encoding_name;
-					std::transform(c.begin(), c.end(), c.begin(), ::toupper);
-					if(should_add_codec(new_pl,c,single_codec)){
-						new_pl.push_back(*p_it);
-					}
+					add_codec(new_pl,*p_it,single_codec);
 				}
 			} else {
 				//arrange previously negotiated codecs according to received sdp
@@ -313,19 +340,9 @@ int filterReplySdp(SBCCallLeg *call,
 				 * which exists in negotiated payload */
 				std::vector<SdpPayload>::const_iterator f_it = m.payloads.begin();
 				for(;f_it!=m.payloads.end();f_it++){
-					const SdpPayload &sp = *f_it;
-					string p = sp.encoding_name;
-					std::transform(p.begin(), p.end(), p.begin(), ::toupper);
-					std::vector<SdpPayload>::const_iterator p_it = other_m.payloads.begin();
-					for (;p_it != other_m.payloads.end(); p_it++){
-						string c = p_it->encoding_name;
-						std::transform(c.begin(), c.end(), c.begin(), ::toupper);
-						if(c==p){
-							if(should_add_codec(new_pl,c,single_codec)){
-								new_pl.push_back(*p_it);
-							}
-							break;
-						}
+					const SdpPayload *p = findPayload(other_m.payloads,*f_it,m.transport);
+					if(p!=NULL){
+						add_codec(new_pl,*p,single_codec);
 					}
 				}
 				/* add codecs from negotiated payload
@@ -333,18 +350,8 @@ int filterReplySdp(SBCCallLeg *call,
 				 * to the tail */
 				std::vector<SdpPayload>::const_iterator p_it = other_m.payloads.begin();
 				for (;p_it != other_m.payloads.end(); p_it++){
-					string c = p_it->encoding_name;
-					std::transform(c.begin(), c.end(), c.begin(), ::toupper);
-					std::vector<SdpPayload>::const_iterator f_it = m.payloads.begin();
-					for(;f_it!=m.payloads.end();f_it++){
-						string p = f_it->encoding_name;
-						std::transform(p.begin(), p.end(), p.begin(), ::toupper);
-						if(c==p) break;
-					}
-					if(f_it==m.payloads.end()){
-						if(should_add_codec(new_pl,c,single_codec)){
-							new_pl.push_back(*p_it);
-						}
+					if(!containsPayload(m.payloads,*p_it,m.transport)){
+						add_codec(new_pl,*p_it,single_codec);
 					}
 				}
 			}
