@@ -38,6 +38,9 @@ void dump_SdpMedia(const vector<SdpMedia> &m,string prefix){
 
 static const SdpPayload *findPayload(const std::vector<SdpPayload>& payloads, const SdpPayload &payload, int transport)
 {
+	string pname = payload.encoding_name;
+	transform(pname.begin(), pname.end(), pname.begin(), ::tolower);
+
 	for (vector<SdpPayload>::const_iterator p = payloads.begin(); p != payloads.end(); ++p) {
 		// fix for clients using non-standard names for static payload type (SPA504g: G729a)
 		if (transport == TP_RTPAVP && payload.payload_type < 20) {
