@@ -52,8 +52,6 @@ SqlCallProfile::SqlCallProfile():
 {
 	rtprelay_transparent_seqno = true;
 	rtprelay_transparent_ssrc = true;
-	rtprelay_dtmf_filtering = false;
-	rtprelay_dtmf_detection = false;
 }
 
 SqlCallProfile::~SqlCallProfile(){ }
@@ -259,6 +257,9 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 	assign_int(ringing_timeout,"ringing_timeout",0);
 
 	assign_str(global_tag,"global_tag");
+
+	assign_bool_safe(rtprelay_dtmf_filtering,"rtprelay_dtmf_filtering",false,false);
+	assign_bool_safe(rtprelay_dtmf_detection,"rtprelay_dtmf_detection",false,false);
 
 	DBG("Yeti: loaded SQL profile\n");
 
