@@ -108,11 +108,11 @@ void Cdr::update(SBCCallLeg *call,AmRtpStream *stream){
 	if(writed) return;
 	lock();
 	if(call->isALeg()){
-		stream->getPayloadsHistory(legA_incoming_payloads,legA_outgoing_payloads);
+		stream->getPayloadsHistory(legA_payloads);
 		legA_bytes_recvd = stream->getRcvdBytes();
 		legA_bytes_sent = stream->getSentBytes();
 	} else {
-		stream->getPayloadsHistory(legB_incoming_payloads,legB_outgoing_payloads);
+		stream->getPayloadsHistory(legB_payloads);
 		legB_bytes_recvd = stream->getRcvdBytes();
 		legB_bytes_sent = stream->getSentBytes();
 	}

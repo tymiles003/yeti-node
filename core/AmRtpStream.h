@@ -159,7 +159,9 @@ protected:
   int payload;
 
   std::vector<int> incoming_payloads;
+  std::vector<int> incoming_relayed_payloads;
   std::vector<int> outgoing_payloads;
+  std::vector<int> outgoing_relayed_payloads;
   unsigned long incoming_bytes;
   unsigned long outgoing_bytes;
 
@@ -317,6 +319,8 @@ protected:
    */
   int getDefaultPT();
 
+  void payloads_id2str(const std::vector<int> i, std::vector<string> &s);
+
 public:
 
   /**
@@ -431,7 +435,13 @@ public:
   int getPayloadType() { return payload; }
   int getLastPayload() { return last_payload; }
   string getPayloadName(int payload_type);
-  void getPayloadsHistory(std::vector<string> &incoming,std::vector<string> &outgoing);
+
+  struct PayloadsHistory {
+	  std::vector<string> incoming,incoming_relayed,
+						  outgoing,outgoing_relayed;
+  };
+  void getPayloadsHistory(PayloadsHistory &ph);
+
   unsigned long getRcvdBytes() { return incoming_bytes; }
   unsigned long getSentBytes() { return outgoing_bytes; }
   /**

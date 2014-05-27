@@ -45,10 +45,29 @@ const static_field cdr_static_fields[] = {
 	{ "global_tag", "varchar" },
 };
 
-static string join_str_vector(const vector<string> v,const string delim){
+static string join_str_vector(const vector<string> &v,const string &delim){
 	std::stringstream ss;
 	for(vector<string>::const_iterator i = v.begin();i!=v.end();++i){
 		if(i != v.begin())
+			ss << delim;
+		ss << *i;
+	}
+	return string(ss.str());
+}
+
+static string join_str_vector2(const vector<string> &v1,
+							   const vector<string> &v2,
+							   const string &delim){
+	std::stringstream ss;
+	for(vector<string>::const_iterator i = v1.begin();i!=v1.end();++i){
+		if(i != v1.begin())
+			ss << delim;
+		ss << *i;
+	}
+	//if(!(v1.empty()||v2.empty()))
+		ss << "/";
+	for(vector<string>::const_iterator i = v2.begin();i!=v2.end();++i){
+		if(i != v2.begin())
 			ss << delim;
 		ss << *i;
 	}
@@ -571,10 +590,14 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr){
 		invoc_field(cdr->msg_logger_path);
 		invoc_field(cdr->dump_level_id);
 
-		invoc_field(join_str_vector(cdr->legA_incoming_payloads,","));
-		invoc_field(join_str_vector(cdr->legA_outgoing_payloads,","));
-		invoc_field(join_str_vector(cdr->legB_incoming_payloads,","));
-		invoc_field(join_str_vector(cdr->legB_outgoing_payloads,","));
+		invoc_field(join_str_vector2(cdr->legA_payloads.incoming,
+									 cdr->legA_payloads.incoming_relayed,","));
+		invoc_field(join_str_vector2(cdr->legA_payloads.outgoing,
+									cdr->legA_payloads.outgoing_relayed,","));
+		invoc_field(join_str_vector2(cdr->legB_payloads.incoming,
+									cdr->legB_payloads.incoming_relayed,","));
+		invoc_field(join_str_vector2(cdr->legB_payloads.outgoing,
+									 cdr->legB_payloads.outgoing_relayed,","));
 
 		invoc_field(cdr->legA_bytes_recvd);
 		invoc_field(cdr->legA_bytes_sent);
@@ -691,10 +714,14 @@ int CdrThread::writecdrtofile(Cdr* cdr){
 	wf << wv(cdr->orig_call_id) << wv(cdr->term_call_id) <<
 	wv(cdr->local_tag) << wv(cdr->msg_logger_path) <<
 	wv(cdr->dump_level_id) <<
-	wv(join_str_vector(cdr->legA_incoming_payloads,",")) <<
-	wv(join_str_vector(cdr->legA_outgoing_payloads,",")) <<
-	wv(join_str_vector(cdr->legB_incoming_payloads,",")) <<
-	wv(join_str_vector(cdr->legB_outgoing_payloads,",")) <<
+	wv(join_str_vector2(cdr->legA_payloads.incoming,
+						cdr->legA_payloads.incoming_relayed,",")) <<
+	wv(join_str_vector2(cdr->legA_payloads.outgoing,
+						cdr->legA_payloads.outgoing_relayed,",")) <<
+	wv(join_str_vector2(cdr->legB_payloads.incoming,
+						cdr->legB_payloads.incoming_relayed,",")) <<
+	wv(join_str_vector2(cdr->legB_payloads.outgoing,
+						cdr->legB_payloads.outgoing_relayed,",")) <<
 	wv(cdr->legA_bytes_recvd) << wv(cdr->legA_bytes_sent) <<
 	wv(cdr->legB_bytes_recvd) << wv(cdr->legB_bytes_sent) <<
 	wv(cdr->global_tag);

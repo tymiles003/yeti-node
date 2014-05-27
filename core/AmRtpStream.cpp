@@ -857,7 +857,7 @@ void AmRtpStream::bufferPacket(AmRtpPacket* p)
 
       if (NULL != relay_stream &&
 	  (!(relay_filter_dtmf && is_dtmf_packet))) {
-		add_if_no_exist(incoming_payloads,p->payload);
+		add_if_no_exist(incoming_relayed_payloads,p->payload);
 		relay_stream->relay(p);
       }
 
@@ -1156,7 +1156,7 @@ void AmRtpStream::relay(AmRtpPacket* p)
   else {
     if (logger) p->logSent(logger, &l_saddr);
 	if(session) session->onAfterRTPRelay(p,&r_saddr);
-	add_if_no_exist(outgoing_payloads,p->payload);
+	add_if_no_exist(outgoing_relayed_payloads,p->payload);
 	outgoing_bytes += p->getBufferSize();
   }
 }
@@ -1264,25 +1264,23 @@ string AmRtpStream::getPayloadName(int payload_type)
   return string("");
 }
 
-void AmRtpStream::getPayloadsHistory(std::vector<string> &incoming,std::vector<string> &outgoing){
-	std::vector<int>::const_iterator it = incoming_payloads.begin();
-	for(;it!=incoming_payloads.end();++it){
+void AmRtpStream::payloads_id2str(const std::vector<int> i, std::vector<string> &s){
+	std::vector<int>::const_iterator it = i.begin();
+	for(;it!=i.end();++it){
 		std::string pname;
 		pname = getPayloadName(*it);
 		if(pname.empty())
 			pname = "unmapped"+int2str(*it);
 		transform(pname.begin(), pname.end(), pname.begin(), ::tolower);
-		incoming.push_back(pname);
+		s.push_back(pname);
 	}
-	it = outgoing_payloads.begin();
-	for(;it!=outgoing_payloads.end();++it){
-		std::string pname;
-		pname = getPayloadName(*it);
-		if(pname.empty())
-			pname = "unmapped"+int2str(*it);
-		transform(pname.begin(), pname.end(), pname.begin(), ::tolower);
-		outgoing.push_back(pname);
-	}
+}
+
+void AmRtpStream::getPayloadsHistory(PayloadsHistory &ph){
+	payloads_id2str(incoming_payloads,ph.incoming);
+	payloads_id2str(incoming_relayed_payloads,ph.incoming_relayed);
+	payloads_id2str(outgoing_payloads,ph.outgoing);
+	payloads_id2str(outgoing_relayed_payloads,ph.outgoing_relayed);
 }
 
 PacketMem::PacketMem()

@@ -5,6 +5,7 @@
 #include "../SqlCallProfile.h"
 #include "SBCCallLeg.h"
 #include "../resources/Resource.h"
+#include "AmRtpStream.h"
 
 enum UpdateAction {
     Start,
@@ -65,8 +66,9 @@ struct Cdr: public
     AmArg dyn_fields;
     string outbound_proxy;
 
-	vector<string> legA_incoming_payloads,legB_incoming_payloads;
-	vector<string> legA_outgoing_payloads,legB_outgoing_payloads;
+	AmRtpStream::PayloadsHistory legA_payloads;
+	AmRtpStream::PayloadsHistory legB_payloads;
+
 	unsigned long legA_bytes_recvd, legB_bytes_recvd;
 	unsigned long legA_bytes_sent, legB_bytes_sent;
 
