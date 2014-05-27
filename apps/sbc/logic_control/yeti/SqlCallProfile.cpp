@@ -21,7 +21,7 @@
 #define assign_type_safe(field,sql_field,default_value,type,failover_value)\
 	try { assign_type(field,sql_field,default_value,type);\
 	} catch(...) {\
-		ERROR("field '"#field"' not exist in db response");\
+		ERROR("field '%s' not exist in db response",sql_field);\
 		field = failover_value;\
 	}
 
