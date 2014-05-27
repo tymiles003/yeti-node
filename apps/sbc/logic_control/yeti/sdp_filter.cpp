@@ -43,17 +43,21 @@ static const SdpPayload *findPayload(const std::vector<SdpPayload>& payloads, co
 
 	for (vector<SdpPayload>::const_iterator p = payloads.begin(); p != payloads.end(); ++p) {
 		// fix for clients using non-standard names for static payload type (SPA504g: G729a)
-		/*if (transport == TP_RTPAVP && payload.payload_type < 20) {
+		/*
+		if (transport == TP_RTPAVP && payload.payload_type < 20) {
 			DBG("if (payload.payload_type != p->payload_type) %d %d",
 				payload.payload_type,p->payload_type);
 
 			if (payload.payload_type != p->payload_type) continue;
-		} else {*/
+		} else {
 			string s = p->encoding_name;
 			transform(s.begin(), s.end(), s.begin(), ::tolower);
-			DBG("before if (s != pname) continue;");
 			if (s != pname) continue;
-		//}
+		}
+		*/
+		string s = p->encoding_name;
+		transform(s.begin(), s.end(), s.begin(), ::tolower);
+		if (s != pname) continue;
 
 		if (p->clock_rate != payload.clock_rate) continue;
 		if ((p->encoding_param >= 0) && (payload.encoding_param >= 0) &&
@@ -98,7 +102,7 @@ int filter_arrange_SDP(AmSdp& sdp,
 							  const std::vector<SdpPayload> &static_payloads,
 							  bool add_codecs)
 {
-	DBG("filter_arrange_SDP() add_codecs = %s", add_codecs?"yes":"no");
+	//DBG("filter_arrange_SDP() add_codecs = %s", add_codecs?"yes":"no");
 
 	bool media_line_filtered_out = false;
 	bool media_line_left = false;
@@ -160,7 +164,7 @@ int negotiateRequestSdp(SBCCallProfile &call_profile,
 	if (!sdp_body) return 0;
 
 	if(method != SIP_METH_INVITE){
-		DBG("filterInviteSdp() called for non invite method");
+		DBG("negotiateRequestSdp() called for non invite method");
 		return 0;
 	}
 
