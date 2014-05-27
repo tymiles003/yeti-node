@@ -12,6 +12,8 @@ using std::vector;
 #define DTMF_ENCODING_NAME "TELEPHONE-EVENT"
 
 void dump_SdpPayload(const vector<SdpPayload> &p,string prefix="");
+void dump_SdpMedia(const vector<SdpMedia> &m,string prefix="");
+
 void fix_dynamic_payloads(AmSdp &sdp,PayloadIdMapping &mapping);
 
 /**
@@ -64,13 +66,14 @@ int filterRequestSdp(SBCCallLeg *call,
  * @param[in] call
  * @param[in,out] body
  * @param[in] method
- * @param[in] negotiated_media
+ * @param[in,out] negotiated_media
+ * @param[in] single_codec
  * @return 0 if succ. negative value with error code on errors
  */
 int filterReplySdp(SBCCallLeg *call,
                    AmMimeBody &body,
                    const string &method,
-				   const vector<SdpMedia> &negotiated_media,
+				   vector<SdpMedia> &negotiated_media,
 				   bool single_codec);
 
 #endif // SDP_FILTER_H

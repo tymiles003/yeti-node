@@ -24,6 +24,18 @@ void dump_SdpPayload(const vector<SdpPayload> &p,string prefix){
 	}
 }
 
+void dump_SdpMedia(const vector<SdpMedia> &m,string prefix){
+	DBG("dump SdpMedia %s %p:",prefix.c_str(),&m);
+	unsigned stream_idx = 0;
+	for (vector<SdpMedia>::const_iterator j = m.begin(); j != m.end(); ++j) {
+		if (j->type == MT_AUDIO) {
+			DBG("sdpmedia '%s' audio stream %d:",prefix.c_str(),stream_idx);
+			dump_SdpPayload(j->payloads,prefix);
+			stream_idx++;
+		}
+	}
+}
+
 void fix_dynamic_payloads(AmSdp &sdp,PayloadIdMapping &mapping){
 	DBG("fix_dynamic_payloads()");
 
@@ -223,7 +235,7 @@ inline bool should_add_codec(const std::vector<SdpPayload> &pl,const string &nam
 
 int filterReplySdp(SBCCallLeg *call,
 				   AmMimeBody &body, const string &method,
-				   const vector<SdpMedia> &negotiated_media,
+				   vector<SdpMedia> &negotiated_media,
 				   bool single_codec)
 {
 	bool a_leg = call->isALeg();
@@ -346,6 +358,7 @@ int filterReplySdp(SBCCallLeg *call,
 	fix_dynamic_payloads(sdp,call->getTranscoderMapping());
 	filterSDPalines(sdp, call_profile.sdpalinesfilter);
 
+	negotiated_media = sdp.media;
 	//update body
 	string n_body;
 	sdp.print(n_body);
