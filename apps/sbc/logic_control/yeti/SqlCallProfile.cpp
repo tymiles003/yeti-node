@@ -467,11 +467,11 @@ bool SqlCallProfile::readFilter(const pqxx::result::tuple &t, const char* cfg_ke
 }
 
 bool SqlCallProfile::readCodecPrefs(const pqxx::result::tuple &t){
-	assign_str(codec_prefs.bleg_payload_order_str,"codec_preference");
+	/*assign_str(codec_prefs.bleg_payload_order_str,"codec_preference");
 	assign_bool_str(codec_prefs.bleg_prefer_existing_payloads_str,"prefer_existing_codecs",false);
 
 	assign_str(codec_prefs.aleg_payload_order_str,"codec_preference_aleg");
-	assign_bool_str(codec_prefs.aleg_prefer_existing_payloads_str,"prefer_existing_codecs_aleg",false);
+	assign_bool_str(codec_prefs.aleg_prefer_existing_payloads_str,"prefer_existing_codecs_aleg",false);*/
 
 	assign_int(static_codecs_aleg_id,"aleg_codecs_group_id",0);
 	assign_int(static_codecs_bleg_id,"bleg_codecs_group_id",0);

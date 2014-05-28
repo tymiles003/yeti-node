@@ -482,11 +482,19 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req, pqxx::conne
 		const pqxx::result::tuple &t = (*rit);
 		SqlCallProfile* profile = new SqlCallProfile();
 		//read profile
-		if(!profile->readFromTuple(t,dyn_fields)){
+		try{
+			if(!profile->readFromTuple(t,dyn_fields)){
+				delete profile;
+				delete entry;
+				throw GetProfileException(FC_READ_FROM_TUPLE_FAILED,false);
+			}
+		} catch(pqxx::pqxx_exception &e){
+			ERROR("SQL exception while reading from profile tuple: %s.",e.base().what());
 			delete profile;
 			delete entry;
 			throw GetProfileException(FC_READ_FROM_TUPLE_FAILED,false);
 		}
+
 		//evaluate it
 		if(!profile->eval()){
 			delete profile;

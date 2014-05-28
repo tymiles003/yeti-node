@@ -40,7 +40,7 @@
 #include "sip/pcap_logger.h"
 
 typedef vector<SdpPayload>::iterator PayloadIterator;
-static string payload2str(const SdpPayload &p);
+//static string payload2str(const SdpPayload &p);
 
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -554,7 +554,7 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
   return true;
 }
 
-static bool payloadDescsEqual(const vector<PayloadDesc> &a, const vector<PayloadDesc> &b)
+/*static bool payloadDescsEqual(const vector<PayloadDesc> &a, const vector<PayloadDesc> &b)
 {
   // not sure if this function is really needed (seems that vectors can be
   // compared using builtin operator== but anyway ...)
@@ -566,7 +566,7 @@ static bool payloadDescsEqual(const vector<PayloadDesc> &a, const vector<Payload
   }
 
   return true;
-}
+}*/
 
 bool SBCCallProfile::operator==(const SBCCallProfile& rhs) const {
   bool res =
@@ -696,7 +696,7 @@ static bool str2bool(const string &s, bool &dst)
   return false;
 }
 
-static bool isTranscoderNeeded(const AmSipRequest& req, vector<PayloadDesc> &caps,
+/*static bool isTranscoderNeeded(const AmSipRequest& req, vector<PayloadDesc> &caps,
 			       bool default_value)
 {
   const AmMimeBody* body = req.body.hasContentType(SIP_APPLICATION_SDP);
@@ -723,7 +723,7 @@ static bool isTranscoderNeeded(const AmSipRequest& req, vector<PayloadDesc> &cap
   }
 
   return true; // no compatible codec found, transcoding needed
-}
+}*/
 
 void SBCCallProfile::eval_sst_config(ParamReplacerCtx& ctx,
 				     const AmSipRequest& req,
@@ -1275,7 +1275,7 @@ string SBCCallProfile::retarget(const string& alias, AmBasicSipDialog& dlg) cons
     return new_r_uri;
 }
 
-static bool readPayloadList(std::vector<PayloadDesc> &dst, const std::string &src)
+/*static bool readPayloadList(std::vector<PayloadDesc> &dst, const std::string &src)
 {
   dst.clear();
   vector<string> elems = explode(src, ",");
@@ -1285,7 +1285,7 @@ static bool readPayloadList(std::vector<PayloadDesc> &dst, const std::string &sr
     dst.push_back(payload);
   }
   return true;
-}
+}*/
 
 static bool readPayload(SdpPayload &p, const string &src)
 {
@@ -1315,13 +1315,13 @@ static bool readPayload(SdpPayload &p, const string &src)
   return true;
 }
 
-static string payload2str(const SdpPayload &p)
+/*static string payload2str(const SdpPayload &p)
 {
   string s(p.encoding_name);
   s += "/";
   s += int2str(p.clock_rate);
   return s;
-}
+}*/
 
 static bool read(const std::string &src, vector<SdpPayload> &codecs)
 {
@@ -1351,7 +1351,7 @@ static bool read(const std::string &src, vector<SdpPayload> &codecs)
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-
+#if 0
 void SBCCallProfile::CodecPreferences::orderSDP(AmSdp& sdp, bool a_leg)
 {
   // get order of payloads for the other leg!
@@ -1399,33 +1399,33 @@ bool SBCCallProfile::CodecPreferences::shouldOrderPayloads(bool a_leg)
   if (a_leg) return !bleg_payload_order.empty();
   else return !aleg_payload_order.empty();
 }
-
+#endif
 bool SBCCallProfile::CodecPreferences::readConfig(AmConfigReader &cfg)
 {
   // store string values for later evaluation
-  bleg_payload_order_str = cfg.getParameter("codec_preference");
+  /*bleg_payload_order_str = cfg.getParameter("codec_preference");
   bleg_prefer_existing_payloads_str = cfg.getParameter("prefer_existing_codecs");
   
   aleg_payload_order_str = cfg.getParameter("codec_preference_aleg");
-  aleg_prefer_existing_payloads_str = cfg.getParameter("prefer_existing_codecs_aleg");
+  aleg_prefer_existing_payloads_str = cfg.getParameter("prefer_existing_codecs_aleg");*/
 
   return true;
 }
 
 void SBCCallProfile::CodecPreferences::infoPrint() const
 {
-  DBG("A leg codec preference: %s\n", aleg_payload_order_str.c_str());
+  /*DBG("A leg codec preference: %s\n", aleg_payload_order_str.c_str());
   DBG("A leg prefer existing codecs: %s\n", aleg_prefer_existing_payloads_str.c_str());
   DBG("B leg codec preference: %s\n", bleg_payload_order_str.c_str());
-  DBG("B leg prefer existing codecs: %s\n", bleg_prefer_existing_payloads_str.c_str());
+  DBG("B leg prefer existing codecs: %s\n", bleg_prefer_existing_payloads_str.c_str());*/
 }
 
 bool SBCCallProfile::CodecPreferences::operator==(const CodecPreferences& rhs) const
 {
-  if (!payloadDescsEqual(aleg_payload_order, rhs.aleg_payload_order)) return false;
+  /*if (!payloadDescsEqual(aleg_payload_order, rhs.aleg_payload_order)) return false;
   if (!payloadDescsEqual(bleg_payload_order, rhs.bleg_payload_order)) return false;
   if (aleg_prefer_existing_payloads != rhs.aleg_prefer_existing_payloads) return false;
-  if (bleg_prefer_existing_payloads != rhs.bleg_prefer_existing_payloads) return false;
+  if (bleg_prefer_existing_payloads != rhs.bleg_prefer_existing_payloads) return false;*/
   return true;
 }
 
@@ -1433,7 +1433,7 @@ string SBCCallProfile::CodecPreferences::print() const
 {
   string res;
 
-  res += "codec_preference: ";
+  /*res += "codec_preference: ";
   for (vector<PayloadDesc>::const_iterator i = bleg_payload_order.begin(); i != bleg_payload_order.end(); ++i) {
     if (i != bleg_payload_order.begin()) res += ",";
     res += i->print();
@@ -1453,7 +1453,7 @@ string SBCCallProfile::CodecPreferences::print() const
   
   res += "prefer_existing_codecs_aleg: ";
   if (aleg_prefer_existing_payloads) res += "yes\n"; 
-  else res += "no\n";
+  else res += "no\n";*/
 
   return res;
 }
@@ -1461,14 +1461,14 @@ string SBCCallProfile::CodecPreferences::print() const
 bool SBCCallProfile::CodecPreferences::evaluate(ParamReplacerCtx& ctx,
 						const AmSipRequest& req)
 {
-  REPLACE_BOOL(aleg_prefer_existing_payloads_str, aleg_prefer_existing_payloads);
+  /*REPLACE_BOOL(aleg_prefer_existing_payloads_str, aleg_prefer_existing_payloads);
   REPLACE_BOOL(bleg_prefer_existing_payloads_str, bleg_prefer_existing_payloads);
   
   REPLACE_NONEMPTY_STR(aleg_payload_order_str);
   REPLACE_NONEMPTY_STR(bleg_payload_order_str);
 
   if (!readPayloadList(bleg_payload_order, bleg_payload_order_str)) return false;
-  if (!readPayloadList(aleg_payload_order, aleg_payload_order_str)) return false;
+  if (!readPayloadList(aleg_payload_order, aleg_payload_order_str)) return false;*/
 
   return true;
 }
