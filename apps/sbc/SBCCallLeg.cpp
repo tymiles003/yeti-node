@@ -1822,9 +1822,9 @@ void SBCCallLeg::computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &
   if (call_profile.transcoder.isActive()) {
     TRACE("entering transcoder's computeRelayMask(%s)\n", a_leg ? "A leg" : "B leg");
 
-    SBCCallProfile::TranscoderSettings &transcoder_settings = call_profile.transcoder;
-    PayloadMask m1, m2;
-    bool use_m1 = false;
+	//SBCCallProfile::TranscoderSettings &transcoder_settings = call_profile.transcoder;
+	PayloadMask m1/*, m2*/;
+	//bool use_m1 = false;
 
     /* if "m" contains only "norelay" codecs, relay is enabled for them (main idea
      * of these codecs is to limit network bandwidth and it makes not much sense
@@ -1835,8 +1835,8 @@ void SBCCallLeg::computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &
      * => if m contains at least some codecs, relay is enabled */
     enable = !m.payloads.empty();
 
-    vector<SdpPayload> &norelay_payloads =
-      a_leg ? transcoder_settings.audio_codecs_norelay_aleg : transcoder_settings.audio_codecs_norelay;
+	/*vector<SdpPayload> &norelay_payloads =
+	  a_leg ? transcoder_settings.audio_codecs_norelay_aleg : transcoder_settings.audio_codecs_norelay;*/
 
     vector<SdpPayload>::const_iterator p;
     for (p = m.payloads.begin(); p != m.payloads.end(); ++p) {
@@ -1846,12 +1846,11 @@ void SBCCallLeg::computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &
       if(strcasecmp("telephone-event",p->encoding_name.c_str()) == 0) continue;
 
       // mark every codec for relay in m2
-      TRACE("m2: marking payload %d for relay\n", p->payload_type);
-      m2.set(p->payload_type);
+	  TRACE("marking payload %d for relay\n", p->payload_type);
+	  m1.set(p->payload_type);
 
-      if (!containsPayload(norelay_payloads, *p, m.transport)) {
+	  /*if (!containsPayload(norelay_payloads, *p, m.transport)) {
         // this payload can be relayed
-
         TRACE("m1: marking payload %d for relay\n", p->payload_type);
         m1.set(p->payload_type);
 
@@ -1861,12 +1860,13 @@ void SBCCallLeg::computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &
           // payloads which should not be ralyed if possible)
           use_m1 = true;
         }
-      }
+	  }*/
     }
 
-    TRACE("using %s\n", use_m1 ? "m1" : "m2");
-    if (use_m1) mask = m1;
-    else mask = m2;
+	/*TRACE("using %s\n", use_m1 ? "m1" : "m2");
+	if (use_m1) mask = m1;
+	else mask = m2;*/
+	mask = m1;
   }
   else {
     // for non-transcoding modes use default

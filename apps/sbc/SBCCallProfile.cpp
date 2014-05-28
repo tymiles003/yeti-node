@@ -1507,7 +1507,7 @@ bool SBCCallProfile::TranscoderSettings::readDTMFMode(const std::string &src)
 
 void SBCCallProfile::TranscoderSettings::infoPrint() const
 {
-  DBG("transcoder audio codecs: %s\n", audio_codecs_str.c_str());
+  //DBG("transcoder audio codecs: %s\n", audio_codecs_str.c_str());
   DBG("callee codec capabilities: %s\n", callee_codec_capabilities_str.c_str());
   DBG("enable transcoder: %s\n", transcoder_mode_str.c_str());
   DBG("norelay audio codecs: %s\n", audio_codecs_norelay_str.c_str());
@@ -1517,7 +1517,7 @@ void SBCCallProfile::TranscoderSettings::infoPrint() const
 bool SBCCallProfile::TranscoderSettings::readConfig(AmConfigReader &cfg)
 {
   // store string values for later evaluation
-  audio_codecs_str = cfg.getParameter("transcoder_codecs");
+  //audio_codecs_str = cfg.getParameter("transcoder_codecs");
   callee_codec_capabilities_str = cfg.getParameter("callee_codeccaps");
   transcoder_mode_str = cfg.getParameter("enable_transcoder");
   dtmf_mode_str = cfg.getParameter("dtmf_transcoding");
@@ -1533,17 +1533,18 @@ bool SBCCallProfile::TranscoderSettings::operator==(const TranscoderSettings& rh
   bool res = (transcoder_mode == rhs.transcoder_mode);
   res = res && (enabled == rhs.enabled);
   res = res && (payloadDescsEqual(callee_codec_capabilities, rhs.callee_codec_capabilities));
-  res = res && (audio_codecs == rhs.audio_codecs);
+  //res = res && (audio_codecs == rhs.audio_codecs);
   return res;
 }
 
 string SBCCallProfile::TranscoderSettings::print() const
 {
-  string res("transcoder audio codecs:");
+  string res;
+  /*string res("transcoder audio codecs:");
   for (vector<SdpPayload>::const_iterator i = audio_codecs.begin(); i != audio_codecs.end(); ++i) {
     res += " ";
     res += payload2str(*i);
-  }
+  }*/
 
   res += "\ncallee codec capabilities:";
   for (vector<PayloadDesc>::const_iterator i = callee_codec_capabilities.begin(); 
@@ -1572,13 +1573,13 @@ bool SBCCallProfile::TranscoderSettings::evaluate(ParamReplacerCtx& ctx,
 						  const AmSipRequest& req)
 {
   REPLACE_NONEMPTY_STR(transcoder_mode_str);
-  REPLACE_NONEMPTY_STR(audio_codecs_str);
+  //REPLACE_NONEMPTY_STR(audio_codecs_str);
   REPLACE_NONEMPTY_STR(audio_codecs_norelay_str);
   REPLACE_NONEMPTY_STR(audio_codecs_norelay_aleg_str);
   REPLACE_NONEMPTY_STR(callee_codec_capabilities_str);
   REPLACE_NONEMPTY_STR(lowfi_codecs_str);  
 
-  if (!read(audio_codecs_str, audio_codecs)) return false;
+  //if (!read(audio_codecs_str, audio_codecs)) return false;
   if (!read(audio_codecs_norelay_str, audio_codecs_norelay)) return false;
   if (!read(audio_codecs_norelay_aleg_str, audio_codecs_norelay_aleg)) return false;
 
@@ -1603,10 +1604,10 @@ bool SBCCallProfile::TranscoderSettings::evaluate(ParamReplacerCtx& ctx,
 
   DBG("transcoder is %s\n", enabled ? "enabled": "disabled");
 
-  if (enabled && audio_codecs.empty()) {
+  /*if (enabled && audio_codecs.empty()) {
     ERROR("transcoder is enabled but no transcoder codecs selected ... disabling it\n");
-    enabled = false;
-  }
+	enabled = false;
+  }*/
 
   return true;
 }
