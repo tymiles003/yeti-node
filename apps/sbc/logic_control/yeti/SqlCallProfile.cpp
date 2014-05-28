@@ -485,12 +485,12 @@ bool SqlCallProfile::readCodecPrefs(const pqxx::result::tuple &t){
 bool SqlCallProfile::readTranscoder(const pqxx::result::tuple &t){
 	// store string values for later evaluation
 	//assign_str(transcoder.audio_codecs_str,"transcoder_codecs");
-	assign_str(transcoder.callee_codec_capabilities_str,"callee_codeccaps");
-	assign_str(transcoder.transcoder_mode_str,"enable_transcoder");
+	//assign_str(transcoder.callee_codec_capabilities_str,"callee_codeccaps");
+	//assign_str(transcoder.transcoder_mode_str,"enable_transcoder");
 	assign_str(transcoder.dtmf_mode_str,"dtmf_transcoding");
 	assign_str(transcoder.lowfi_codecs_str,"lowfi_codecs");
-	assign_str(transcoder.audio_codecs_norelay_str,"prefer_transcoding_for_codecs");
-	assign_str(transcoder.audio_codecs_norelay_aleg_str,"prefer_transcoding_for_codecs_aleg");
+	//assign_str(transcoder.audio_codecs_norelay_str,"prefer_transcoding_for_codecs");
+	//assign_str(transcoder.audio_codecs_norelay_aleg_str,"prefer_transcoding_for_codecs_aleg");
 
 	return true;
 }

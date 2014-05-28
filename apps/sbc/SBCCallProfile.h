@@ -220,19 +220,19 @@ struct SBCCallProfile
 
   struct TranscoderSettings {
     // non-replaced parameters
-	string callee_codec_capabilities_str,/* audio_codecs_str, */
-      transcoder_mode_str, lowfi_codecs_str, dtmf_mode_str,
-      audio_codecs_norelay_str, audio_codecs_norelay_aleg_str;
+	string /*callee_codec_capabilities_str, audio_codecs_str,
+	  transcoder_mode_str, */lowfi_codecs_str, dtmf_mode_str/*,
+	  audio_codecs_norelay_str, audio_codecs_norelay_aleg_str*/;
 
-    std::vector<PayloadDesc> callee_codec_capabilities;
+	//std::vector<PayloadDesc> callee_codec_capabilities;
 	//std::vector<SdpPayload> audio_codecs;
-    std::vector<SdpPayload> audio_codecs_norelay;
-    std::vector<SdpPayload> audio_codecs_norelay_aleg;
+	//std::vector<SdpPayload> audio_codecs_norelay;
+	//std::vector<SdpPayload> audio_codecs_norelay_aleg;
     std::vector<SdpPayload> lowfi_codecs;
 
-    enum { Always, OnMissingCompatible, Never } transcoder_mode;
+	//enum { Always, OnMissingCompatible, Never } transcoder_mode;
     enum { DTMFAlways, DTMFLowFiCodecs, DTMFNever } dtmf_mode;
-    bool readTranscoderMode(const std::string &src);
+	//bool readTranscoderMode(const std::string &src);
     bool readDTMFMode(const std::string &src);
   
     bool enabled;
@@ -244,7 +244,7 @@ struct SBCCallProfile
     string print() const;
 
     bool isActive() { return enabled; }
-    TranscoderSettings(): enabled(false), transcoder_mode(Never) { }
+	TranscoderSettings(): enabled(true) { }
   } transcoder;
 
   struct CodecPreferences {

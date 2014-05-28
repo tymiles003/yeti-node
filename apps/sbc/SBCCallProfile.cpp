@@ -1475,7 +1475,7 @@ bool SBCCallProfile::CodecPreferences::evaluate(ParamReplacerCtx& ctx,
 
 //////////////////////////////////////////////////////////////////////////////////
 
-bool SBCCallProfile::TranscoderSettings::readTranscoderMode(const std::string &src)
+/*bool SBCCallProfile::TranscoderSettings::readTranscoderMode(const std::string &src)
 {
   static const string always("always");
   static const string never("never");
@@ -1488,7 +1488,7 @@ bool SBCCallProfile::TranscoderSettings::readTranscoderMode(const std::string &s
   ERROR("unknown value of enable_transcoder option: %s\n", src.c_str());
 
   return false;
-}
+}*/
 
 bool SBCCallProfile::TranscoderSettings::readDTMFMode(const std::string &src)
 {
@@ -1508,61 +1508,61 @@ bool SBCCallProfile::TranscoderSettings::readDTMFMode(const std::string &src)
 void SBCCallProfile::TranscoderSettings::infoPrint() const
 {
   //DBG("transcoder audio codecs: %s\n", audio_codecs_str.c_str());
-  DBG("callee codec capabilities: %s\n", callee_codec_capabilities_str.c_str());
-  DBG("enable transcoder: %s\n", transcoder_mode_str.c_str());
-  DBG("norelay audio codecs: %s\n", audio_codecs_norelay_str.c_str());
-  DBG("norelay audio codecs (aleg): %s\n", audio_codecs_norelay_aleg_str.c_str());
+  //DBG("callee codec capabilities: %s\n", callee_codec_capabilities_str.c_str());
+  //DBG("enable transcoder: %s\n", transcoder_mode_str.c_str());
+  //DBG("norelay audio codecs: %s\n", audio_codecs_norelay_str.c_str());
+  //DBG("norelay audio codecs (aleg): %s\n", audio_codecs_norelay_aleg_str.c_str());
 }
 
 bool SBCCallProfile::TranscoderSettings::readConfig(AmConfigReader &cfg)
 {
   // store string values for later evaluation
   //audio_codecs_str = cfg.getParameter("transcoder_codecs");
-  callee_codec_capabilities_str = cfg.getParameter("callee_codeccaps");
-  transcoder_mode_str = cfg.getParameter("enable_transcoder");
+  //callee_codec_capabilities_str = cfg.getParameter("callee_codeccaps");
+  //transcoder_mode_str = cfg.getParameter("enable_transcoder");
   dtmf_mode_str = cfg.getParameter("dtmf_transcoding");
   lowfi_codecs_str = cfg.getParameter("lowfi_codecs");
-  audio_codecs_norelay_str = cfg.getParameter("prefer_transcoding_for_codecs");
-  audio_codecs_norelay_aleg_str = cfg.getParameter("prefer_transcoding_for_codecs_aleg");
+  //audio_codecs_norelay_str = cfg.getParameter("prefer_transcoding_for_codecs");
+  //audio_codecs_norelay_aleg_str = cfg.getParameter("prefer_transcoding_for_codecs_aleg");
 
   return true;
 }
 
 bool SBCCallProfile::TranscoderSettings::operator==(const TranscoderSettings& rhs) const
 {
-  bool res = (transcoder_mode == rhs.transcoder_mode);
-  res = res && (enabled == rhs.enabled);
-  res = res && (payloadDescsEqual(callee_codec_capabilities, rhs.callee_codec_capabilities));
+  //bool res = (transcoder_mode == rhs.transcoder_mode);
+  bool res = (enabled == rhs.enabled);
+  //res = res && (payloadDescsEqual(callee_codec_capabilities, rhs.callee_codec_capabilities));
   //res = res && (audio_codecs == rhs.audio_codecs);
   return res;
 }
 
 string SBCCallProfile::TranscoderSettings::print() const
 {
-  string res;
   /*string res("transcoder audio codecs:");
   for (vector<SdpPayload>::const_iterator i = audio_codecs.begin(); i != audio_codecs.end(); ++i) {
     res += " ";
     res += payload2str(*i);
   }*/
 
-  res += "\ncallee codec capabilities:";
+  /*res += "\ncallee codec capabilities:";
   for (vector<PayloadDesc>::const_iterator i = callee_codec_capabilities.begin(); 
       i != callee_codec_capabilities.end(); ++i)
   {
     res += " ";
     res += i->print();
-  }
+  }*/
 
-  string s("?");
+  /*string s("?");
   switch (transcoder_mode) {
     case Always: s = "always"; break;
     case Never: s = "never"; break;
     case OnMissingCompatible: s = "on_missing_compatible"; break;
   }
-  res += "\nenable transcoder: " + s;
+  res += "\nenable transcoder: " + s;*/
   
-  res += "\ntranscoder currently enabled: ";
+  string res("transcoder currently enabled: ");
+  //res += "\ntranscoder currently enabled: ";
   if (enabled) res += "yes\n";
   else res += "no\n";
   
@@ -1572,27 +1572,28 @@ string SBCCallProfile::TranscoderSettings::print() const
 bool SBCCallProfile::TranscoderSettings::evaluate(ParamReplacerCtx& ctx,
 						  const AmSipRequest& req)
 {
-  REPLACE_NONEMPTY_STR(transcoder_mode_str);
+  //REPLACE_NONEMPTY_STR(transcoder_mode_str);
   //REPLACE_NONEMPTY_STR(audio_codecs_str);
-  REPLACE_NONEMPTY_STR(audio_codecs_norelay_str);
-  REPLACE_NONEMPTY_STR(audio_codecs_norelay_aleg_str);
-  REPLACE_NONEMPTY_STR(callee_codec_capabilities_str);
+  //REPLACE_NONEMPTY_STR(audio_codecs_norelay_str);
+  //REPLACE_NONEMPTY_STR(audio_codecs_norelay_aleg_str);
+  //REPLACE_NONEMPTY_STR(callee_codec_capabilities_str);
   REPLACE_NONEMPTY_STR(lowfi_codecs_str);  
 
   //if (!read(audio_codecs_str, audio_codecs)) return false;
-  if (!read(audio_codecs_norelay_str, audio_codecs_norelay)) return false;
-  if (!read(audio_codecs_norelay_aleg_str, audio_codecs_norelay_aleg)) return false;
+  //if (!read(audio_codecs_norelay_str, audio_codecs_norelay)) return false;
+  //if (!read(audio_codecs_norelay_aleg_str, audio_codecs_norelay_aleg)) return false;
 
-  if (!readPayloadList(callee_codec_capabilities, callee_codec_capabilities_str)) 
-    return false;
+  /*if (!readPayloadList(callee_codec_capabilities, callee_codec_capabilities_str))
+	return false;*/
   
-  if (!readTranscoderMode(transcoder_mode_str)) return false;
+  //if (!readTranscoderMode(transcoder_mode_str)) return false;
 
   if (!readDTMFMode(dtmf_mode_str)) return false;
 
   if (!read(lowfi_codecs_str, lowfi_codecs)) return false;
 
   // enable transcoder according to transcoder mode and optionally request's SDP
+#if 0
   switch (transcoder_mode) {
     case Always: enabled = true; break;
     case Never: enabled = false; break;
@@ -1601,6 +1602,7 @@ bool SBCCallProfile::TranscoderSettings::evaluate(ParamReplacerCtx& ctx,
                                  true /* if SDP can't be analyzed, enable transcoder */); 
       break;
   }
+#endif
 
   DBG("transcoder is %s\n", enabled ? "enabled": "disabled");
 
