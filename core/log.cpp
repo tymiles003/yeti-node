@@ -175,7 +175,7 @@ void init_logging()
   log_hooks.clear();
 
 #ifndef DISABLE_SYSLOG_LOG
-  register_log_hook(&syslog_log);
+  //register_log_hook(&syslog_log);
   AmPlugIn::instance()->registerLoggingFacility(syslog_log.getName(),&syslog_log);
 #endif
 
