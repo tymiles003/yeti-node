@@ -90,6 +90,7 @@ void Cdr::update_sql(const SqlCallProfile &profile){
 void Cdr::update_sbc(const SBCCallProfile &profile){
 	DBG("Cdr::%s(SBCCallProfile)",FUNC_NAME);
 	msg_logger_path = profile.get_logger_path();
+	global_tag =  profile.global_tag;
 }
 
 void Cdr::update(const AmSipRequest &req){
