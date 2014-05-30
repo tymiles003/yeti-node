@@ -3,6 +3,7 @@
 #include <string>
 #include "AmUtils.h"
 #include "../yeti.h"
+#include "../alarms.h"
 
 PgConnection::PgConnection(const PGSTD::string &opts):
 	pqxx::connection(opts),
@@ -134,6 +135,7 @@ void PgConnectionPool::returnConnection(PgConnection* c,conn_stat stat){
 	} else {
 		delete c;
 		connections_mut.lock();
+			RAISE_ALARM(alarms::MGMT_DB_CONN);
 			failed_connections++;
 			unsigned int inactive_size = failed_connections;
 		connections_mut.unlock();
@@ -210,6 +212,8 @@ void PgConnectionPool::run(){
 	DBG("PgCP %s thread starting\n",pool_name.c_str());
 	setThreadName("yeti-pg-cp");
 
+	SET_ALARM(alarms::MGMT_DB_CONN,failed_connections,true);
+
 	try_connect.set(true); //for initial connections setup
 
 	while (!gotostop) {
@@ -245,6 +249,7 @@ void PgConnectionPool::run(){
 							failed_connections--;
 						connections_mut.unlock();
 						reconnect_failed_alarm = false;
+						CLEAR_ALARM(alarms::MGMT_DB_CONN);
 						succ = true;
 					} else {
 						throw new pqxx::broken_connection("can't open connection");

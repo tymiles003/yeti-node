@@ -5,6 +5,7 @@ set (yeti_SRCS
 	yeti.cpp
 	yeti_cc.cpp
 	yeti_xmlrpc.cpp
+	alarms.cpp
 	SqlRouter.cpp
 	SqlCallProfile.cpp
 	CallCtx.cpp

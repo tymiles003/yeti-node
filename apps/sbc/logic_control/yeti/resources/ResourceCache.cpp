@@ -73,8 +73,8 @@ ResourceCache::ResourceCache():
 
 int ResourceCache::configure(const AmConfigReader &cfg){
 	return
-		write_pool.configure(cfg,"write") ||
-		read_pool.configure(cfg,"read");
+		write_pool.configure(cfg,"write",false) ||
+		read_pool.configure(cfg,"read",true);
 }
 
 void ResourceCache::run(){

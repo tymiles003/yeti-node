@@ -4,6 +4,7 @@
 #include <pqxx/pqxx>
 #include "../Version.h"
 #include "../yeti.h"
+#include "../alarms.h"
 
 const static_field cdr_static_fields[] = {
 	{ "node_id", "integer" },
@@ -45,7 +46,7 @@ const static_field cdr_static_fields[] = {
 	{ "global_tag", "varchar" },
 };
 
-static string join_str_vector(const vector<string> &v,const string &delim){
+/*static string join_str_vector(const vector<string> &v,const string &delim){
 	std::stringstream ss;
 	for(vector<string>::const_iterator i = v.begin();i!=v.end();++i){
 		if(i != v.begin())
@@ -53,7 +54,7 @@ static string join_str_vector(const vector<string> &v,const string &delim){
 		ss << *i;
 	}
 	return string(ss.str());
-}
+}*/
 
 static string join_str_vector2(const vector<string> &v1,
 							   const vector<string> &v2,
@@ -315,10 +316,12 @@ while(true){
 					if(!masteralarm){
 						ERROR("CdrWriter %p master DB connection failed alarm raised",this);
 						masteralarm = true;
+						RAISE_ALARM(alarms::CDR_DB_CONN);
 					}
 				} else {
 					INFO("CdrWriter %p master DB connection failed alarm cleared",this);
 					masteralarm = false;
+					CLEAR_ALARM(alarms::CDR_DB_CONN);
 				}
 			}
 		} else {
@@ -326,10 +329,12 @@ while(true){
 				if(!masteralarm){
 					ERROR("CdrWriter %p master DB connection failed alarm raised",this);
 					masteralarm = true;
+					RAISE_ALARM(alarms::CDR_DB_CONN);
 				}
 			} else {
 				INFO("CdrWriter %p master DB connection failed alarm cleared",this);
 				masteralarm = false;
+				CLEAR_ALARM(alarms::CDR_DB_CONN);
 			}
 		}
 		//check slave connecion
@@ -346,10 +351,12 @@ while(true){
 					if(!slavealarm){
 						ERROR("CdrWriter %p slave DB connection failed alarm raised",this);
 						slavealarm = true;
+						RAISE_ALARM(alarms::CDR_DB_CONN);
 					}
 				} else {
 					INFO("CdrWriter %p slave DB connection failed alarm cleared",this);
 					slavealarm = false;
+					CLEAR_ALARM(alarms::CDR_DB_CONN);
 				}
 			}
 		} else {
@@ -357,10 +364,12 @@ while(true){
 				if(!slavealarm){
 					ERROR("CdrWriter %p slave DB connection failed alarm raised",this);
 					slavealarm = true;
+					RAISE_ALARM(alarms::CDR_DB_CONN);
 				}
 			} else {
 				INFO("CdrWriter %p slave DB connection failed alarm cleared",this);
 				slavealarm = false;
+				CLEAR_ALARM(alarms::CDR_DB_CONN);
 			}
 		}
 		continue;

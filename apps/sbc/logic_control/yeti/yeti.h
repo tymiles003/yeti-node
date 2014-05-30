@@ -144,6 +144,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   xmlrpc_handler requestSystemShutdownCancel;
 
   xmlrpc_handler showSystemStatus;
+  xmlrpc_handler showSystemAlarms;
 
   bool reload_config(AmArg &ret);
   bool check_event_id(int event_id, AmArg &ret);

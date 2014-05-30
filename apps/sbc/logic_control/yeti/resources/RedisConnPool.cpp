@@ -2,6 +2,7 @@
 #include "log.h"
 #include "AmUtils.h"
 #include "exception"
+#include "../alarms.h"
 
 RedisConnPool::RedisConnPool():
 	tostop(false),
@@ -12,8 +13,9 @@ RedisConnPool::RedisConnPool():
 
 }
 
-int RedisConnPool::configure(const AmConfigReader &cfg,string name){
+int RedisConnPool::configure(const AmConfigReader &cfg,string name, bool is_readonly){
 	pool_name = name;
+	readonly = is_readonly;
 	pool_size= cfg.getParameterInt(name+"_redis_size");
 	if(!pool_size){
 		ERROR("no pool size for %s redis",name.c_str());
@@ -79,6 +81,7 @@ void RedisConnPool::run(){
 					active_ctxs.push_back(ctx);
 					failed_count--;
 				conn_mtx.unlock();
+				CLEAR_ALARM(readonly?alarms::REDIS_READ_CONN:alarms::REDIS_WRITE_CONN);
 				active_ready.set(true);
 			} else {
 				DBG("can't reconnect sleep %us",5);
@@ -171,6 +174,7 @@ void RedisConnPool::putConnection(redisContext *ctx,ConnReturnState state){
 			failed_ctxs.push_back(ctx);
 			failed_count++;
 		conn_mtx.unlock();
+		RAISE_ALARM(readonly?alarms::REDIS_READ_CONN:alarms::REDIS_WRITE_CONN);
 		failed_ready.set(true);
 		return;
 	}

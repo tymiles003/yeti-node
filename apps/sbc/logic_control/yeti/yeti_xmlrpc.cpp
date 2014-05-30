@@ -2,6 +2,7 @@
 #include "Version.h"
 #include "Registration.h"
 #include "codecs_bench.h"
+#include "alarms.h"
 
 #include "sip/transport.h"
 #include "AmPlugIn.h"
@@ -89,7 +90,9 @@ void Yeti::init_xmlrpc_cmds(){
 
 		reg_leaf(show,show_system,"system","system cmds");
 			reg_method(show_system,"log-level","loglevels",showSystemLogLevel,"");
-			reg_method(show_system,"status","system alarms and states",showSystemStatus,"");
+			reg_method(show_system,"status","system states",showSystemStatus,"");
+			reg_method(show_system,"alarms","system alarms",showSystemAlarms,"");
+
 	/* request */
 	reg_leaf(root,request,"request","modify commands");
 		reg_leaf(request,request_router,"router","active router instance");
@@ -1108,6 +1111,22 @@ void Yeti::showSystemStatus(const AmArg& args, AmArg& ret){
 	ret.push(200);
 	ret.push(s);
 
+}
+
+void Yeti::showSystemAlarms(const AmArg& args, AmArg& ret){
+	AmArg as;
+	alarms *a = alarms::instance();
+	for(int id = 0; id < alarms::MAX_ALARMS; id++){
+		AmArg r;
+		alarm_entry &e = a->get(id);
+		r["id"] = id;
+		r["name"] = e.get_name();
+		r["state"] = e.is_raised();
+		r["changed_at"] = timeval2str(e.get_change_time());
+		as.push(r);
+	}
+	ret.push(200);
+	ret.push(as);
 }
 
 inline void graceful_suicide(){

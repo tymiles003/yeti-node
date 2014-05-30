@@ -24,6 +24,7 @@ class RedisConnPool : public
 	AmCondition <bool>failed_ready;
 	AmCondition <bool>active_ready;
 	bool tostop;
+	bool readonly;
 
 	unsigned int pool_size;
 	unsigned int failed_count;
@@ -40,7 +41,7 @@ public:
 	};
 
 	RedisConnPool();
-	int configure(const AmConfigReader &cfg,string name);
+	int configure(const AmConfigReader &cfg,string name,bool is_readonly);
 	void run();
 	void on_stop();
 
