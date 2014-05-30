@@ -62,14 +62,18 @@ class shell(Cmd):
 		return self.completedefault(text,' '.join(line.split()[1:]),begidx,endidx)
 
 	def completenames(self, text, *ignored):
+		dotext = 'do_'+text
+		r = [a[3:] for a in self.get_names() if a.startswith(dotext)]
 		if self.node_id is None:
-			return []
- 		return [a for a in self.rpc_complete([]) if a.startswith(text)]
+			return r
+ 		return r+[a for a in self.rpc_complete([]) if a.startswith(text)]
 
 	def completedefault(self, text, line, begidx, endidx):
 		if self.node_id is None:
 			return []
 		q = line.split()
+		if len(q) and q[0] in [ a[3:] for a in self.get_names() ]:
+			return []
 		c = self.rpc_complete(q)
 		if c is None:
 			p = self.rpc_complete(q[:-1])
