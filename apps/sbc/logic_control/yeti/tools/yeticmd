@@ -5,6 +5,33 @@
 import os, sys, signal, xmlrpclib, pprint, ConfigParser
 from cmd import Cmd
 
+def walk_over_keys(v,keys,key):
+	kk = key[:]
+	for i,k in enumerate(keys):
+		if k == '@':
+			if type(v) is not list:
+				print "invalid keyword '@' for non list type"
+				return
+			else:
+				for j,l in  enumerate(v):
+					kk[i+1] = "{}[{}]".format(key[i+1],j)
+					walk_over_keys(l,keys[i+1:],kk)
+				break
+				
+		if k not in v:
+			print "invalid item '{}'".format(k)
+			return
+		v = v[k]
+		if i+1 == len(keys):
+			pprint.PrettyPrinter(indent=4).pprint(v)
+		else:
+			if type(v) is list:
+				for j,l in  enumerate(v):
+					kk[i+1] = "{}[{}]".format(key[i+1],j)
+					walk_over_keys(l,keys[i+1:],kk)
+				break
+	return
+
 class shell(Cmd):
 	prompt = 'YETI> '
 	doc_header = ''
@@ -38,8 +65,22 @@ class shell(Cmd):
 		try:
 			if self.node_id is None:
 				raise BaseException("you should choose node first")
-			pprint.PrettyPrinter(indent=4).pprint(self.rpc_do(line.split()))
+			args =line.split('|')
+			cmds = args[0].split()
+			keys = args[1].strip() if len(args) > 1 else None
+
+			data = self.rpc_do(cmds)
+	
+			if keys is not None and len(keys) > 0:
+				kk = keys.split('.')
+				walk_over_keys(data[1],kk[:],kk)
+			else:
+				if keys is not None:
+					data = data[1]
+				pprint.PrettyPrinter(indent=4).pprint(data)
+					
 		except BaseException as err:
+			print "err"
 			print err
 
 	def default(self,line):
@@ -66,7 +107,7 @@ class shell(Cmd):
 		r = [a[3:] for a in self.get_names() if a.startswith(dotext)]
 		if self.node_id is None:
 			return r
- 		return r+[a for a in self.rpc_complete([]) if a.startswith(text)]
+		return r+[a for a in self.rpc_complete([]) if a.startswith(text)]
 
 	def completedefault(self, text, line, begidx, endidx):
 		if self.node_id is None:
