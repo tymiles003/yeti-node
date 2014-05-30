@@ -57,6 +57,11 @@ typedef unsigned char HASHHEX[HASHHEXLEN+1];
 
 /** @file AmUtils.h */
 
+/**
+ * Convert an timeval to a string. (uses just tv_sec part of timeval struct)
+ */
+string timeval2str(const timeval &tv);
+
 /** 
  * Convert an int to a string. 
  */

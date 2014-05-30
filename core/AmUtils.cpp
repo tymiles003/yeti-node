@@ -56,6 +56,18 @@
 
 static char _int2str_lookup[] = { '0', '1', '2', '3', '4', '5', '6' , '7', '8', '9' };
 
+string timeval2str(const timeval &tv)
+{
+  time_t t;
+  struct tm tt;
+  char s[64] = {0};
+
+  t = tv.tv_sec;
+  localtime_r(&t,&tt);
+  int len = strftime(s, sizeof s, "%Y-%m-%d %H:%M:%S", &tt);
+  if(len>0) return string(s,len);
+  return string("conversion error");
+}
 
 string int2str(unsigned int val)
 {
