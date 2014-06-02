@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <algorithm>
+#include "sems.h"
 
 #ifndef DISABLE_SYSLOG_LOG
 # include <syslog.h>
