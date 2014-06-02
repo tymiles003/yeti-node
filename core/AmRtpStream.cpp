@@ -1093,6 +1093,8 @@ void AmRtpStream::recvRtcpPacket()
   // clear RTP timer
   clearRTPTimeout();
 
+  handleSymmetricRtp(&recv_addr,true);
+
   if(!relay_enabled || !relay_stream ||
      !relay_stream->l_sd)
     return;
@@ -1101,8 +1103,6 @@ void AmRtpStream::recvRtcpPacket()
     ERROR("recved huge RTCP packet (%d)",recved_bytes);
     return;
   }
-
-  handleSymmetricRtp(&recv_addr,true);
 
   struct sockaddr_storage rtcp_raddr;
   memcpy(&rtcp_raddr,&relay_stream->r_saddr,sizeof(rtcp_raddr));
