@@ -77,35 +77,35 @@ bool AmSessionContainer::clean_sessions() {
   DBG("Session cleaner starting its work\n");
   
   try {
-    SessionQueue n_sessions;
-    
-    while(!d_sessions.empty()){
-      
-      AmSession* cur_session = d_sessions.front();
-      d_sessions.pop();
-      
-      ds_mut.unlock();
-      
-      if(cur_session->is_stopped() && !cur_session->isProcessingMedia()){
-	
-	MONITORING_MARK_FINISHED(cur_session->getLocalTag().c_str());
+	SessionQueue n_sessions;
 
-	DBG("session [%p] has been destroyed\n",(void*)cur_session->_pid);
-	delete cur_session;
-      }
-      else {
-	DBG("session [%p] still running\n",(void*)cur_session->_pid);
-	n_sessions.push(cur_session);
-      }
-      
-      ds_mut.lock();
-    }
-    
-    swap(d_sessions,n_sessions);
-    
+	while(!d_sessions.empty()){
+		AmSession* cur_session = d_sessions.front();
+		d_sessions.pop();
+		ds_mut.unlock();
+
+		DBG("Session cleaner: got session %p",cur_session);
+
+		if(cur_session->is_stopped() && !cur_session->isProcessingMedia()){
+			DBG("Session cleaner: call monitoring hook");
+			MONITORING_MARK_FINISHED(cur_session->getLocalTag().c_str());
+			DBG("session [%p] has been destroyed\n",(void*)cur_session->_pid);
+			delete cur_session;
+		} else {
+			DBG("session [%p] still running\n",(void*)cur_session->_pid);
+			n_sessions.push(cur_session);
+		}
+		ds_mut.lock();
+	}
+
+	swap(d_sessions,n_sessions);
+
   }catch(std::exception& e){
     ERROR("exception caught in session cleaner: %s\n", e.what());
     throw; /* throw again as this is fatal (because unlocking the mutex fails!! */
+  } catch (std::string &e){
+	ERROR("string exception caught in session cleaner: %s\n", e.c_str());
+	throw; /* throw again as this is fatal (because unlocking the mutex fails!! */
   }catch(...){
     ERROR("unknown exception caught in session cleaner!\n");
     throw; /* throw again as this is fatal (because unlocking the mutex fails!! */
