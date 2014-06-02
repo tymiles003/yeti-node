@@ -82,7 +82,6 @@ class shell(Cmd):
 				pprint.PrettyPrinter(indent=4).pprint(data)
 					
 		except BaseException as err:
-			print "err"
 			print err
 
 	def default(self,line):
