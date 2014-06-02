@@ -976,6 +976,8 @@ void Yeti::showInterfaces(const AmArg& args, AmArg& ret){
 		am_iface["local_ip"] = iface.LocalIP;
 		am_iface["local_port"] = (int)iface.LocalPort;
 		am_iface["public_ip"] = iface.PublicIP;
+		am_iface["tcp_connect_timeout"] = (int)iface.tcp_connect_timeout;
+		am_iface["tcp_idle_timeout"] = (int)iface.tcp_idle_timeout;
 		am_iface["use_raw_sockets"] = (iface.SigSockOpts&trsp_socket::use_raw_sockets)!= 0;
 		am_iface["force_via_address"] = (iface.SigSockOpts&trsp_socket::force_via_address) != 0;
 		am_iface["force_outbound_if"] = (iface.SigSockOpts&trsp_socket::force_outbound_if) != 0;
