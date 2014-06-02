@@ -1,3 +1,29 @@
+/*
+ * Copyright (C) 2010-2013 Stefan Sayer
+ * Copyright (C) 2012-2013 FRAFOS GmbH
+ *
+ * This file is part of SEMS, a free SIP media server.
+ *
+ * SEMS is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * For a license to use the SEMS software under conditions
+ * other than those described here, or to purchase support for this
+ * software, please contact iptel.org by e-mail at the following addresses:
+ *    info@iptel.org
+ *
+ * SEMS is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
 #include "SBCCallLeg.h"
 
 #include "SBCCallControlAPI.h"
@@ -22,6 +48,7 @@
 #include "ParamReplacer.h"
 #include "SDPFilter.h"
 #include "SBCEventLog.h"
+#include "SBC.h"
 
 #include <algorithm>
 
@@ -158,12 +185,14 @@ SBCCallLeg::SBCCallLeg(SBCCallLeg* caller, AmSipDialog* p_dlg,
     throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
   }
 
-  if (!initCCExtModules()) {
+  if (!initCCExtModules(call_profile.cc_interfaces, cc_modules)) {
     ERROR("initializing extended call control modules\n");
     throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
   }
 
   setLogger(caller->getLogger());
+
+  subs->allowUnsolicitedNotify(call_profile.allow_subless_notify);
 }
 
 SBCCallLeg::SBCCallLeg(AmSipDialog* p_dlg, AmSipSubscription* p_subs)
@@ -296,7 +325,7 @@ void SBCCallLeg::applyBProfile()
     } else {
       AmSessionEventHandler* h = uac_auth_f->getHandler(this);
 
-      // we cannot use the generic AmSessi(onEvent)Handler hooks,
+      // we cannot use the generic AmSessionEventHandler hooks,
       // because the hooks don't work in AmB2BSession
       setAuthHandler(h);
       DBG("uac auth enabled for callee session.\n");
@@ -793,7 +822,7 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
   // Request for B leg
   AmSipRequest invite_req(req);
 
-  initCCExtModules();
+  initCCExtModules(call_profile.cc_interfaces,cc_modules);
 
   if (!logger && !call_profile.get_logger_path().empty()) {
 	// open the logger if not already opened
@@ -936,6 +965,10 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
   // codecs filtered out might be used in direction to caller
   CallLeg::onInvite(aleg_invite_req);
 
+  subs->allowUnsolicitedNotify(call_profile.allow_subless_notify);
+
+    // initialize possibily added modules
+    initPendingCCExtModules();
   if (getCallStatus() == Disconnected) {
     // no CC module connected a callee yet
     connectCallee(to, ruri, from, aleg_invite_req, invite_req); // connect to the B leg(s) using modified request
@@ -1598,26 +1631,30 @@ bool SBCCallLeg::reinvite(const AmSdp &sdp, unsigned &request_cseq)
   return true;
 }
 
-bool SBCCallLeg::initCCExtModules()
+/**
+ * initialize modules from @arg cc_module_list with DI interface instances from @arg cc_module_di
+ * add sucessfull ext-API call control instances to cc_ext
+ * @return true on success (all modules properly initialized)
+*/
+bool SBCCallLeg::initCCExtModules(const CCInterfaceListT& cc_module_list, const vector<AmDynInvoke*>& cc_module_di)
 {
   // init extended call control modules
-  vector<AmDynInvoke*>::iterator cc_mod = cc_modules.begin();
-  for (CCInterfaceListIteratorT cc_it=call_profile.cc_interfaces.begin();
-       cc_it != call_profile.cc_interfaces.end(); cc_it++)
+  vector<AmDynInvoke*>::const_iterator cc_mod = cc_module_di.begin();
+  for (CCInterfaceListConstIteratorT cc_it = cc_module_list.begin(); cc_it != cc_module_list.end(); cc_it++)
   {
-    CCInterface& cc_if = *cc_it;
-    string& cc_module = cc_it->cc_module;
+    const CCInterface& cc_if = *cc_it;
+    const string& cc_module = cc_it->cc_module;
 
     // get extended CC interface
     try {
       AmArg args, ret;
       (*cc_mod)->invoke("getExtendedInterfaceHandler", args, ret);
-      ExtendedCCInterface *iface = reinterpret_cast<ExtendedCCInterface*>(ret[0].asObject());
+	  ExtendedCCInterface *iface = reinterpret_cast<ExtendedCCInterface*>(ret[0].asObject());
       if (iface) {
         DBG("extended CC interface offered by cc_module '%s'\n", cc_module.c_str());
         // module initialization
         if (!iface->init(this, cc_if.cc_values)) {
-	  ERROR("initializing extended call control interface\n");
+	  ERROR("initializing extended call control interface '%s'\n", cc_module.c_str());
 	  return false;
 	}
 
@@ -1636,7 +1673,40 @@ bool SBCCallLeg::initCCExtModules()
 
     ++cc_mod;
   }
+
+  if (!initPendingCCExtModules()) {
+    return false;
+  }
+
   return true; // success
+}
+
+/** init pending modules until queue is empty */
+bool SBCCallLeg::initPendingCCExtModules() {
+  while (cc_module_queue.size()) {
+    // local copy
+    CCInterfaceListT _cc_mod_queue = cc_module_queue;
+    cc_module_queue.clear();
+    vector<AmDynInvoke*> _cc_mod_ifs;
+
+    // get corresponding DI interfaces
+    if (!::getCCInterfaces(_cc_mod_queue, _cc_mod_ifs))
+      return false;
+
+    // add to call leg
+    if (!initCCExtModules(_cc_mod_queue, _cc_mod_ifs)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void SBCCallLeg::addPendingCCExtModule(const string& cc_name, const string& cc_module, const map<string, string>& cc_values) {
+  cc_module_queue.push_back(CCInterface(cc_name));
+  cc_module_queue.back().cc_module = cc_module;
+  cc_module_queue.back().cc_values = cc_values;
+  DBG("added module '%s' from module '%s' to pending CC Ext modules\n",
+      cc_name.c_str(), cc_module.c_str());
 }
 
 #define CALL_EXT_CC_MODULES(method) \

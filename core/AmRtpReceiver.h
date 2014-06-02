@@ -32,11 +32,7 @@
 #include "atomic_types.h"
 #include "singleton.h"
 
-#ifdef USE_EPOLL
-#include <sys/epoll.h>
-#else
-#include <sys/select.h>
-#endif
+#include <event2/event.h>
 
 #include <map>
 using std::greater;
@@ -51,51 +47,45 @@ class _AmRtpReceiver;
  * that are registered to it. It places the received packets in 
  * the stream's buffer. 
  */
-class AmRtpReceiverThread: public AmThread {
-
-#ifdef USE_EPOLL
-  struct StreamInfo {
-    int fd;
+class AmRtpReceiverThread
+  : public AmThread
+{
+  struct StreamInfo 
+  {
     AmRtpStream* stream;
+    struct event* ev_read;
+    AmRtpReceiverThread* thread;
 
-    StreamInfo(int f, AmRtpStream* s)
-      : fd(f), stream(s) {}
+    StreamInfo()
+      : stream(NULL),
+	ev_read(NULL),
+	thread(NULL)
+    {}
   };
-  typedef std::map<int, StreamInfo *, greater<int> > Streams;
-#else
-  struct StreamInfo {
-    unsigned int index; // index into fds table
-    AmRtpStream* stream;
 
-    StreamInfo(unsigned int i, AmRtpStream* s)
-      : index(i), stream(s) {}
-  };
-  typedef std::map<int, StreamInfo, greater<int> > Streams;
-#endif
+  typedef std::map<int, StreamInfo> Streams;
+
+  struct event_base* ev_base;
+  struct event*      ev_default;
 
   Streams  streams;
   AmMutex  streams_mut;
 
-#ifdef USE_EPOLL
-  int poll_fd;
-#else
-  struct pollfd* fds;
-#endif
-  unsigned int nfds;
+  AmSharedVar<bool> stop_requested;
 
+  static void _rtp_receiver_read_cb(evutil_socket_t sd, short what, void* arg);
+
+public:    
   AmRtpReceiverThread();
   ~AmRtpReceiverThread();
     
   void run();
   void on_stop();
-  AmSharedVar<bool> stop_requested;
 
   void addStream(int sd, AmRtpStream* stream);
   void removeStream(int sd);
 
   void stop_and_wait();
-
-  friend class _AmRtpReceiver;
 };
 
 class _AmRtpReceiver

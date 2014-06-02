@@ -59,6 +59,7 @@ struct CCInterface {
 
 typedef std::list<CCInterface> CCInterfaceListT;
 typedef CCInterfaceListT::iterator CCInterfaceListIteratorT;
+typedef CCInterfaceListT::const_iterator CCInterfaceListConstIteratorT;
 
 template <class T>
 class ref_counted_ptr
@@ -146,6 +147,8 @@ struct SBCCallProfile
   bool next_hop_fixed;
 
   string aleg_next_hop;
+
+  bool allow_subless_notify;
 
   vector<FilterEntry> headerfilter;
   vector<FilterEntry> messagefilter;
@@ -359,8 +362,9 @@ struct SBCCallProfile
     log_sip(false),
     patch_ruri_next_hop(false),
     next_hop_1st_req(false),
-	next_hop_fixed(false),
-	ringing_timeout(0)
+    next_hop_fixed(false),
+    ringing_timeout(0),
+    allow_subless_notify(false)
   { }
 
   bool readFromConfiguration(const string& name, const string profile_file_name);
@@ -407,10 +411,18 @@ struct SBCCallProfile
   /**
    * Reg-cache lookup:
    * - searches for alias in the reg-cache.
-   * - sets next-hop & outbound_interface
+   * - sets next-hop & outbound_interface on the given dialog
    * @return retargeted R-URI
    */
   string retarget(const string& alias, AmBasicSipDialog& dlg) const;
+
+  /**
+   * Reg-cache lookup:
+   * - searches for alias in the reg-cache.
+   * - sets next-hop & outbound_interface in this profile
+   * @return retargeted R-URI
+   */
+  string retarget(const string& alias);
 };
 
 #endif // _SBCCallProfile_h
