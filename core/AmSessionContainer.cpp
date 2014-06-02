@@ -98,6 +98,9 @@ bool AmSessionContainer::clean_sessions() {
 		ds_mut.lock();
 	}
 
+	DBG("Session cleaner: dead sessions container processed. n_sessions contains: %ld  sessions. swap it with dead sessions",
+		n_sessions.size());
+
 	swap(d_sessions,n_sessions);
 
   }catch(std::exception& e){
