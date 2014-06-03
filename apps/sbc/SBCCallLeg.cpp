@@ -45,6 +45,7 @@
 #include "sip/sip_trans.h"
 
 #include "HeaderFilter.h"
+#include "ReplacesMapper.h"
 #include "ParamReplacer.h"
 #include "SDPFilter.h"
 #include "SBCEventLog.h"
@@ -406,6 +407,11 @@ int SBCCallLeg::relayEvent(AmEvent* ev)
             // header filter
             inplaceHeaderFilter(req_ev->req.hdrs, call_profile.headerfilter);
           }
+
+	  if (req_ev->req.method == SIP_METH_REFER &&
+	      call_profile.fix_replaces_ref == "yes") {
+	    fixReplaces(req_ev->req.hdrs, false);
+	  }
 
 	  if((a_leg && call_profile.keep_vias)
 	     || (!a_leg && call_profile.bleg_keep_vias)) {
@@ -940,6 +946,10 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
 	}
 
   inplaceHeaderFilter(invite_req.hdrs, call_profile.headerfilter);
+
+  if (call_profile.fix_replaces_inv == "yes") {
+    fixReplaces(invite_req.hdrs, true);
+  }
 
   if (call_profile.append_headers.size() > 2) {
 	string append_headers = call_profile.append_headers;
