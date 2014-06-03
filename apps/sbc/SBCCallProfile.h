@@ -193,7 +193,8 @@ struct SBCCallProfile
 
   string refuse_with;
 
-  bool rtprelay_enabled;
+  string rtprelay_enabled;
+  bool rtprelay_enabled_value;
   string force_symmetric_rtp;
   string aleg_force_symmetric_rtp;
   bool force_symmetric_rtp_value;
@@ -355,7 +356,7 @@ struct SBCCallProfile
     dlg_nat_handling(false),
     keep_vias(false),bleg_keep_vias(false),
     sst_enabled_value(false),
-    rtprelay_enabled(false),
+    rtprelay_enabled_value(false),
     force_symmetric_rtp_value(false),
     aleg_force_symmetric_rtp_value(false),
     rtprelay_transparent_seqno(true),
