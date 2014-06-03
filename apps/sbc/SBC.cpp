@@ -632,4 +632,3 @@ bool SBCFactory::CCRoute(const AmSipRequest& req,
 
   return true;
 }
-
