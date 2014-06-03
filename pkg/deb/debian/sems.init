@@ -8,10 +8,17 @@
 # Short-Description: Start/stop SEMS Application Server
 ### END INIT INFO
 
+. /lib/lsb/init-functions
 
 # read configuration from /etc/default/sems file
 if test -f /etc/default/sems ; then
   . /etc/default/sems
+fi
+
+
+if test "$SEMS_RUN" = "no" ; then
+    log_failure_msg "Sems start disabled by default file"
+    exit 0
 fi
 
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
@@ -20,16 +27,14 @@ NAME=sems
 DESC=sems
 
 PARAMS=""
-SEMS_PIDDIR=""
 
-ULIMIT_FILES=650000
-
-MONIT_BIN=/usr/bin/monit
-MONIT_CFG=/etc/monit/conf.d/sems
+if ! test -d $SEMS_RUNDIR ; then
+   mkdir $SEMS_RUNDIR
+fi
+chown $SEMS_USER:$SEMS_GROUP $SEMS_RUNDIR
 
 if test "$SEMS_PIDFILE" ; then
   PARAMS="$PARAMS -P $SEMS_PIDFILE"
-  SEMS_PIDDIR=$(dirname $SEMS_PIDFILE)
 fi
 
 if test "$SEMS_USER" ; then
@@ -50,22 +55,16 @@ if test "$SEMS_CREATE_CORE" = "yes" ; then
 	[ -d $SEMS_COREDIR ] || mkdir $SEMS_COREDIR
 	chmod 777 $SEMS_COREDIR
 	echo "$SEMS_COREDIR/core.%e.sig%s.%p" > /proc/sys/kernel/core_pattern
+	echo 2 > /proc/sys/fs/suid_dumpable
 	ulimit -c unlimited
 fi
 
-if test "$SEMS_ULIMIT_FILES" ; then
-	ULIMIT_FILES=$SEMS_ULIMIT_FILES
-fi
+# raise file descriptors limit - call hold consumes two fds for RTP ports and one for moh file
+ulimit -n 100000
 
 if ! test -f $DAEMON ; then
-  echo "Error: cannot find $DAEMON"
-  exit 0
-fi
-
-# /var/run can be a tmpfs
-if [ ! -d $HOMEDIR ]; then
-    mkdir -p $HOMEDIR
-    chown $SEMS_USER:$SEMS_GROUP $HOMEDIR
+  log_failure_msg "Error: cannot find $DAEMON"
+  exit 1
 fi
 
 LD_LIBRARY_PATH=/usr/lib/sems
@@ -73,85 +72,34 @@ export LD_LIBRARY_PATH
 
 set -e
 
-. /lib/lsb/init-functions
-
-arg2=$2
-
-check_monit() {
-	if [ -e $MONIT_BIN ] &&		#monit is installed
-	   [ -e $MONIT_CFG ] &&		#we have out config for monit
-	   [ "$arg2" != "monit" ]	#script is not called from monit
-	then
-		return 0
-	fi
-	return 1
-}
-
-monitor() {
-	check_monit && monit monitor sems &> /dev/null
-}
-
-unmonitor() {
-	check_monit && for a in sems sems_bin sems_pid; do monit unmonitor $a; done &> /dev/null	
-}
-
 case "$1" in
   start)
-	if [ ! -d $SEMS_PIDDIR ]; then
-		mkdir -p $SEMS_PIDDIR &&
-		chown $SEMS_USER $SEMS_PIDDIR
-	fi
-
-	ulimit -n $ULIMIT_FILES || true  
-
-	log_daemon_msg "Starting $DESC: $NAME"
+	log_daemon_msg "Starting $DESC: $NAME "
 	start-stop-daemon --start --quiet --oknodo --pidfile $SEMS_PIDFILE \
 		--exec $DAEMON -- $PARAMS
 	log_end_msg $?
-	monitor
 	;;
   stop)
-	unmonitor
-	log_daemon_msg "Stopping $DESC: $NAME"
-	start-stop-daemon --oknodo --stop --retry 60 --quiet --pidfile $SEMS_PIDFILE \
+	log_daemon_msg "Stopping $DESC: $NAME "
+	start-stop-daemon --oknodo --stop --quiet --pidfile $SEMS_PIDFILE \
 		--exec $DAEMON
 	log_end_msg $?
-	;;
-  #reload)
-	#
-	#	If the daemon can reload its config files on the fly
-	#	for example by sending it SIGHUP, do it here.
-	#
-	#	If the daemon responds to changes in its config file
-	#	directly anyway, make this a do-nothing entry.
-	#
-	# echo "Reloading $DESC configuration files."
-	# start-stop-daemon --stop --signal 1 --quiet --pidfile \
-	#	$SEMS_PIDFILE --exec $DAEMON
-  #;;
-  graceful-stop|gstop)
-	unmonitor
-	log_daemon_msg "Stopping  gracefully $DESC: $NAME"
-	start-stop-daemon --oknodo --stop --signal 2 --retry 60 --quiet --pidfile $SEMS_PIDFILE \
-		--exec $DAEMON
-	log_end_msg $?
-	;;
-  graceful-restart|grestart)
-	$0 graceful-stop
-	$0 start
 	;;
   restart|force-reload)
-	$0 stop
+	log_daemon_msg "Restarting $DESC: $NAME "
+	start-stop-daemon --oknodo --stop --quiet --pidfile \
+		$SEMS_PIDFILE --exec $DAEMON
 	sleep 5
-	$0 start	
+	start-stop-daemon --start --quiet --pidfile \
+		$SEMS_PIDFILE --exec $DAEMON  -- $PARAMS
+	echo "."
 	;;
   status)
        status_of_proc "$DAEMON" "$NAME" && exit 0 || exit $?
        ;;
   *)
 	N=/etc/init.d/$NAME
-	# echo "Usage: $N {start|stop|restart|reload|force-reload}" >&2
-	echo "Usage: $N {start|stop|graceful-stop|gstop|restart|graceful-restart|grestart|force-reload|status}" >&2
+	echo "Usage: $N {start|stop|restart|force-reload|status}" >&2
 	exit 1
 	;;
 esac
