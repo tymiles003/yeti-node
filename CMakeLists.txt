@@ -318,7 +318,7 @@ IF(EXISTS /etc/debian_version) # simple check for debian
 
 	ADD_SUBDIRECTORY (pkg/debian)
 
-	SET(DEB_NAME sems-yeti-unstable)
+	SET(DEB_NAME sems-yeti-dev)
 	SET(DEB_VENDOR yeti)
 	EXECUTE_PROCESS(COMMAND dpkg --print-architecture OUTPUT_VARIABLE DEB_ARCH)
 	STRING(REGEX REPLACE "(\r?\n)+$" "" DEB_ARCH "${DEB_ARCH}")
