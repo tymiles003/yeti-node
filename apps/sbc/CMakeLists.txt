@@ -19,6 +19,9 @@ SBCEventLog.cpp
 SBCCallLeg.cpp
 CallLeg.cpp
 RateLimit.cpp
+SessionUpdate.cpp
+ReplacesMapper.cpp
+SBCCallRegistry.cpp
 )
 
 SET(sbc_config_files
