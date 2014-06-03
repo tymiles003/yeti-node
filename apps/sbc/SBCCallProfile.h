@@ -325,6 +325,10 @@ struct SBCCallProfile
       bool evaluate(ParamReplacerCtx& ctx, const AmSipRequest& req);
   } hold_settings;
 
+  // maximum retry time for repeating reINVITE after 491 response (in
+  // milliseconds), according to RFC 3261 should be 2000 ms
+  int max_491_retry_time;
+
  private:
   // message logging feature
   string msg_logger_path;
@@ -364,7 +368,11 @@ struct SBCCallProfile
     next_hop_1st_req(false),
     next_hop_fixed(false),
     ringing_timeout(0),
-    allow_subless_notify(false)
+    allow_subless_notify(false),
+    max_491_retry_time(2000)
+  { }
+
+  ~SBCCallProfile()
   { }
 
   bool readFromConfiguration(const string& name, const string profile_file_name);
