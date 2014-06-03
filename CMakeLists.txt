@@ -362,18 +362,18 @@ IF(EXISTS /etc/debian_version) # simple check for debian
 		${DEB_CONTROL_DIR}/templates
 	)
 
-	SET(CPACK_DEBIAN_PACKAGE_CONFLICTS ${DEB_NAME})
-
 	SET(CPACK_DEBIAN_PACKAGE_DEPENDS_LIST
 		"python"
 		"python-yaml"
 		"gdb"
-	#	"redis-server"
-	#	"libssl1.0.0 (>= 1.0.1)"
-	#	"libhiredis0.10 (>= 0.10.1)"
-	#	"libpqxx-3.1 (>= 3.1)"
 	)
 	STRING(REPLACE ";" ", " CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS_LIST}")
+
+        SET(CPACK_DEBIAN_PACKAGE_CONFLICTS_LIST
+                "sems-yeti"
+                "sems-yeti-dev"
+        )
+        STRING(REPLACE ";" ", " CPACK_DEBIAN_PACKAGE_CONFLICTS "${CPACK_DEBIAN_PACKAGE_CONFLICTS_LIST}")
 
 	ADD_CUSTOM_TARGET(show_dep COMMENT "make cmake gcc g++ openssl libssl-dev libhiredis-dev libpqxx3-dev")
 	SET(CPACK_DEBIAN_PACKAGE_BUILD_DEPENDS_LIST
