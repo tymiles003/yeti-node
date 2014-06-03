@@ -211,7 +211,7 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 	assign_str(append_headers_req,"append_headers_req");
 	assign_str(aleg_append_headers_req,"aleg_append_headers_req");
 
-	assign_bool(rtprelay_enabled,"enable_rtprelay",false);
+	assign_bool(rtprelay_enabled_value,"enable_rtprelay",false);
 	assign_bool_str(force_symmetric_rtp,"rtprelay_force_symmetric_rtp",false);
 	assign_bool_str(aleg_force_symmetric_rtp,"aleg_rtprelay_force_symmetric_rtp",false);
 	assign_bool(msgflags_symmetric_rtp,"rtprelay_msgflags_symmetric_rtp",false);
@@ -325,8 +325,8 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 		filter_elems = sdpalinesfilter.size() ? sdpalinesfilter.back().filter_list.size() : 0;
 		DBG("SDP alines-filter is %sabled, %s, %zd items in list\n", sdpalinesfilter.size()?"en":"dis", filter_type.c_str(), filter_elems);
 
-		DBG("RTP relay %sabled\n", rtprelay_enabled?"en":"dis");
-		if (rtprelay_enabled) {
+		DBG("RTP relay %sabled\n", rtprelay_enabled_value?"en":"dis");
+		if (rtprelay_enabled_value) {
 			if (!force_symmetric_rtp.empty()) {
 				DBG("RTP force symmetric RTP: %s\n",
 				force_symmetric_rtp.c_str());

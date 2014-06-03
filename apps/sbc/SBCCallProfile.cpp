@@ -473,7 +473,7 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
 	INFO("SDP filter is %sabled, %s, %zd items in list\n",
 	 mediafilter.size()?"en":"dis", filter_type.c_str(), filter_elems);
 
-	INFO("RTP relay %sabled\n", rtprelay_enabled?"en":"dis");
+	INFO("RTP relay %sabled\n", rtprelay_enabled_value ?"en":"dis");
 	INFO("fixing Replaces in INVITE: '%s'\n", fix_replaces_inv.c_str());
     	INFO("fixing Replaces in REFER: '%s'\n", fix_replaces_ref.c_str());
 
@@ -777,7 +777,7 @@ bool SBCCallProfile::evaluate(ParamReplacerCtx& ctx,
 
   if (!transcoder.evaluate(ctx,req)) return false;
 
-  REPLACE_BOOL(rtprelay_enabled, rtprelay_enabled_value);
+  //REPLACE_BOOL(rtprelay_enabled, rtprelay_enabled_value);
 
   if (rtprelay_enabled_value || transcoder.isActive()) {
     // evaluate other RTP relay related params only if enabled
