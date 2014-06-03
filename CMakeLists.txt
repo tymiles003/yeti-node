@@ -377,6 +377,13 @@ IF(EXISTS /etc/debian_version) # simple check for debian
 	)
 	STRING(REPLACE ";" ", " CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS_LIST}")
 
+	SET(CPACK_DEBIAN_PACKAGE_CONFLICTS_LIST
+		"sems-yeti-dev"
+		"sems-yeti"
+	)
+	STRING(REPLACE ";" ", " CPACK_DEBIAN_PACKAGE_CONFLICTS "${CPACK_DEBIAN_PACKAGE_CONFLICTS_LIST}")
+
+
 	ADD_CUSTOM_TARGET(show_dep COMMENT "make cmake gcc g++ openssl libssl-dev libhiredis-dev libpqxx3-dev")
 	SET(CPACK_DEBIAN_PACKAGE_BUILD_DEPENDS_LIST
 		"libssl-dev"
