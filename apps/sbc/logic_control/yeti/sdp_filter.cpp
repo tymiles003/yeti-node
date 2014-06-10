@@ -41,22 +41,44 @@ static const SdpPayload *findPayload(const std::vector<SdpPayload>& payloads, co
 	string pname = payload.encoding_name;
 	transform(pname.begin(), pname.end(), pname.begin(), ::tolower);
 
+	DBG("findPayload: payloads[%p] transport = %d, payload = {%d,'%s'/%d/%d}",
+		&payloads,transport,
+		payload.payload_type,payload.encoding_name.c_str(),
+		payload.clock_rate,payload.encoding_param);
+
+	bool static_payload = (transport == TP_RTPAVP && payload.payload_type >= 0 && payload.payload_type < 20);
 	for (vector<SdpPayload>::const_iterator p = payloads.begin(); p != payloads.end(); ++p) {
+		DBG("findPayload: next payload payload = {%d,'%s'/%d/%d}",
+			p->payload_type,p->encoding_name.c_str(),
+			p->clock_rate, p->encoding_param);
 		// fix for clients using non-standard names for static payload type (SPA504g: G729a)
-		if (transport == TP_RTPAVP && payload.payload_type < 20) {
+		if (static_payload) {
 			if (payload.payload_type != p->payload_type) {
 				string s = p->encoding_name;
 				transform(s.begin(), s.end(), s.begin(), ::tolower);
-				if (s != pname) continue;
+				if (s != pname) {
+					DBG("findPayload: static payload. types not matched. names not matched");
+					continue;
+				}
 			}
 		} else {
 			string s = p->encoding_name;
 			transform(s.begin(), s.end(), s.begin(), ::tolower);
-			if (s != pname) continue;
+			if (s != pname){
+				DBG("findPayload: dynamic payload. names not matched");
+				continue;
+			}
 		}
-		if (p->clock_rate != payload.clock_rate) continue;
+		if (p->clock_rate != payload.clock_rate) {
+			DBG("findPayload: clock rates not matched");
+			continue;
+		}
 		if ((p->encoding_param >= 0) && (payload.encoding_param >= 0) &&
-			(p->encoding_param != payload.encoding_param)) continue;
+			(p->encoding_param != payload.encoding_param)) {
+			DBG("findPayload: encoding params not matched");
+			continue;
+		}
+		DBG("findPayload: payloads matched");
 		return &(*p);
 	}
 	return NULL;
