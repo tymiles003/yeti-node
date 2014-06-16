@@ -343,8 +343,8 @@ int filterReplySdp(SBCCallLeg *call,
 			if(m.type!=MT_AUDIO)
 				continue;
 
-			//dump_SdpPayload(m.payloads,"m.payloads");
-			//dump_SdpPayload(other_m.payloads,"other_m.payloads");
+			dump_SdpPayload(m.payloads,"m.payloads");
+			dump_SdpPayload(other_m.payloads,"other_m.payloads");
 
 			std::vector<SdpPayload> new_pl;
 			if(!call_profile.avoid_transcoding){
@@ -376,6 +376,7 @@ int filterReplySdp(SBCCallLeg *call,
 					}
 				}
 			}
+			dump_SdpPayload(new_pl,"new_pl");
 			m.payloads = new_pl;
 
 			stream_idx++;
