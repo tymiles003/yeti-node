@@ -130,6 +130,8 @@ int filter_arrange_SDP(AmSdp& sdp,
 	int media_idx = 0;
 	int stream_idx = 0;
 
+	dump_SdpMedia(sdp.media,"filter_arrange_SDP_in");
+
 	for (vector<SdpMedia>::iterator m_it =
 		 sdp.media.begin();m_it != sdp.media.end(); m_it++)
 	{ //iterate over SdpMedia
@@ -165,6 +167,9 @@ int filter_arrange_SDP(AmSdp& sdp,
 		media_idx++;
 		stream_idx++;
 	}
+
+
+	dump_SdpMedia(sdp.media,"filter_arrange_SDP_out");
 
 	if ((!media_line_left) && media_line_filtered_out) {
 		DBG("all streams were marked as inactive\n");
