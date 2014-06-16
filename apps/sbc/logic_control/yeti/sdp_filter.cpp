@@ -69,7 +69,7 @@ static const SdpPayload *findPayload(const std::vector<SdpPayload>& payloads, co
 				continue;
 			}
 		}
-		if (p->clock_rate != payload.clock_rate) {
+		if (p->clock_rate > 0 && (p->clock_rate != payload.clock_rate)) {
 			DBG("findPayload: clock rates not matched");
 			continue;
 		}
