@@ -91,9 +91,9 @@ void CdrList::getCalls(AmArg &calls,int limit,const SqlRouter *router){
 		e = first;
 		while(e&&i--){
 			cdr = e->data;
-			cdr->lock();
+			//cdr->lock();
 				cdr2arg(cdr,router,call);
-			cdr->unlock();
+			//cdr->unlock();
 			calls.push(call);
 			e = e->list_next;
 		}
