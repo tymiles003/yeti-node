@@ -729,6 +729,16 @@ static bool parse_sdp_line_ex(AmSdp* sdp_msg, char*& s)
     }
   }
 
+  vector<SdpMedia> &sm = sdp_msg->media;
+  vector<SdpMedia>::iterator sm_i = sm.begin();
+  for(;sm_i != sm.end();++sm_i){
+	  SdpMedia &m = *sm_i;
+	  DBG("m[%p] addr_type = %d, conn = %s",&m,
+		m.conn.addrType,m.conn.debugPrint().c_str());
+	  if(m.conn.addrType == AT_NONE){
+		  m.conn = sdp_msg->conn;
+	  }
+  }
   return false;
 }
 
