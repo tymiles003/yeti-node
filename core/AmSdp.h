@@ -71,7 +71,7 @@ struct SdpConnection
   /** IP address */
   string address;
 
-  SdpConnection() : address() {}
+  SdpConnection() : address(), addrType(AT_NONE) {}
 
   bool operator == (const SdpConnection& other) const;
   /** pretty print */
