@@ -309,6 +309,15 @@ void AmSdp::print(string& body) const
     "o="+origin.user+" "+int2str(origin.sessId)+" "+
     int2str(origin.sessV)+" IN ";
 
+  bool conn_in_all_media_streams = true;
+  for(std::vector<SdpMedia>::const_iterator media_it = media.begin();
+	  media_it != media.end(); media_it++) {
+		if(media_it->conn.address.empty()){
+			conn_in_all_media_streams = false;
+			break;
+		}
+  }
+
   if (!origin.conn.address.empty())
     if (origin.conn.address.find(".") != std::string::npos)
       out_buf += "IP4 " + origin.conn.address + "\r\n";
@@ -329,6 +338,8 @@ void AmSdp::print(string& body) const
 
   out_buf +=
     "s="+sessionName+"\r\n";
+
+if(!conn_in_all_media_streams) { //don't add to session level if present for all media streams
   if (!conn.address.empty()) {
     if (conn.address.find(".") != std::string::npos)
       out_buf += "c=IN IP4 ";
@@ -336,6 +347,7 @@ void AmSdp::print(string& body) const
       out_buf += "c=IN IP6 ";
     out_buf += conn.address + "\r\n";
   }
+}
 
   out_buf += "t=0 0\r\n";
 
