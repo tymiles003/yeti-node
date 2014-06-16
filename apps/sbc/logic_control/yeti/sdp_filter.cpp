@@ -28,10 +28,14 @@ void dump_SdpMedia(const vector<SdpMedia> &m,string prefix){
 	DBG("dump SdpMedia %s %p:",prefix.c_str(),&m);
 	unsigned stream_idx = 0;
 	for (vector<SdpMedia>::const_iterator j = m.begin(); j != m.end(); ++j) {
-		if (j->type == MT_AUDIO) {
+		const SdpMedia &media = *j;
+		DBG("media[%p] conn = %s",&media,media.conn.debugPrint().c_str());
+		if (media.type == MT_AUDIO) {
 			DBG("sdpmedia '%s' audio stream %d:",prefix.c_str(),stream_idx);
 			dump_SdpPayload(j->payloads,prefix);
 			stream_idx++;
+		} else {
+			DBG("sdpmedia '%s' NOaudio stream",prefix.c_str());
 		}
 	}
 }

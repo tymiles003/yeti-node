@@ -745,8 +745,8 @@ void Yeti::onSdpCompleted(SBCCallLeg *call, AmSdp& offer, AmSdp& answer){
 		//fix sdp for relay mask computing in B -> A direction
 		answer.media = getCtx(call)->aleg_negotiated_media;
 	}
-	//dump_SdpMedia(offer.media,"offer");
-	//dump_SdpMedia(answer.media,"answer");
+	dump_SdpMedia(offer.media,"offer");
+	dump_SdpMedia(answer.media,"answer");
 }
 
 int Yeti::relayEvent(SBCCallLeg *call, AmEvent *e){
