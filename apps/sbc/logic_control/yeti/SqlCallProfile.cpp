@@ -78,7 +78,7 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 
 	assign_str(next_hop,"next_hop");
 	assign_bool(next_hop_1st_req,"next_hop_1st_req",false);
-	assign_bool_safe(patch_ruri_next_hop,"patch_ruri_next_hop",true,true);
+	assign_bool_safe(patch_ruri_next_hop,"patch_ruri_next_hop",false,false);
 
 	assign_str(aleg_next_hop,"aleg_next_hop");
 
