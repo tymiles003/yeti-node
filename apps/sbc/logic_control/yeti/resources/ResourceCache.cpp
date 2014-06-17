@@ -433,7 +433,7 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 
 						//check limit
 						if(now > res.limit){
-							INFO("resource %d:%d overload ",
+							DBG("resource %d:%d overload ",
 								res.type,res.id);
 							if(res.failover_to_next){
 								INFO("failover_to_next enabled. check the next resource");
@@ -446,7 +446,7 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 						} else {
 							res.active = true;
 							if(CHECK_STATE_FAILOVER==check_state){
-								INFO("failovered to resource %d:%d",res.type,res.id);
+								DBG("failovered to resource %d:%d",res.type,res.id);
 								/*if(res.failover_to_next)	//skip if not last
 									check_state = CHECK_STATE_SKIP;*/
 							}
