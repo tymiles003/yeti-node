@@ -55,13 +55,13 @@ int CdrList::erase(Cdr *cdr){
 				erase_lookup_key(&cdr->local_tag);
 				err = 0;
 			} else {
-				ERROR("attempt to erase not inserted cdr local_tag = %s",cdr->local_tag.c_str());
-				log_stacktrace(L_ERR);
+				//ERROR("attempt to erase not inserted cdr local_tag = %s",cdr->local_tag.c_str());
+				//log_stacktrace(L_ERR);
 			}
 		cdr->unlock();
 	} else {
-		ERROR("CdrList::%s() cdr = NULL",FUNC_NAME);
-		log_stacktrace(L_ERR);
+		//ERROR("CdrList::%s() cdr = NULL",FUNC_NAME);
+		//log_stacktrace(L_ERR);
 	}
 	return err;
 }
