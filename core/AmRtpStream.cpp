@@ -605,6 +605,12 @@ int AmRtpStream::init(const AmSdp& local,
   const SdpMedia& local_media = local.media[sdp_media_index];
   const SdpMedia& remote_media = remote.media[sdp_media_index];
 
+  DBG("AmRtpStream[%p]::init() sdp_media_index = %d",this,sdp_media_index);
+  DBG("AmRtpStream[%p]::init() local_session_conn = %s, remote_session_conn = %s",this,
+	  local.conn.debugPrint().c_str(),remote.conn.debugPrint().c_str());
+  DBG("AmRtpStream[%p]::init() local_media_conn = %s, remote_media_conn = %s",this,
+	  local_media.conn.debugPrint().c_str(),remote_media.conn.debugPrint().c_str());
+
   payloads.clear();
   pl_map.clear();
   payloads.resize(local_media.payloads.size());
