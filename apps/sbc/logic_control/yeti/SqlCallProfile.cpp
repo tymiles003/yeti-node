@@ -78,11 +78,8 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 
 	assign_str(next_hop,"next_hop");
 	assign_bool(next_hop_1st_req,"next_hop_1st_req",false);
-	patch_ruri_next_hop = true;
+	assign_bool_safe(patch_ruri_next_hop,"patch_ruri_next_hop",true,true);
 
-	/**	TODO: add parameter into callprofile type in DB
-	 *	patch_ruri_next_hop = t["patch_ruri_next_hop"];
-	 */
 	assign_str(aleg_next_hop,"aleg_next_hop");
 
 	if (!readFilter(t, "header_filter", headerfilter, false))
