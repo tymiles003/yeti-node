@@ -49,8 +49,8 @@ void AmDtmfSender::queueEvent(int event, unsigned int duration_ms, unsigned int 
 /** Processes the send queue according to the timestamp */
 void AmDtmfSender::sendPacket(unsigned int ts, unsigned int remote_pt, AmRtpStream* stream)
 {
-  DBG("AmDtmfSender::sendPacket(ts = %u, remote_pt = %u, stream = %p)",
-	  ts,remote_pt,stream);
+/*  DBG("AmDtmfSender::sendPacket(ts = %u, remote_pt = %u, stream = %p)",
+	  ts,remote_pt,stream);*/
 
   while (true) {
     switch(sending_state) {
@@ -60,6 +60,8 @@ void AmDtmfSender::sendPacket(unsigned int ts, unsigned int remote_pt, AmRtpStre
 	send_queue_mut.unlock();
 	return;
       }
+	  DBG("AmDtmfSender::sendPacket: DTMF_SEND_NONE send_queue.size() = %d",
+		  send_queue.size());
       current_send_dtmf = send_queue.front();
       current_send_dtmf_ts = ts;
       send_queue.pop();

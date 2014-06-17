@@ -576,7 +576,8 @@ CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
 CCChainProcessing Yeti::onDtmf(SBCCallLeg *call, int event, int duration){
 	DBG("%s(call = %p,event = %d,duration = %d) got dtmf event. accept it",
 		FUNC_NAME,call,event,duration);
-	return StopProcessing;
+	//return StopProcessing;
+	return ContinueProcessing;
 }
 
 CCChainProcessing Yeti::onRtpTimeout(SBCCallLeg *call,const AmRtpTimeoutEvent &rtp_event){
