@@ -366,6 +366,7 @@ bool AudioStreamData::initStream(PlayoutType playout_type,
 
 void AudioStreamData::sendDtmf(int event, unsigned int duration_ms)
 {
+  DBG("AudioStreamData::sendDtmf(event = %d, duration = %u)",event,duration_ms);
   if (stream) stream->sendDtmf(event,duration_ms);
 }
 

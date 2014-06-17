@@ -1187,6 +1187,7 @@ void AmRtpStream::setPayloadProvider(AmPayloadProvider* pl_prov)
 }
 
 void AmRtpStream::sendDtmf(int event, unsigned int duration_ms) {
+  DBG("AmRtpStream::sendDtmf(event = %d, duration = %u)",event,duration_ms);
   dtmf_sender.queueEvent(event,duration_ms,getLocalTelephoneEventRate());
 }
 

@@ -42,12 +42,16 @@ void AmDtmfSender::queueEvent(int event, unsigned int duration_ms, unsigned int 
   send_queue_mut.lock();
   send_queue.push(std::make_pair(event, duration_ms * sample_rate / 1000));
   send_queue_mut.unlock();
-  DBG("enqueued DTMF event %i duration %u\n", event, duration_ms);
+  DBG("enqueued DTMF event %i duration %u. new queue size: %u\n", event, duration_ms,
+	  send_queue.size());
 }
 
 /** Processes the send queue according to the timestamp */
 void AmDtmfSender::sendPacket(unsigned int ts, unsigned int remote_pt, AmRtpStream* stream)
 {
+  DBG("AmDtmfSender::sendPacket(ts = %u, remote_pt = %u, stream = %p)",
+	  ts,remote_pt,stream);
+
   while (true) {
     switch(sending_state) {
     case DTMF_SEND_NONE: {
