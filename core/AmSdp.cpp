@@ -1040,25 +1040,18 @@ static void parse_sdp_attr(AmSdp* sdp_msg, char* s)
 
   string attr;
   if (!contains(attr_line, line_end, ':')) {
-	DBG("if (!contains(attr_line, line_end, ':')) {");
     next = parse_until(attr_line, '\r');
     if (next >= line_end) {
-      DBG("found attribute line '%s', which is not followed by cr\n", attr_line);
       next = line_end;
     }
-	DBG("before string(%p, int(%p-%p)-1);",attr_line,next,attr_line);
     attr = string(attr_line, int(next-attr_line)-1);
     attr_check(attr);
     parsing = 0;
   } else {
-	DBG("if (!contains(attr_line, line_end, ':')) { else ");
     next = parse_until(attr_line, ':');
-	DBG("before string(%p, int(%p-%p)-1);",attr_line,next,attr_line);
     attr = string(attr_line, int(next-attr_line)-1);
     attr_line = next;
   }
-
-DBG("before options switch");
 
   if(attr == "rtpmap"){
     while(parsing){
@@ -1150,7 +1143,6 @@ DBG("before options switch");
       case FORMAT:
 	{
 	  next = parse_until(attr_line, ' ');
-	  DBG("before string fmtp_format(%p, int(%p-%p)-1);",attr_line,next,attr_line);
 	  string fmtp_format(attr_line, int(next-attr_line)-1);
 	  str2i(fmtp_format, payload_type);
 	  attr_line = next;
@@ -1163,8 +1155,11 @@ DBG("before options switch");
 	  while (is_wsp(*line_end))
 	    line_end--;
 
-	  DBG("before params = string(%p, %p-%p+1);",attr_line,line_end,attr_line);
-	  params = string(attr_line, line_end-attr_line+1);
+	  if(attr_line >= line_end){
+		DBG("empty param for fmtp. ignore it");
+	  } else {
+		params = string(attr_line, line_end-attr_line+1);
+	  }
 	  parsing = 0;
 	}
 	break;
