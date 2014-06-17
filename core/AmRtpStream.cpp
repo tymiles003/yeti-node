@@ -380,9 +380,7 @@ int AmRtpStream::receive( unsigned char* buffer, unsigned int size,
 
   if (rp->payload == getLocalTelephoneEventPT())
     {
-	  if(force_receive_dtmf){
-		recvDtmfPacket(rp);
-	  }
+	  recvDtmfPacket(rp);
       mem.freePacket(rp);
       return RTP_DTMF;
     }
