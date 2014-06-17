@@ -181,6 +181,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   CCChainProcessing onInDialogRequest(SBCCallLeg *call, const AmSipRequest &req);
   CCChainProcessing onInDialogReply(SBCCallLeg *call, const AmSipReply &reply);
   CCChainProcessing onEvent(SBCCallLeg *call, AmEvent *e);
+  CCChainProcessing onDtmf(SBCCallLeg *call, int event, int duration);
   CCChainProcessing putOnHold(SBCCallLeg *call);
   CCChainProcessing resumeHeld(SBCCallLeg *call, bool send_reinvite);
   CCChainProcessing createHoldRequest(SBCCallLeg *call, AmSdp &sdp);
