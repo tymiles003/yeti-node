@@ -216,6 +216,7 @@ void SBCCallLeg::applyAProfile()
     setRtpRelayTransparentSSRC(call_profile.rtprelay_transparent_ssrc);
     setEnableDtmfRtpFiltering(call_profile.rtprelay_dtmf_filtering);
     setEnableDtmfRtpDetection(call_profile.rtprelay_dtmf_detection);
+	setEnableDtmfForceRelay(call_profile.rtprelay_force_dtmf_relay);
 
     if(call_profile.transcoder.isActive()) {
       setRtpRelayMode(RTP_Transcoding);
@@ -345,6 +346,7 @@ void SBCCallLeg::applyBProfile()
     setRtpRelayTransparentSSRC(call_profile.rtprelay_transparent_ssrc);
     setEnableDtmfRtpFiltering(call_profile.rtprelay_dtmf_filtering);
     setEnableDtmfRtpDetection(call_profile.rtprelay_dtmf_detection);
+	setEnableDtmfForceRelay(call_profile.rtprelay_force_dtmf_relay);
 
     // copy stats counters
     rtp_pegs = call_profile.bleg_rtp_counters;

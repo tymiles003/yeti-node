@@ -196,6 +196,7 @@ struct SBCCallProfile
   bool rtprelay_transparent_ssrc;
   bool rtprelay_dtmf_filtering;
   bool rtprelay_dtmf_detection;
+  bool rtprelay_force_dtmf_relay;
 
   string rtprelay_interface;
   int rtprelay_interface_value;

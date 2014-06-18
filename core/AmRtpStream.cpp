@@ -424,6 +424,7 @@ AmRtpStream::AmRtpStream(AmSession* _s, int _if)
     relay_transparent_ssrc(true),
     relay_transparent_seqno(true),
     relay_filter_dtmf(false),
+	force_relay_dtmf(true),
     force_receive_dtmf(false),
     incoming_bytes(0),
     outgoing_bytes(0)
@@ -851,9 +852,8 @@ void AmRtpStream::bufferPacket(AmRtpPacket* p)
 
     bool is_dtmf_packet = (p->payload == getLocalTelephoneEventPT()); 
 
-      if (relay_raw || (is_dtmf_packet && !active) ||
+	  if (relay_raw || (is_dtmf_packet && (force_relay_dtmf || !active)) ||
 	  relay_payloads.get(p->payload)) {
-
       if(active){
 	DBG("switching to relay-mode\t(ts=%u;stream=%p)\n",
 	    p->timestamp,this);
@@ -865,7 +865,7 @@ void AmRtpStream::bufferPacket(AmRtpPacket* p)
 	  (!(relay_filter_dtmf && is_dtmf_packet))) {
 		add_if_no_exist(incoming_relayed_payloads,p->payload);
 		relay_stream->relay(p);
-      }
+	  }
 
       mem.freePacket(p);
       return;
@@ -1240,6 +1240,12 @@ void AmRtpStream::setRtpRelayFilterRtpDtmf(bool filter) {
   DBG("%sabled RTP relay filtering of RTP DTMF (2833 / 3744) for RTP stream instance [%p]\n",
       filter ? "en":"dis", this);
   relay_filter_dtmf = filter;
+}
+
+void AmRtpStream::setRtpForceRelayDtmf(bool filter) {
+  DBG("%sabled force relay of RTP DTMF (2833 / 3744) for RTP stream instance [%p]\n",
+	  filter ? "en":"dis", this);
+  force_relay_dtmf = filter;
 }
 
 void AmRtpStream::stopReceiving()

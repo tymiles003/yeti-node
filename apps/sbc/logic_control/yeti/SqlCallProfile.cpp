@@ -257,6 +257,7 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 
 	assign_bool_safe(rtprelay_dtmf_filtering,"rtprelay_dtmf_filtering",false,false);
 	assign_bool_safe(rtprelay_dtmf_detection,"rtprelay_dtmf_detection",false,false);
+	assign_bool_safe(rtprelay_force_dtmf_relay,"rtprelay_force_dtmf_relay",true,true);
 
 	DBG("Yeti: loaded SQL profile\n");
 
@@ -342,6 +343,8 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 				rtprelay_dtmf_filtering?"en":"dis");
 			DBG("RTP Relay RTP DTMF detection %sabled\n",
 				rtprelay_dtmf_detection?"en":"dis");
+			DBG("RTP Relay RTP DTMF force relay %sabled\n",
+				rtprelay_force_dtmf_relay?"en":"dis");
 			DBG("RTP Relay %s seqno\n",
 			rtprelay_transparent_seqno?"transparent":"opaque");
 			DBG("RTP Relay %s SSRC\n",

@@ -75,6 +75,7 @@ AmB2BSession::AmB2BSession(const string& other_local_tag, AmSipDialog* p_dlg,
     enable_dtmf_transcoding(false),
     enable_dtmf_rtp_filtering(false),
     enable_dtmf_rtp_detection(false),
+	enable_dtmf_rtp_force_relay(true),
     rtp_relay_transparent_seqno(true), rtp_relay_transparent_ssrc(true),
     est_invite_cseq(0),est_invite_other_cseq(0),
     media_session(NULL)
@@ -961,6 +962,12 @@ void AmB2BSession::setEnableDtmfRtpFiltering(bool enable) {
 void AmB2BSession::setEnableDtmfRtpDetection(bool enable) {
   enable_dtmf_rtp_detection = enable;
 }
+
+void AmB2BSession::setEnableDtmfForceRelay(bool enable) {
+  enable_dtmf_rtp_force_relay = enable;
+}
+
+bool enable_dtmf_rtp_force_relay;
 
 void AmB2BSession::getLowFiPLs(vector<SdpPayload>& lowfi_payloads) const {
   lowfi_payloads = this->lowfi_payloads;

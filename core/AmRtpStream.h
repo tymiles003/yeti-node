@@ -276,6 +276,9 @@ protected:
   bool            relay_transparent_ssrc;
   /** filter RTP DTMF (2833 / 4733) in relaying */
   bool            relay_filter_dtmf;
+  /** Realy RTP DTMF
+  bool filter (2833 / 4733) in active even in active state */
+  bool            force_relay_dtmf;
 
   /** Session owning this stream */
   AmSession*         session;
@@ -517,6 +520,9 @@ public:
 
   /** enable or disable filtering of RTP DTMF for relay */
   void setRtpRelayFilterRtpDtmf(bool filter);
+
+  /** enable or disable relay of RTP DTMF in active state */
+  void setRtpForceRelayDtmf(bool filter);
 
   /** remove from RTP receiver */
   void stopReceiving();
