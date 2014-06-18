@@ -46,13 +46,18 @@ int CdrList::insert(Cdr *cdr){
 	return err;
 }
 
+void CdrList::erase_unsafe(const string &local_tag, bool locked){
+	erase_lookup_key(&local_tag, locked);
+}
+
 int CdrList::erase(Cdr *cdr){
 	int err = 1;
 	if(cdr){
 		//DBG("%s() local_tag = %s",FUNC_NAME,cdr->local_tag.c_str());
 		cdr->lock();
 			if(cdr->inserted2list){
-				erase_lookup_key(&cdr->local_tag);
+				//erase_lookup_key(&cdr->local_tag);
+				erase_unsafe(cdr->local_tag);
 				err = 0;
 			} else {
 				//ERROR("attempt to erase not inserted cdr local_tag = %s",cdr->local_tag.c_str());
@@ -70,7 +75,7 @@ Cdr *CdrList::get_by_local_tag(string local_tag){
 	return at_data(&local_tag,false);
 }
 
-int CdrList::getCall(const string local_tag,AmArg &call,const SqlRouter *router){
+int CdrList::getCall(const string &local_tag,AmArg &call,const SqlRouter *router){
 	Cdr *cdr;
 	int ret = 0;
 	lock();

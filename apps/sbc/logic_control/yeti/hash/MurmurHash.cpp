@@ -194,7 +194,7 @@ void MurmurHash<key_type,lookup_key_type,data_type>::erase(entry  *e,bool locked
 }
 
 template<class key_type,class lookup_key_type,class data_type>
-void MurmurHash<key_type,lookup_key_type,data_type>::erase_lookup_key(lookup_key_type *key,bool locked){
+void MurmurHash<key_type,lookup_key_type,data_type>::erase_lookup_key(const lookup_key_type *key,bool locked){
 	struct entry *e;
 
 	if(locked){

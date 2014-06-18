@@ -690,11 +690,29 @@ void Yeti::DropCall(const AmArg& args, AmArg& ret){
 	evt = new SBCControlEvent("teardown");
 
 	if (!AmSessionContainer::instance()->postEvent(local_tag, evt)) {
-		ret.push(404);
-		ret.push("Not found");
+		/* hack: if cdr not in AmSessionContainer but present in cdr_list then drop it and write cdr */
+		cdr_list.lock();
+			Cdr *cdr = cdr_list.get_by_local_tag(local_tag);
+			if(cdr){
+				//don't check for inserted2list. we just got it from here.
+				cdr_list.erase_unsafe(local_tag,false);
+			}
+		cdr_list.unlock();
+		if(cdr){
+			ERROR("Yeti::DropCall() call %s not in AmSessionContainer but in CdrList. "
+				  "remove it from CdrList and write CDR using active router instance",local_tag.c_str());
+			router_mutex.lock(); //avoid unexpected router reload
+				router->write_cdr(cdr,true);
+			router_mutex.unlock();
+			ret.push(202);
+			ret.push("Dropped from active_calls (no presented in sessions container)");
+		} else {
+			ret.push(404);
+			ret.push("Not found.");
+		}
 	} else {
 		ret.push(202);
-		ret.push("Accepted");
+		ret.push("Dropped from sessions container");
 	}
 }
 
