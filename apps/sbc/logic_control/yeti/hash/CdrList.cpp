@@ -10,7 +10,10 @@ CdrList::~CdrList(){
 }
 
 uint64_t CdrList::hash_lookup_key(const string *key){
-	return hashfn(key->c_str(),key->size());
+	//!got segfault due to invalid key->size() value. do not trust it
+	//return hashfn(key->c_str(),key->size());
+	const char *s = key->c_str();
+	return hashfn(s,strlen(s));
 }
 
 bool CdrList::cmp_lookup_key(const string *k1,const string *k2){
