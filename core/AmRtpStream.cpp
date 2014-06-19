@@ -541,13 +541,17 @@ void AmRtpStream::handleSymmetricRtp(struct sockaddr_storage* recv_addr, bool rt
 
       string addr_str = get_addr_str(recv_addr);
       setRAddr(addr_str, !rtcp ? port : 0, rtcp ? port : 0);
-      DBG("Symmetric %s: setting new remote address: %s:%i\n",
-	  !rtcp ? "RTP" : "RTCP", addr_str.c_str(),port);
+	  if(!symmetric_rtp_endless) {
+		DBG("Symmetric %s: setting new remote address: %s:%i\n",
+		!rtcp ? "RTP" : "RTCP", addr_str.c_str(),port);
+	  }
 
     } else {
-      const char* prot = rtcp ? "RTCP" : "RTP";
-      DBG("Symmetric %s: remote end sends %s from advertised address."
-	  " Leaving passive mode.\n",prot,prot);
+	  if(!symmetric_rtp_endless) {
+		  const char* prot = rtcp ? "RTCP" : "RTP";
+		  DBG("Symmetric %s: remote end sends %s from advertised address."
+			" Leaving passive mode.\n",prot,prot);
+	  }
     }
 
     // avoid comparing each time sender address
