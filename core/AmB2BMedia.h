@@ -61,8 +61,8 @@ class AudioStreamData {
      * transcoding purposes). */
     bool initialized;
 
-    /** remembered value of the option from AmB2BSession */
-    bool force_symmetric_rtp;
+	/** remembered value of the option from AmB2BSession */
+	bool            force_symmetric_rtp;
 
     /** Enables inband dtmf detection */
     bool enable_dtmf_transcoding;

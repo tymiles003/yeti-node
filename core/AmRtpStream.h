@@ -278,7 +278,14 @@ protected:
   bool            relay_filter_dtmf;
   /** Realy RTP DTMF
   bool filter (2833 / 4733) in active even in active state */
+
   bool            force_relay_dtmf;
+
+  /** ignore rtcp for symmetric rtp switching */
+  bool            symmetric_rtp_ignore_rtcp;
+  /** endless symmetric rtp switching */
+  bool            symmetric_rtp_endless;
+
 
   /** Session owning this stream */
   AmSession*         session;
@@ -522,7 +529,13 @@ public:
   void setRtpRelayFilterRtpDtmf(bool filter);
 
   /** enable or disable relay of RTP DTMF in active state */
-  void setRtpForceRelayDtmf(bool filter);
+  void setRtpForceRelayDtmf(bool relay);
+
+  /** enable or disable endless symmetric rtp switching */
+  void setSymmetricRtpEndless(bool endless);
+
+  /** enable or disable ignore RTCP packets for symmetric rtp */
+  void setSymmetricRtpIgnoreRTCP(bool ignore);
 
   /** remove from RTP receiver */
   void stopReceiving();

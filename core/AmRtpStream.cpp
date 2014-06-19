@@ -425,6 +425,8 @@ AmRtpStream::AmRtpStream(AmSession* _s, int _if)
     relay_transparent_seqno(true),
     relay_filter_dtmf(false),
 	force_relay_dtmf(true),
+	symmetric_rtp_ignore_rtcp(false),
+	symmetric_rtp_endless(false),
     force_receive_dtmf(false),
     incoming_bytes(0),
     outgoing_bytes(0)
@@ -517,7 +519,7 @@ void AmRtpStream::setRAddr(const string& addr, unsigned short port,
 
 void AmRtpStream::handleSymmetricRtp(struct sockaddr_storage* recv_addr, bool rtcp) {
 
-  if((!rtcp && passive) || (rtcp && passive_rtcp)) {
+  if((!rtcp && passive) || (rtcp && (!symmetric_rtp_ignore_rtcp && passive_rtcp))) {
 
     struct sockaddr_in* in_recv = (struct sockaddr_in*)recv_addr;
     struct sockaddr_in6* in6_recv = (struct sockaddr_in6*)recv_addr;
@@ -549,10 +551,13 @@ void AmRtpStream::handleSymmetricRtp(struct sockaddr_storage* recv_addr, bool rt
     }
 
     // avoid comparing each time sender address
-    if(!rtcp)
-      passive = false;
-    else
-      passive_rtcp = false;
+	// don't switch to passive mode if endless switching flag set
+	if(!symmetric_rtp_endless){
+		if(!rtcp)
+			passive = false;
+		else
+			passive_rtcp = false;
+	}
   }
 }
 
@@ -1242,10 +1247,22 @@ void AmRtpStream::setRtpRelayFilterRtpDtmf(bool filter) {
   relay_filter_dtmf = filter;
 }
 
-void AmRtpStream::setRtpForceRelayDtmf(bool filter) {
+void AmRtpStream::setRtpForceRelayDtmf(bool relay) {
   DBG("%sabled force relay of RTP DTMF (2833 / 3744) for RTP stream instance [%p]\n",
-	  filter ? "en":"dis", this);
-  force_relay_dtmf = filter;
+	  relay ? "en":"dis", this);
+  force_relay_dtmf = relay;
+}
+
+void AmRtpStream::setSymmetricRtpEndless(bool endless) {
+  DBG("%sabled endless symmetric RTP switching for RTP stream instance [%p]\n",
+	  endless ? "en":"dis", this);
+  symmetric_rtp_endless = endless;
+}
+
+void AmRtpStream::setSymmetricRtpIgnoreRTCP(bool ignore) {
+  DBG("%sabled ignore RTCP in symmetric RTP for RTP stream instance [%p]\n",
+	  ignore ? "en":"dis", this);
+  symmetric_rtp_ignore_rtcp = ignore;
 }
 
 void AmRtpStream::stopReceiving()

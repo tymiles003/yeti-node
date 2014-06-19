@@ -72,6 +72,8 @@ AmB2BSession::AmB2BSession(const string& other_local_tag, AmSipDialog* p_dlg,
     subs(p_subs),
     rtp_relay_mode(RTP_Direct),
     rtp_relay_force_symmetric_rtp(false),
+	symmetric_rtp_endless(false),
+	symmetric_rtp_ignore_rtcp(false),
     enable_dtmf_transcoding(false),
     enable_dtmf_rtp_filtering(false),
     enable_dtmf_rtp_detection(false),
@@ -941,6 +943,14 @@ void AmB2BSession::setRtpInterface(int relay_interface) {
 
 void AmB2BSession::setRtpRelayForceSymmetricRtp(bool force_symmetric) {
   rtp_relay_force_symmetric_rtp = force_symmetric;
+}
+
+void AmB2BSession::setRtpEndlessSymmetricRtp(bool endless){
+	symmetric_rtp_endless = endless;
+}
+
+void AmB2BSession::setRtpSymmetricRtpIgnoreRTCP(bool ignore_rtcp){
+	symmetric_rtp_ignore_rtcp = ignore_rtcp;
 }
 
 void AmB2BSession::setRtpRelayTransparentSeqno(bool transparent) {

@@ -169,6 +169,9 @@ void AudioStreamData::initialize(AmB2BSession *session)
   stream->setRtpRelayTransparentSSRC(session->getRtpRelayTransparentSSRC());
   stream->setRtpRelayFilterRtpDtmf(session->getEnableDtmfRtpFiltering());
   stream->setRtpForceRelayDtmf(session->getEnableDtmfForceRelay());
+  stream->setSymmetricRtpEndless(session->getRtpEndlessSymmetricRtp());
+  stream->setSymmetricRtpIgnoreRTCP(session->getRtpSymmetricRtpIgnoreRTCP());
+
   if (session->getEnableDtmfRtpDetection())
     stream->force_receive_dtmf = true;
   force_symmetric_rtp = session->getRtpRelayForceSymmetricRtp();

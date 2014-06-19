@@ -270,6 +270,10 @@ private:
   RTPRelayMode rtp_relay_mode;
   /** force symmetric RTP */
   bool rtp_relay_force_symmetric_rtp;
+  /** ignore rtcp packets for symmetric RTP */
+  bool symmetric_rtp_ignore_rtcp;
+  /** endless switching for symmetric rtp */
+  bool symmetric_rtp_endless;
   /** transparent seqno for RTP relay */
   bool rtp_relay_transparent_seqno;
   /** transparent SSRC for RTP relay */
@@ -326,6 +330,8 @@ private:
   /** link RTP streams of other_session to our streams */
   RTPRelayMode getRtpRelayMode() const { return rtp_relay_mode; }
   bool getRtpRelayForceSymmetricRtp() const { return rtp_relay_force_symmetric_rtp; }
+  bool getRtpEndlessSymmetricRtp() const { return symmetric_rtp_endless; }
+  bool getRtpSymmetricRtpIgnoreRTCP() const { return symmetric_rtp_ignore_rtcp; }
   bool getEnableDtmfTranscoding() const { return enable_dtmf_transcoding; }
   bool getEnableDtmfRtpFiltering() const { return enable_dtmf_rtp_filtering; }
   bool getEnableDtmfRtpDetection() const { return enable_dtmf_rtp_detection; }
@@ -334,6 +340,8 @@ private:
 
   virtual void setRtpInterface(int relay_interface);
   virtual void setRtpRelayForceSymmetricRtp(bool force_symmetric);
+  virtual void setRtpEndlessSymmetricRtp(bool endless);
+  virtual void setRtpSymmetricRtpIgnoreRTCP(bool ignore_rtcp);
   void setRtpRelayTransparentSeqno(bool transparent);
   void setRtpRelayTransparentSSRC(bool transparent);
 
