@@ -45,7 +45,8 @@ void RedisConnPool::run(){
 		while(active_count < pool_size){
 			ctx = redisConnect(_cfg.server.c_str(),_cfg.port);
 			if(ctx != NULL && ctx->err){
-				ERROR("failed conn for %s redis pool <host = %s:%d>",
+				ERROR("[%p] failed conn for %s redis pool <host = %s:%d>",
+					  this,
 					  pool_name.c_str(),
 					  _cfg.server.c_str(),
 					  _cfg.port);
@@ -75,8 +76,8 @@ void RedisConnPool::run(){
 			if(tostop)
 				break;
 			ctx = c.front();
+			c.pop_front();
 			if(reconnect(ctx)){
-				c.pop_front();
 				conn_mtx.lock();
 					active_ctxs.push_back(ctx);
 					failed_count--;
@@ -84,7 +85,8 @@ void RedisConnPool::run(){
 				CLEAR_ALARM(readonly?alarms::REDIS_READ_CONN:alarms::REDIS_WRITE_CONN);
 				active_ready.set(true);
 			} else {
-				DBG("can't reconnect sleep %us",5);
+				c.push_back(ctx);
+				DBG("[%p] can't reconnect sleep %us",this,5);
 				sleep(5);
 			}
 		}
@@ -197,14 +199,17 @@ int RedisConnPool::cfg2RedisCfg(const AmConfigReader &cfg, RedisCfg &rcfg,string
 }
 
 bool RedisConnPool::reconnect(redisContext *&ctx){
-	DBG("%s()",FUNC_NAME);
+	DBG("[%p] %s(%p)",this,FUNC_NAME,ctx);
 
 	if(ctx!=NULL){
 		redisFree(ctx);
+		ctx = NULL;
 	}
 	ctx = redisConnect(_cfg.server.c_str(),_cfg.port);
 	if (ctx != NULL && ctx->err) {
-		ERROR("%s() can't connect: %d <%s>",FUNC_NAME,ctx->err,ctx->errstr);
+		ERROR("[%p] %s() can't connect: %d <%s>",this,FUNC_NAME,ctx->err,ctx->errstr);
+		redisFree(ctx);
+		ctx = NULL;
 		return false;
 	}
 	return true;
