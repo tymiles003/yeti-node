@@ -63,11 +63,12 @@ void AmDtmfSender::sendPacket(unsigned int ts, unsigned int remote_pt, AmRtpStre
 	  DBG("AmDtmfSender::sendPacket: DTMF_SEND_NONE send_queue.size() = %d",
 		  send_queue.size());
       current_send_dtmf = send_queue.front();
-      current_send_dtmf_ts = ts;
+	  //current_send_dtmf_ts = ts;
       send_queue.pop();
       send_queue_mut.unlock();
       sending_state = DTMF_SEND_SENDING;
-      current_send_dtmf_ts = ts;
+	  //current_send_dtmf_ts = ts;
+	  current_send_dtmf_ts = ts-160; //hack to avoid events with zero duration
       DBG("starting to send DTMF\n");
     } break;
       
