@@ -31,6 +31,8 @@
 
 #include "rtp/telephone_event.h"
 
+#define DTMF_EVENT_MIN_DURATION 160
+
 AmDtmfSender::AmDtmfSender()
   : sending_state(DTMF_SEND_NONE)
 {
@@ -68,7 +70,7 @@ void AmDtmfSender::sendPacket(unsigned int ts, unsigned int remote_pt, AmRtpStre
       send_queue_mut.unlock();
       sending_state = DTMF_SEND_SENDING;
 	  //current_send_dtmf_ts = ts;
-	  current_send_dtmf_ts = ts-160; //hack to avoid events with zero duration
+	  current_send_dtmf_ts = ts-DTMF_EVENT_MIN_DURATION; //hack to avoid events with zero duration
       DBG("starting to send DTMF\n");
     } break;
       
@@ -77,17 +79,19 @@ void AmDtmfSender::sendPacket(unsigned int ts, unsigned int remote_pt, AmRtpStre
 	// send packet
 	//if (!remote_telephone_event_pt.get())
 	//return;
+	u_int16 duration = ts - current_send_dtmf_ts;
 
 	dtmf_payload_t dtmf;
 	dtmf.event = current_send_dtmf.first;
 	dtmf.e = dtmf.r = 0;
-	dtmf.duration = htons(ts - current_send_dtmf_ts);
+
+	dtmf.duration = htons(duration);
 	dtmf.volume = 20;
 
 	DBG("sending DTMF: event=%i; e=%i; r=%i; volume=%i; duration=%i; ts=%u\n",
-	    dtmf.event,dtmf.e,dtmf.r,dtmf.volume,ntohs(dtmf.duration),current_send_dtmf_ts);
+		dtmf.event,dtmf.e,dtmf.r,dtmf.volume,duration,current_send_dtmf_ts);
 
-	stream->compile_and_send(remote_pt, dtmf.duration == 0, 
+	stream->compile_and_send(remote_pt, duration == DTMF_EVENT_MIN_DURATION,
 				 current_send_dtmf_ts, 
 				 (unsigned char*)&dtmf, sizeof(dtmf_payload_t)); 
 	return;
