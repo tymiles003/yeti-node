@@ -164,6 +164,8 @@ struct SBCCallProfile
   bool aleg_relay_options;
   bool bleg_relay_options;
 
+  bool filter_noaudio_streams;
+
   string sst_enabled;
   bool sst_enabled_value;
   string sst_aleg_enabled;

@@ -68,12 +68,14 @@ int filterRequestSdp(SBCCallLeg *call,
  * @param[in] method
  * @param[in,out] negotiated_media
  * @param[in] single_codec
+ * @param[in] noaudio_streams_filtered. is noaudo streams filtering is enabled
  * @return 0 if succ. negative value with error code on errors
  */
 int filterReplySdp(SBCCallLeg *call,
                    AmMimeBody &body,
                    const string &method,
 				   vector<SdpMedia> &negotiated_media,
-				   bool single_codec);
+				   bool single_codec,
+				   bool noaudio_streams_filtered);
 
 #endif // SDP_FILTER_H

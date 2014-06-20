@@ -862,7 +862,8 @@ int Yeti::relayEvent(SBCCallLeg *call, AmEvent *e){
 			filterReplySdp(call,
 						   reply_ev->reply.body, reply_ev->reply.cseq_method,
 						   *negotiated_media,
-						   single_codec);
+						   single_codec,
+						   call_profile.filter_noaudio_streams);
 		} break;
 	} //switch(e->event_id)
 	return 0;

@@ -25,34 +25,39 @@ void dump_SdpPayload(const vector<SdpPayload> &p,string prefix){
 }
 
 void dump_SdpMedia(const vector<SdpMedia> &m,string prefix){
-	DBG("dump SdpMedia %s %p:",prefix.c_str(),&m);
+	DBG("DUMP SdpMedia %s %p:",prefix.c_str(),&m);
 	unsigned stream_idx = 0;
 	for (vector<SdpMedia>::const_iterator j = m.begin(); j != m.end(); ++j) {
 		const SdpMedia &media = *j;
 		DBG("media[%p] conn = %s",&media,media.conn.debugPrint().c_str());
 		if (media.type == MT_AUDIO) {
-			DBG("sdpmedia '%s' audio stream %d:",prefix.c_str(),stream_idx);
+			DBG("sdpmedia '%s' audio stream %d, port %d:",prefix.c_str(),
+				stream_idx,media.port);
 			dump_SdpPayload(j->payloads,prefix);
 			stream_idx++;
 		} else {
-			DBG("sdpmedia '%s' NOaudio stream",prefix.c_str());
+			DBG("sdpmedia '%s' %s stream, port %d",prefix.c_str(),
+				media.type2str(media.type).c_str(),media.port);
 		}
 	}
 }
 
 static const SdpPayload *findPayload(const std::vector<SdpPayload>& payloads, const SdpPayload &payload, int transport)
 {
+//#define DBG_FP(...) DBG(__VA_ARGS__)
+#define DBG_FP(...) ;
+
 	string pname = payload.encoding_name;
 	transform(pname.begin(), pname.end(), pname.begin(), ::tolower);
 
-	DBG("findPayload: payloads[%p] transport = %d, payload = {%d,'%s'/%d/%d}",
+	DBG_FP("findPayload: payloads[%p] transport = %d, payload = {%d,'%s'/%d/%d}",
 		&payloads,transport,
 		payload.payload_type,payload.encoding_name.c_str(),
 		payload.clock_rate,payload.encoding_param);
 
 	bool static_payload = (transport == TP_RTPAVP && payload.payload_type >= 0 && payload.payload_type < 20);
 	for (vector<SdpPayload>::const_iterator p = payloads.begin(); p != payloads.end(); ++p) {
-		DBG("findPayload: next payload payload = {%d,'%s'/%d/%d}",
+		DBG_FP("findPayload: next payload payload = {%d,'%s'/%d/%d}",
 			p->payload_type,p->encoding_name.c_str(),
 			p->clock_rate, p->encoding_param);
 		// fix for clients using non-standard names for static payload type (SPA504g: G729a)
@@ -61,7 +66,7 @@ static const SdpPayload *findPayload(const std::vector<SdpPayload>& payloads, co
 				string s = p->encoding_name;
 				transform(s.begin(), s.end(), s.begin(), ::tolower);
 				if (s != pname) {
-					DBG("findPayload: static payload. types not matched. names not matched");
+					DBG_FP("findPayload: static payload. types not matched. names not matched");
 					continue;
 				}
 			}
@@ -69,23 +74,24 @@ static const SdpPayload *findPayload(const std::vector<SdpPayload>& payloads, co
 			string s = p->encoding_name;
 			transform(s.begin(), s.end(), s.begin(), ::tolower);
 			if (s != pname){
-				DBG("findPayload: dynamic payload. names not matched");
+				DBG_FP("findPayload: dynamic payload. names not matched");
 				continue;
 			}
 		}
 		if (p->clock_rate > 0 && (p->clock_rate != payload.clock_rate)) {
-			DBG("findPayload: clock rates not matched");
+			DBG_FP("findPayload: clock rates not matched");
 			continue;
 		}
 		if ((p->encoding_param >= 0) && (payload.encoding_param >= 0) &&
 			(p->encoding_param != payload.encoding_param)) {
-			DBG("findPayload: encoding params not matched");
+			DBG_FP("findPayload: encoding params not matched");
 			continue;
 		}
-		DBG("findPayload: payloads matched");
+		DBG_FP("findPayload: payloads matched");
 		return &(*p);
 	}
 	return NULL;
+#undef DBG_FP
 }
 
 static bool containsPayload(const std::vector<SdpPayload>& payloads, const SdpPayload &payload, int transport)
@@ -178,6 +184,37 @@ int filter_arrange_SDP(AmSdp& sdp,
 	return 0;
 }
 
+int filterNoAudioStreams(AmSdp &sdp, bool filter){
+	if(!filter) return 0;
+
+	for (std::vector<SdpMedia>::iterator m_it = sdp.media.begin(); m_it != sdp.media.end(); m_it++)
+	{
+		SdpMedia& media = *m_it;
+		if(media.type!=MT_AUDIO){
+			media.port = 0;
+		}
+	}
+	return 0;
+}
+
+int cutNoAudioStreams(AmSdp &sdp, bool cut){
+	if(!cut) return 0;
+
+	vector<SdpMedia> new_media;
+
+	for (vector<SdpMedia>::iterator m_it = sdp.media.begin(); m_it != sdp.media.end(); m_it++)
+	{
+		SdpMedia& m = *m_it;
+		if(m.type==MT_AUDIO){
+			new_media.push_back(m);
+		}
+	}
+	if(!new_media.size()){
+		return -488;
+	}
+	sdp.media = new_media;
+	return 0;
+}
 
 int negotiateRequestSdp(SBCCallProfile &call_profile,
 					AmSipRequest &req, vector<SdpMedia> &negotiated_media,
@@ -208,6 +245,8 @@ int negotiateRequestSdp(SBCCallProfile &call_profile,
 
 	res = filter_arrange_SDP(sdp,static_codecs_filter, false);
 	filterSDPalines(sdp, call_profile.sdpalinesfilter);
+
+	filterNoAudioStreams(sdp,call_profile.filter_noaudio_streams);
 
 	//save negotiated result for the future usage
 	negotiated_media = sdp.media;
@@ -249,6 +288,8 @@ int filterRequestSdp(SBCCallLeg *call,
 		return res;
 	}
 
+	dump_SdpMedia(sdp.media,"filterRequestSdp_in");
+
 	normalizeSDP(sdp, false, "");
 
 	CodecsGroupEntry codecs_group;
@@ -267,6 +308,14 @@ int filterRequestSdp(SBCCallLeg *call,
 	fix_dynamic_payloads(sdp,call->getTranscoderMapping());
 
 	filterSDPalines(sdp, call_profile.sdpalinesfilter);
+
+	res = cutNoAudioStreams(sdp,call_profile.filter_noaudio_streams);
+	if(0 != res){
+		ERROR("filterRequestSdp() no streams after no audio streams filtering");
+		return res;
+	}
+
+	dump_SdpMedia(sdp.media,"filterRequestSdp_out");
 
 	//update body
 	string n_body;
@@ -293,10 +342,22 @@ inline void add_codec(std::vector<SdpPayload> &pl,const SdpPayload &p,bool singl
 	}
 }
 
+/*void copy_media_conn(SdpMedia &dst,const SdpMedia &src)
+{
+	dst.port = src.port;
+	dst.conn = src.conn;
+}
+
+void copy_sdp_conn(SdpMedia &dst,const SdpMedia &src)
+{
+	//
+}*/
+
 int filterReplySdp(SBCCallLeg *call,
 				   AmMimeBody &body, const string &method,
 				   vector<SdpMedia> &negotiated_media,
-				   bool single_codec)
+				   bool single_codec,
+				   bool noaudio_streams_filtered)
 {
 	bool a_leg = call->isALeg();
 	SBCCallProfile &call_profile = call->getCallProfile();
@@ -325,11 +386,37 @@ int filterReplySdp(SBCCallLeg *call,
 
 	normalizeSDP(sdp, false, ""); // anonymization is done in the other leg to use correct IP address
 
+	dump_SdpMedia(negotiated_media,"filterReplySdp_negotiated_media");
+	dump_SdpMedia(sdp.media,"filterReplySdp_in");
+
 	if(negotiated_media.size()){
-		if(negotiated_media.size()!=sdp.media.size()){
-			ERROR("filterReplySdp() streams count not equal reply: %ld, saved: %ld)",
-				sdp.media.size(),negotiated_media.size());
+
+		if(!sdp.media.size()){
+			ERROR("filterReplySdp() empty answer sdp");
 			return -488;
+		}
+
+		if(negotiated_media.size()!=sdp.media.size()){
+			if(noaudio_streams_filtered){
+				//count audio streams
+				unsigned int audio_streams = 0;
+				for(vector<SdpMedia>::const_iterator it = negotiated_media.begin();
+						it!=negotiated_media.end();++it)
+				{
+					if(it->type==MT_AUDIO)
+						audio_streams++;
+
+				}
+				if(sdp.media.size()!=audio_streams){
+					ERROR("filterReplySdp() audio streams count not equal reply: %ld, saved: %ld)",
+						  sdp.media.size(),audio_streams);
+					return -488;
+				}
+			} else {
+				ERROR("filterReplySdp() streams count not equal reply: %ld, saved: %ld)",
+					sdp.media.size(),negotiated_media.size());
+				return -488;
+			}
 		}
 
 		int stream_idx = 0;
@@ -346,18 +433,17 @@ int filterReplySdp(SBCCallLeg *call,
 				return -488;
 			}
 
-			//remove all unknown attributes
-			m.attributes.clear();
-
 			if(m.type!=MT_AUDIO)
 				continue;
+
+			//remove all unknown attributes
+			m.attributes.clear();
 
 			dump_SdpPayload(m.payloads,"m.payloads");
 			dump_SdpPayload(other_m.payloads,"other_m.payloads");
 
 			std::vector<SdpPayload> new_pl;
 			if(!call_profile.avoid_transcoding){
-				DBG("<<<< if(!call_profile.avoid_transcoding){");
 				//clear all except of first codec and dtmf
 				std::vector<SdpPayload>::const_iterator p_it = other_m.payloads.begin();
 				for (;p_it != other_m.payloads.end(); p_it++){
@@ -390,13 +476,27 @@ int filterReplySdp(SBCCallLeg *call,
 
 			stream_idx++;
 		}
+
+		//! HACK: add nonaudio media which presented in negotiated media to the end
+		if(noaudio_streams_filtered){
+			other_media_it = negotiated_media.begin();
+			for(;other_media_it!=negotiated_media.end();++other_media_it){
+				if(other_media_it->type!=MT_AUDIO){
+					sdp.media.push_back(*other_media_it);
+				}
+			}
+		}
+
 	} else {
 		WARN("no negotiated media for leg%s. leave it as is",a_leg ? "A" : "B");
 	}
 	fix_dynamic_payloads(sdp,call->getTranscoderMapping());
 	filterSDPalines(sdp, call_profile.sdpalinesfilter);
 
+	dump_SdpMedia(sdp.media,"filterReplySdp_out");
+
 	negotiated_media = sdp.media;
+
 	//update body
 	string n_body;
 	sdp.print(n_body);
