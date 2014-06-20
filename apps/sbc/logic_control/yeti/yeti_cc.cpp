@@ -504,12 +504,25 @@ void Yeti::onInviteException(SBCCallLeg *call,int code,string reason,bool no_rep
 }
 
 CCChainProcessing Yeti::onInDialogRequest(SBCCallLeg *call, const AmSipRequest &req) {
-	DBG("%s(%p,leg%s) '%s'",FUNC_NAME,call,call->isALeg()?"A":"B",req.method.c_str());
-	if(call->isALeg()){
+	bool aleg = call->isALeg();
+
+	DBG("%s(%p,leg%s) '%s'",FUNC_NAME,call,aleg?"A":"B",req.method.c_str());
+
+	if(req.method == SIP_METH_OPTIONS){
+		const SBCCallProfile &p = call->getCallProfile();
+		if( (aleg && !p.aleg_relay_options) || (!aleg && !p.bleg_relay_options) ){
+			//answer with 200 OK and avoid relaying
+			call->dlg->reply(req, 200, "OK", NULL, "", SIP_FLAGS_VERBATIM);
+			return StopProcessing;
+		}
+	}
+
+	if(aleg){
 		if(req.method==SIP_METH_CANCEL){
 			getCdr(call)->update_internal_reason(DisconnectByORG,"Request terminated (Cancel)",487);
 		}
 	}
+
 	return ContinueProcessing;
 }
 

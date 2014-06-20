@@ -271,6 +271,9 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 	assign_bool_safe(aleg_symmetric_rtp_nonstop,"aleg_symmetric_rtp_nonstop",false,false);
 	assign_bool_safe(bleg_symmetric_rtp_nonstop,"bleg_symmetric_rtp_nonstop",false,false);
 
+	assign_bool_safe(aleg_relay_options,"aleg_relay_options",false,false);
+	assign_bool_safe(bleg_relay_options,"bleg_relay_options",false,false);
+
 	DBG("Yeti: loaded SQL profile\n");
 
 	return true;
@@ -433,6 +436,9 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 		DBG("aleg_single_codec: '%s'\n", aleg_single_codec?"yes":"no");
 		DBG("bleg_single_codec: '%s'\n", bleg_single_codec?"yes":"no");
 		DBG("try_avoid_transcoding: '%s'\n", avoid_transcoding?"yes":"no");
+
+		DBG("aleg_relay_options: '%s'\n",aleg_relay_options?"yes":"no");
+		DBG("bleg_relay_options: '%s'\n",bleg_relay_options?"yes":"no");
 
 		DynFieldsT::const_iterator dfit = df.begin();
 		for(unsigned int k = 0;k<dyn_fields.size();k++){

@@ -161,6 +161,9 @@ struct SBCCallProfile
   bool bleg_single_codec;
   bool avoid_transcoding;
 
+  bool aleg_relay_options;
+  bool bleg_relay_options;
+
   string sst_enabled;
   bool sst_enabled_value;
   string sst_aleg_enabled;
