@@ -147,6 +147,9 @@ struct SBCCallProfile
 
   string aleg_next_hop;
 
+  bool aleg_rtp_ping;
+  bool bleg_rtp_ping;
+
   vector<FilterEntry> headerfilter;
   vector<FilterEntry> messagefilter;
 

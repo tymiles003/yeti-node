@@ -285,7 +285,8 @@ protected:
   bool            symmetric_rtp_ignore_rtcp;
   /** endless symmetric rtp switching */
   bool            symmetric_rtp_endless;
-
+  /** send initial rtp packet */
+  bool            rtp_ping;
 
   /** Session owning this stream */
   AmSession*         session;
@@ -536,6 +537,10 @@ public:
 
   /** enable or disable ignore RTCP packets for symmetric rtp */
   void setSymmetricRtpIgnoreRTCP(bool ignore);
+
+  /** enable or disable initial rtp ping on stream initialization.
+	  also it will set mark for all packets to zero */
+  void setRtpPing(bool enable);
 
   /** remove from RTP receiver */
   void stopReceiving();

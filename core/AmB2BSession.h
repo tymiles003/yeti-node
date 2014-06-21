@@ -274,6 +274,8 @@ private:
   bool symmetric_rtp_ignore_rtcp;
   /** endless switching for symmetric rtp */
   bool symmetric_rtp_endless;
+  /** send rtp ping  */
+  bool rtp_ping;
   /** transparent seqno for RTP relay */
   bool rtp_relay_transparent_seqno;
   /** transparent SSRC for RTP relay */
@@ -331,6 +333,7 @@ private:
   RTPRelayMode getRtpRelayMode() const { return rtp_relay_mode; }
   bool getRtpRelayForceSymmetricRtp() const { return rtp_relay_force_symmetric_rtp; }
   bool getRtpEndlessSymmetricRtp() const { return symmetric_rtp_endless; }
+  bool getRtpPing() const { return rtp_ping; }
   bool getRtpSymmetricRtpIgnoreRTCP() const { return symmetric_rtp_ignore_rtcp; }
   bool getEnableDtmfTranscoding() const { return enable_dtmf_transcoding; }
   bool getEnableDtmfRtpFiltering() const { return enable_dtmf_rtp_filtering; }
@@ -348,6 +351,7 @@ private:
   void setEnableDtmfTranscoding(bool enable);
   void setEnableDtmfRtpFiltering(bool enable);
   void setEnableDtmfRtpDetection(bool enable);
+  void setEnableRtpPing(bool enable);
   void setEnableDtmfForceRelay(bool enable);
   void setLowFiPLs(const vector<SdpPayload>& lowfi_payloads);
   

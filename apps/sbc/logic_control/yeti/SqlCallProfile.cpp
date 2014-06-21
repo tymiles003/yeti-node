@@ -276,6 +276,9 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 
 	assign_bool_safe(filter_noaudio_streams,"filter_noaudio_streams",true,true);
 
+	assign_bool_safe(aleg_rtp_ping,"aleg_rtp_ping",false,false);
+	assign_bool_safe(bleg_rtp_ping,"bleg_rtp_ping",false,false);
+
 	DBG("Yeti: loaded SQL profile\n");
 
 	return true;
@@ -375,6 +378,9 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 			DBG("RTP Relay %s SSRC\n",
 			rtprelay_transparent_ssrc?"transparent":"opaque");
 		}
+
+		DBG("RTP Ping Aleg %sabled\n", aleg_rtp_ping?"en":"dis");
+		DBG("RTP Ping Bleg %sabled\n", bleg_rtp_ping?"en":"dis");
 
 		DBG("SST on A leg enabled: '%s'\n", sst_aleg_enabled.empty() ? "no" : sst_aleg_enabled.c_str());
 		if (sst_aleg_enabled.size() && sst_aleg_enabled != "no") {

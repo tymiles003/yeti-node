@@ -252,6 +252,7 @@ int AmRtpStream::ping()
     ERROR("while sending RTP packet.\n");
     return -1;
   }
+  if (logger) rp.logSent(logger, &l_saddr);
 
   return 2;
 }
@@ -428,6 +429,7 @@ AmRtpStream::AmRtpStream(AmSession* _s, int _if)
 	symmetric_rtp_ignore_rtcp(false),
 	symmetric_rtp_endless(false),
     force_receive_dtmf(false),
+	rtp_ping(false),
     incoming_bytes(0),
     outgoing_bytes(0)
 {
@@ -788,6 +790,9 @@ int AmRtpStream::init(const AmSdp& local,
 #endif
 
   active = false; // mark as nothing received yet
+
+  if(rtp_ping) ping(); //generate fake initial rtp packet
+
   return 0;
 }
 
@@ -1072,8 +1077,10 @@ void AmRtpStream::recvPacket(int fd)
     if (parse_res == -1) {
       DBG("error while parsing RTP packet.\n");
       clearRTPTimeout(&p->recv_time);
-      mem.freePacket(p);	  
+	  mem.freePacket(p);
     } else {
+	  if(rtp_ping)	//clear mark for all packets in stream
+		p->marker = false;
       bufferPacket(p);
     }
   } else {
@@ -1267,6 +1274,12 @@ void AmRtpStream::setSymmetricRtpIgnoreRTCP(bool ignore) {
   DBG("%sabled ignore RTCP in symmetric RTP for RTP stream instance [%p]\n",
 	  ignore ? "en":"dis", this);
   symmetric_rtp_ignore_rtcp = ignore;
+}
+
+void AmRtpStream::setRtpPing(bool enable){
+	DBG("%sabled RTP Ping RTP stream instance [%p]\n",
+		enable ? "en":"dis", this);
+	rtp_ping = enable;
 }
 
 void AmRtpStream::stopReceiving()

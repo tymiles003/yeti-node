@@ -345,6 +345,7 @@ int AmRtpAudio::init(const AmSdp& local,
   } else {
     playout_buffer.reset(new AmJbPlayout(this,getSampleRate()));
   }
+
   return 0;
 }
 
