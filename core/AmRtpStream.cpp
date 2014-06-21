@@ -1006,8 +1006,8 @@ int AmRtpStream::nextPacket(AmRtpPacket*& p)
      AmConfig::DeadRtpTime && 
      (diff.tv_sec > 0) &&
      ((unsigned int)diff.tv_sec > AmConfig::DeadRtpTime)){
-    WARN("RTP Timeout detected. Last received packet is too old "
-	 "(diff.tv_sec = %i\n",(unsigned int)diff.tv_sec);
+	WARN("[%p] RTP Timeout detected. Last received packet is too old "
+	 "(diff.tv_sec = %i\n",this,(unsigned int)diff.tv_sec);
     receive_mut.unlock();
     return RTP_TIMEOUT;
   }

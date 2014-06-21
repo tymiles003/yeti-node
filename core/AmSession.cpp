@@ -726,13 +726,13 @@ void AmSession::onSipRequest(const AmSipRequest& req)
       onInvite(req);
     }
     catch(const string& s) {
-      ERROR("%s\n",s.c_str());
+	  DBG("AmSession::string exception: %s\n",s.c_str());
       setStopped();
 	  onInviteException(500,SIP_REPLY_SERVER_INTERNAL_ERROR,false);
 	  dlg->reply(req, 500, SIP_REPLY_SERVER_INTERNAL_ERROR);
     }
     catch(const AmSession::Exception& e) {
-      ERROR("%i %s\n",e.code,e.reason.c_str());
+	  DBG("AmSession::Exception: %i %s\n",e.code,e.reason.c_str());
       setStopped();
       no_reply = (e.code == NO_REPLY_DISCONNECT_CODE);
 	  onInviteException(e.code,e.reason,no_reply);

@@ -436,7 +436,7 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 							DBG("resource %d:%d overload ",
 								res.type,res.id);
 							if(res.failover_to_next){
-								INFO("failover_to_next enabled. check the next resource");
+								DBG("failover_to_next enabled. check the next resource");
 								check_state = CHECK_STATE_FAILOVER;
 								continue;
 							}
@@ -462,7 +462,7 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 			//aquire resources if available
 
 			if(!resources_available){
-				WARN("resources unavailable");
+				DBG("resources unavailable");
 				ret = RES_BUSY;
 			} else {
 				bool non_empty = false;

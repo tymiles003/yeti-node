@@ -811,7 +811,8 @@ int _trans_layer::set_destination_ip(sip_msg* msg, cstring* next_hop,
 						     &(msg->h_dns),
 						     &(msg->remote_ip),IPv4);
 	if(err < 0){
-	    ERROR("Unresolvable Request URI domain\n");
+		ERROR("Unresolvable Request URI domain: '%s' for callid %s\n",
+			  nh.c_str(),msg->callid ? c2stlstr(msg->callid->value).c_str() : "(nil)");
 	    return -478;
 	}
     }
