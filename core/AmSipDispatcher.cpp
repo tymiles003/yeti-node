@@ -90,8 +90,7 @@ void AmSipDispatcher::handleSipMsg(AmSipRequest &req)
 
     delete ev;
     if(req.method != SIP_METH_ACK) {
-      AmSipDialog::reply_error(req,481,
-			       "Call leg/Transaction does not exist");
+	  AmSipDialog::reply_error(req,481,SIP_REPLY_NOT_EXIST);
     }
     else {
       DBG("received ACK for non-existing dialog "
@@ -103,19 +102,24 @@ void AmSipDispatcher::handleSipMsg(AmSipRequest &req)
   }
 
   DBG("method: `%s' [%zd].\n", req.method.c_str(), req.method.length());
-  if(req.method == SIP_METH_INVITE){
-      
-      AmSessionContainer::instance()->startSessionUAS(req);
+
+  if(req.method == SIP_METH_BYE ||
+		req.method == SIP_METH_PRACK){
+
+	  // BYE/PRACK of a (here) non-existing dialog
+	  AmSipDialog::reply_error(req,481,SIP_REPLY_NOT_EXIST);
+	  return;
   }
-  else if(req.method == SIP_METH_BYE ||
-	  req.method == SIP_METH_PRACK){
-    
-    // BYE/PRACK of a (here) non-existing dialog
-    AmSipDialog::reply_error(req,481,SIP_REPLY_NOT_EXIST);
-    return;
 
+  if(AmConfig::ShutdownMode){
+	  AmSipDialog::reply_error(req,AmConfig::ShutdownModeErrCode,
+							   AmConfig::ShutdownModeErrReason);
+	  return;
+  }
+
+  if(req.method == SIP_METH_INVITE){
+      AmSessionContainer::instance()->startSessionUAS(req);
   } else {
-
     string app_name;
     AmSessionFactory* sess_fact = AmPlugIn::instance()->findSessionFactory(req,app_name);
     if (sess_fact) {
