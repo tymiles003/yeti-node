@@ -121,6 +121,7 @@ void CdrList::cdr2arg(const Cdr *cdr,const SqlRouter *router, AmArg& arg){
 	add_timeval_field_to_ret(cdr_born_time);
 	add_timeval_field_to_ret(start_time);
 	add_timeval_field_to_ret(connect_time);
+	add_timeval_field_to_ret(end_time);
 
 	add_field_to_ret(legB_remote_port);
 	add_field_to_ret(legB_local_port);
