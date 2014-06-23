@@ -1093,12 +1093,17 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 		}
 
 		DBG("%s() no refuse field. check it for resources",FUNC_NAME);
+        ResourceList &rl = profile->rl;
+        if(rl.empty()){
+            //empty resource list. avoid extra checks
+            break;
+        }
 
-		rctl_ret = rctl.get(ctx->getCurrentResourceList(),refuse_code,refuse_reason);
+        rctl_ret = rctl.get(rl,refuse_code,refuse_reason);
 
 		if(rctl_ret == RES_CTL_OK){
 			DBG("%s() check resources  successed",FUNC_NAME);
-			profile = ctx->getCurrentProfile();
+            //profile = ctx->getCurrentProfile();
 			has_profile = true;
 			break;
 		} else if(	rctl_ret ==  RES_CTL_REJECT ||
