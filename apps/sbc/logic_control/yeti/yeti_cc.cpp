@@ -173,6 +173,22 @@ bool Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
 	return true;
 }
 
+void Yeti::onSendRequest(SBCCallLeg *call,AmSipRequest& req, int &flags){
+	bool aleg = call->isALeg();
+	DBG("Yeti::onStateChange(%p|%s) a_leg = %d",
+		call,call->getLocalTag().c_str(),aleg);
+
+	/*if(call->getCallStatus()!=CallLeg::Disconnected)
+		return;
+
+	Cdr *cdr = getCdr(call);
+	if(aleg){
+		cdr->update_aleg_reason(req.method,0);
+	} else {
+		cdr->update_bleg_reason(req.method,0);
+	}*/
+}
+
 void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cause){
 	string reason;
 	getCtx_void();
@@ -536,7 +552,8 @@ CCChainProcessing Yeti::onInDialogReply(SBCCallLeg *call, const AmSipReply &repl
 }
 
 CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
-	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+	DBG("%s(%p|%s,leg%s)",FUNC_NAME,call,
+		call->getLocalTag().c_str(),call->isALeg()?"A":"B");
 
 	AmRtpTimeoutEvent *rtp_event = dynamic_cast<AmRtpTimeoutEvent*>(e);
 	if(rtp_event){
@@ -575,6 +592,14 @@ CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
 	if(sbc_event){
 		DBG("sbc event id: %d, cmd: %s",sbc_event->event_id,sbc_event->cmd.c_str());
 		onControlEvent(call,sbc_event);
+	}
+
+	B2BEvent* b2b_e = dynamic_cast<B2BEvent*>(e);
+	if(b2b_e){
+		if(b2b_e->event_id==B2BTerminateLeg){
+			DBG("onEvent(%p|%s) terminate leg event",
+				call,call->getLocalTag().c_str());
+		}
 	}
 
 	if (e->event_id == E_SYSTEM) {

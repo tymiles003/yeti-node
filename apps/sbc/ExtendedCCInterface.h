@@ -66,6 +66,8 @@ class ExtendedCCInterface
 
     virtual CCChainProcessing onInDialogReply(SBCCallLeg *call, const AmSipReply &reply) { return ContinueProcessing; }
 
+	virtual void onSendRequest(SBCCallLeg *call,AmSipRequest& req, int &flags) { }
+
     /** called before any other processing for the event is done */
     virtual CCChainProcessing onEvent(SBCCallLeg *call, AmEvent *e) { return ContinueProcessing; }
 

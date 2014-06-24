@@ -172,6 +172,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
         //!ExtendedCCInterface handlers
   bool init(SBCCallLeg *call, const map<string, string> &values);
 
+  void onSendRequest(SBCCallLeg *call,AmSipRequest& req, int &flags);
   void onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cause);
   void onDestroyLeg(SBCCallLeg *call);
   CCChainProcessing onBLegRefused(SBCCallLeg *call,AmSipReply& reply);

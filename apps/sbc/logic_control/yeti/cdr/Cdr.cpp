@@ -161,7 +161,9 @@ void Cdr::update(UpdateAction act){
         gettimeofday(&connect_time, NULL);
         break;
     case End:
-        gettimeofday(&end_time, NULL);
+		if(end_time.tv_sec==start_time.tv_sec){
+			gettimeofday(&end_time, NULL);
+		}
         break;
     case Write:
         writed = true;
@@ -201,7 +203,7 @@ void Cdr::update_internal_reason(DisconnectInitiator initiator,string reason, in
 
 	if(writed) return;
 	lock();
-	gettimeofday(&end_time, NULL);
+	update(End);
 	if(!disconnect_initiator_writed){
 		disconnect_initiator = initiator;
 		disconnect_internal_reason = reason;

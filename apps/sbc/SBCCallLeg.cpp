@@ -544,7 +544,9 @@ void SBCCallLeg::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
 }
 
 void SBCCallLeg::onSendRequest(AmSipRequest& req, int &flags) {
-
+	for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
+	  (*i)->onSendRequest(this, req, flags);
+	}
   if(a_leg) {
     if (!call_profile.aleg_append_headers_req.empty()) {
 
