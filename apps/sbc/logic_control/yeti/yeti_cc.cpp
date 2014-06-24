@@ -181,8 +181,8 @@ void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cau
 	bool aleg = call->isALeg();
 	int internal_disconnect_code = 0;
 
-	DBG("Yeti::onStateChange(%p) a_leg = %d",
-		call,call->isALeg());
+	DBG("Yeti::onStateChange(%p|%s) a_leg = %d",
+		call,call->getLocalTag().c_str(),call->isALeg());
 
 	if(!aleg){
 		switch(status){
@@ -252,7 +252,7 @@ void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cau
 			reason = "???";
 	}
 
-	if(aleg && internal_disconnect_code && status==CallLeg::Disconnected){
+	if(internal_disconnect_code && status==CallLeg::Disconnected){
 		unsigned int internal_code,response_code;
 		string internal_reason,response_reason;
 
@@ -271,7 +271,8 @@ void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cau
 }
 
 void Yeti::onDestroyLeg(SBCCallLeg *call){
-	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+	DBG("%s(%p|%s,leg%s)",FUNC_NAME,
+		call,call->getLocalTag().c_str(),call->isALeg()?"A":"B");
 	getCtx_void();
 	if(ctx->dec_and_test()){
 		onLastLegDestroy(ctx,call);
