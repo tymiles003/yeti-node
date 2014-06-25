@@ -213,6 +213,7 @@ void AmB2BSession::onB2BEvent(B2BEvent* ev)
 	  DBG("not sip-relaying BYE in not connected dlg, b2b-relaying 200 OK\n");
           relayError(req_ev->req.method, req_ev->req.cseq,
 		     true, 200, "OK");
+	  terminateLeg(); //no any reasons to stay alive
 	  return;
 	}
 
