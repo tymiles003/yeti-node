@@ -878,7 +878,7 @@ void AmRtpStream::bufferPacket(AmRtpPacket* p)
       if (NULL != relay_stream &&
 	  (!(relay_filter_dtmf && is_dtmf_packet))) {
 		add_if_no_exist(incoming_relayed_payloads,p->payload);
-		relay_stream->relay(p);
+        relay_stream->relay(p, force_receive_dtmf && !force_relay_dtmf);
 	  }
 
       mem.freePacket(p);
@@ -1154,12 +1154,15 @@ void AmRtpStream::recvRtcpPacket()
 
 }
 
-void AmRtpStream::relay(AmRtpPacket* p)
+void AmRtpStream::relay(AmRtpPacket* p,bool process_dtmf_queue)
 {
   // not yet initialized
   // or muted/on-hold
   if (!l_port || mute || hold) 
     return;
+
+  if(process_dtmf_queue)
+    dtmf_sender.sendPacket(p->timestamp,remote_telephone_event_pt->payload_type,this);
 
   if(session && !session->onBeforeRTPRelay(p,&r_saddr))
     return;
