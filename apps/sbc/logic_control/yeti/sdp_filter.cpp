@@ -154,7 +154,22 @@ int filter_arrange_SDP(AmSdp& sdp,
 		{ //iterate over arranged(!) filter entries
 			const SdpPayload *p = findPayload(media.payloads,*f_it,media.transport);
 			if(p!=NULL){
-				new_pl.push_back(*p);
+				SdpPayload new_p = *p;
+				/*! TODO: should be changed to replace with params from codec group */
+				if(add_codecs){
+					SdpPayload new_p = *p;
+					new_p.format.clear();
+					//override sdp_format_parameters from static codecs
+					new_p.sdp_format_parameters = f_it->sdp_format_parameters;
+					//override payload_type
+					if(new_p.payload_type >= DYNAMIC_PAYLOAD_TYPE_START &&
+							f_it->payload_type != -1){
+						new_p.payload_type = f_it->payload_type;
+					}
+					new_pl.push_back(new_p);
+				} else {
+					new_pl.push_back(*p);
+				}
 			} else if(add_codecs) {
 				new_pl.push_back(*f_it);
 			}
@@ -408,12 +423,12 @@ int filterReplySdp(SBCCallLeg *call,
 
 				}
 				if(sdp.media.size()!=audio_streams){
-					ERROR("filterReplySdp() audio streams count not equal reply: %ld, saved: %ld)",
+					ERROR("filterReplySdp() audio streams count not equal reply: %lu, saved: %u)",
 						  sdp.media.size(),audio_streams);
 					return -488;
 				}
 			} else {
-				ERROR("filterReplySdp() streams count not equal reply: %ld, saved: %ld)",
+				ERROR("filterReplySdp() streams count not equal reply: %lu, saved: %lu)",
 					sdp.media.size(),negotiated_media.size());
 				return -488;
 			}

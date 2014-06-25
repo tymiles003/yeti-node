@@ -12,6 +12,7 @@
 #include <map>
 using namespace std;
 
+#define NO_DYN_PAYLOAD -1
 
 struct CodecsGroupException : public InternalException {
 	CodecsGroupException(unsigned int code,unsigned int codecs_group);
@@ -22,7 +23,7 @@ class CodecsGroupEntry {
   public:
 	CodecsGroupEntry();
 	~CodecsGroupEntry(){}
-	bool add_codec(string codec);
+	bool add_codec(string codec,string sdp_params, int dyn_payload_id);
 	vector<SdpPayload> &get_payloads() { return codecs_payloads; }
 	void getConfig(AmArg &ret) const;
 };
@@ -55,8 +56,8 @@ class CodecsGroups {
 		e = i->second;
 	}
 
-	bool insert(unsigned int group_id, string codec) {
-		return m[group_id].add_codec(codec);
+	bool insert(unsigned int group_id, string codec,string sdp_params,int dyn_payload_id = NO_DYN_PAYLOAD) {
+		return m[group_id].add_codec(codec,sdp_params,dyn_payload_id);
 		//m.insert(pair<unsigned int,CodecsGroupEntry>(group_id,CodecsGroupEntry(group_codecs)));
 	}
 

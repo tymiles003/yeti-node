@@ -59,7 +59,7 @@ CodecsGroupEntry::CodecsGroupEntry(){
 	//codecs_filter.filter_type = Whitelist;
 }
 
-bool CodecsGroupEntry::add_codec(string c){
+bool CodecsGroupEntry::add_codec(string c, string sdp_params, int dyn_payload_id){
 	SdpPayload p;
 	AmPlugIn* plugin = AmPlugIn::instance();
 
@@ -72,16 +72,33 @@ bool CodecsGroupEntry::add_codec(string c){
 	int payload_id = plugin->getDynPayload(p.encoding_name, p.clock_rate, 0);
 	amci_payload_t* payload = plugin->payload(payload_id);
 	if(!payload) {
-		ERROR("Ignoring unknown payload found in call profile: %s/%i\n",
+		ERROR("Ignoring unknown payload: %s/%i\n",
 			p.encoding_name.c_str(), p.clock_rate);
 		return false;
-	} else {
-		if(payload_id < DYNAMIC_PAYLOAD_TYPE_START)
-			p.payload_type = payload->payload_id;
-		else
-			p.payload_type = -1;
-		codecs_payloads.push_back(p);
 	}
+
+	p.sdp_format_parameters = sdp_params;
+
+	if(payload_id < DYNAMIC_PAYLOAD_TYPE_START) {
+		p.payload_type = payload->payload_id;
+	} else {
+		if(dyn_payload_id != -1){
+			DBG("found dyn_payload_id %d for codec %s/%i",
+				dyn_payload_id, p.encoding_name.c_str(), p.clock_rate);
+			if (dyn_payload_id < DYNAMIC_PAYLOAD_TYPE_START) {
+				ERROR("Ignoring dyn_payload_id %d for %s/%i. it mustn't be less than %d",
+					  dyn_payload_id, p.encoding_name.c_str(), p.clock_rate,
+					  DYNAMIC_PAYLOAD_TYPE_START);
+				p.payload_type = -1;
+			} else {
+				p.payload_type = dyn_payload_id;
+			}
+		} else {
+			p.payload_type = -1;
+		}
+	}
+
+	codecs_payloads.push_back(p);
 	return true;
 }
 
@@ -137,8 +154,10 @@ int CodecsGroups::load_codecs_groups(){
 		for(pqxx::result::size_type i = 0; i < r.size();++i){
 			const pqxx::result::tuple &row = r[i];
 			unsigned int group_id = row["o_codec_group_id"].as<unsigned int>();
+			int dyn_payload_id = row["o_dynamic_payload_id"].as<int>(-1);
+			string sdp_format_params = row["o_format_params"].c_str();
 			string codec = row["o_codec_name"].c_str();
-			if(!insert(group_id,codec)){
+			if(!insert(group_id,codec,sdp_format_params, dyn_payload_id)){
 				ERROR("can't insert codec '%s'",row["o_codec_name"].c_str());
 				return 1;
 			} else {
