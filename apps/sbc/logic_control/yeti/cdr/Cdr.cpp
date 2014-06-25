@@ -210,8 +210,10 @@ void Cdr::update_internal_reason(DisconnectInitiator initiator,string reason, in
 		disconnect_internal_code = code;
 		disconnect_initiator_writed = true;
 	}
-	disconnect_rewrited_reason = reason;
-	disconnect_rewrited_code = code;
+	if(!aleg_reason_writed){
+		disconnect_rewrited_reason = reason;
+		disconnect_rewrited_code = code;
+	}
 	unlock();
 }
 

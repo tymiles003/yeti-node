@@ -175,17 +175,17 @@ bool Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
 
 void Yeti::onSendRequest(SBCCallLeg *call,AmSipRequest& req, int &flags){
 	bool aleg = call->isALeg();
-	DBG("Yeti::onStateChange(%p|%s) a_leg = %d",
+	DBG("Yeti::onSendRequest(%p|%s) a_leg = %d",
 		call,call->getLocalTag().c_str(),aleg);
 
 	/*if(call->getCallStatus()!=CallLeg::Disconnected)
-		return;
+		return;*/
 
-	Cdr *cdr = getCdr(call);
+	/*Cdr *cdr = getCdr(call);
 	if(aleg){
 		cdr->update_aleg_reason(req.method,0);
 	} else {
-		cdr->update_bleg_reason(req.method,0);
+		cdr->update_bleg_reason(req.method);
 	}*/
 }
 
@@ -218,18 +218,18 @@ void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cau
 	switch(cause.reason){
 		case CallLeg::StatusChangeCause::SipReply:
 			if(cause.param.reply!=NULL){
-				if(aleg && status==CallLeg::Disconnected)
+				/*if(aleg && status==CallLeg::Disconnected)
 					cdr->update_bleg_reason(cause.param.reply->reason,
-												cause.param.reply->code);
+												cause.param.reply->code);*/
 				reason = "SipReply. code = "+int2str(cause.param.reply->code);
 			} else
 				reason = "SipReply. empty reply";
 			break;
 		case CallLeg::StatusChangeCause::SipRequest:
 			if(cause.param.request!=NULL){
-				if(aleg && status==CallLeg::Disconnected)
+				/*if(aleg && status==CallLeg::Disconnected)
 					cdr->update_bleg_reason(cause.param.request->method,
-												cause.param.request->method==SIP_METH_BYE?200:500);
+												cause.param.request->method==SIP_METH_BYE?200:500);*/
 				reason = "SipRequest. method = "+cause.param.request->method;
 			} else
 				reason = "SipRequest. empty request";
@@ -601,7 +601,6 @@ CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
 				call,call->getLocalTag().c_str());
 		}
 	}
-
 	if (e->event_id == E_SYSTEM) {
 		AmSystemEvent* sys_ev = dynamic_cast<AmSystemEvent*>(e);
 		if(sys_ev){
@@ -742,11 +741,20 @@ CCChainProcessing Yeti::onBye(SBCCallLeg *call, const AmSipRequest &req){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	getCtx_chained();
 	Cdr *cdr = getCdr(ctx);
-	cdr->update_bleg_reason("onBye",200); //set bleg_reason anyway to onBye
+
 	if(call->isALeg()){
-		cdr->update_internal_reason(DisconnectByORG,"onBye",200);
+		if(call->getCallStatus()!=CallLeg::Connected){
+			ERROR("received Bye in not connected state");
+			cdr->update_internal_reason(DisconnectByORG,"onEarlyBye",500);
+			cdr->update_aleg_reason("onEarlyBye",200);
+			cdr->update_bleg_reason("Cancel",487);
+		} else {
+			cdr->update_internal_reason(DisconnectByORG,"onBye",200);
+			cdr->update_bleg_reason("onBye",200);
+		}
 	} else {
 		cdr->update_internal_reason(DisconnectByDST,"onOtherBye",200);
+		cdr->update_bleg_reason("onBye",200);
 	}
 	return ContinueProcessing;
 }
@@ -755,9 +763,9 @@ CCChainProcessing Yeti::onOtherBye(SBCCallLeg *call, const AmSipRequest &req){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	getCtx_chained();
 	if(call->isALeg()){
-		if(call->getCallStatus()==CallLeg::NoReply){
-			//avoid considering of bye in early state as succ call
-			ERROR("received OtherBye in NoReply state");
+		if(call->getCallStatus()!=CallLeg::Connected){
+			//avoid considering of bye in not connected state as succ call
+			ERROR("received OtherBye in not connected state");
 			Cdr *cdr = getCdr(ctx);
 			cdr->update_internal_reason(DisconnectByDST,"onEarlyOtherBye",500);
 			cdr->update_aleg_reason("Request terminated",487);
