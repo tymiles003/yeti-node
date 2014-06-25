@@ -66,6 +66,8 @@ class SyslogLogFac : public AmLoggingFacility {
     setlogmask(-1);
   }
 
+ static SyslogLogFac *_instance;
+
  public:
   SyslogLogFac() : AmLoggingFacility("syslog",AmConfig::LogLevel), facility(LOG_DAEMON) {
     init();
@@ -82,9 +84,15 @@ class SyslogLogFac : public AmLoggingFacility {
 
   bool setFacility(const char* str);
   void log(int, pid_t, pthread_t, const char*, const char*, int, char*);
+
+  static SyslogLogFac &instance(){
+	  if(!_instance) _instance = new SyslogLogFac();
+	  return *_instance;
+  }
+
 };
 
-static SyslogLogFac syslog_log;
+SyslogLogFac *SyslogLogFac::_instance = NULL;
 
 /** Set syslog facility */
 bool SyslogLogFac::setFacility(const char* str) {
@@ -161,7 +169,7 @@ void SyslogLogFac::log(int level, pid_t pid, pthread_t tid, const char* func, co
 
 int set_syslog_facility(const char* str)
 {
-  return (syslog_log.setFacility(str) == true);
+  return (SyslogLogFac::instance().setFacility(str) == true);
 }
 
 #endif /* !DISABLE_SYSLOG_LOG */
@@ -176,7 +184,9 @@ void init_logging()
 
 #ifndef DISABLE_SYSLOG_LOG
   //register_log_hook(&syslog_log);
-  AmPlugIn::instance()->registerLoggingFacility(syslog_log.getName(),&syslog_log);
+  AmPlugIn::instance()->registerLoggingFacility(
+			  SyslogLogFac::instance().getName(),
+			  &SyslogLogFac::instance());
 #endif
 
   INFO("Logging initialized\n");
@@ -235,7 +245,7 @@ bool has_higher_levels(int log_level_arg){
 }
 
 void set_log_level(int log_level_arg){
-	syslog_log.setLogLevel(log_level_arg);
+	SyslogLogFac::instance().setLogLevel(log_level_arg);
 }
 
 
