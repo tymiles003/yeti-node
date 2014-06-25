@@ -875,9 +875,9 @@ void AmRtpStream::bufferPacket(AmRtpPacket* p)
       }
       handleSymmetricRtp(&p->addr,false);
 
+      add_if_no_exist(incoming_relayed_payloads,p->payload);
       if (NULL != relay_stream &&
 	  (!(relay_filter_dtmf && is_dtmf_packet))) {
-		add_if_no_exist(incoming_relayed_payloads,p->payload);
         relay_stream->relay(p, force_receive_dtmf && !force_relay_dtmf);
 	  }
 
@@ -1162,7 +1162,7 @@ void AmRtpStream::relay(AmRtpPacket* p,bool process_dtmf_queue)
     return;
 
   if(process_dtmf_queue)
-    dtmf_sender.sendPacket(p->timestamp,remote_telephone_event_pt->payload_type,this);
+    dtmf_sender.sendPacket(p->timestamp,remote_telephone_event_pt->payload_type,relay_stream);
 
   if(session && !session->onBeforeRTPRelay(p,&r_saddr))
     return;
