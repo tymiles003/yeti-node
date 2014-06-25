@@ -1161,7 +1161,7 @@ void AmRtpStream::relay(AmRtpPacket* p,bool process_dtmf_queue)
   if (!l_port || mute || hold) 
     return;
 
-  if(process_dtmf_queue)
+  if(process_dtmf_queue && relay_stream && remote_telephone_event_pt.get())
     dtmf_sender.sendPacket(p->timestamp,remote_telephone_event_pt->payload_type,relay_stream);
 
   if(session && !session->onBeforeRTPRelay(p,&r_saddr))
