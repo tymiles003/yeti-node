@@ -62,7 +62,7 @@ public:
   void queueEvent(int event, unsigned int duration_ms, unsigned int sample_rate);
 
   /** Processes the send queue according to the timestamp */
-  void sendPacket(unsigned int ts, unsigned int remote_pt, AmRtpStream* stream);
+  bool sendPacket(unsigned int ts, unsigned int remote_pt, AmRtpStream* stream);
 };
 
 #endif

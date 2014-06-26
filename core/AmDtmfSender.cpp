@@ -49,7 +49,7 @@ void AmDtmfSender::queueEvent(int event, unsigned int duration_ms, unsigned int 
 }
 
 /** Processes the send queue according to the timestamp */
-void AmDtmfSender::sendPacket(unsigned int ts, unsigned int remote_pt, AmRtpStream* stream)
+bool AmDtmfSender::sendPacket(unsigned int ts, unsigned int remote_pt, AmRtpStream* stream)
 {
 /*  DBG("AmDtmfSender::sendPacket(ts = %u, remote_pt = %u, stream = %p)",
 	  ts,remote_pt,stream);*/
@@ -60,7 +60,7 @@ void AmDtmfSender::sendPacket(unsigned int ts, unsigned int remote_pt, AmRtpStre
       send_queue_mut.lock();
       if (send_queue.empty()) {
 	send_queue_mut.unlock();
-	return;
+    return false;
       }
       DBG("AmDtmfSender::sendPacket: DTMF_SEND_NONE queue: %p, size = %lu",
           &send_queue, send_queue.size());
@@ -94,7 +94,7 @@ void AmDtmfSender::sendPacket(unsigned int ts, unsigned int remote_pt, AmRtpStre
 	stream->compile_and_send(remote_pt, duration == DTMF_EVENT_MIN_DURATION,
 				 current_send_dtmf_ts, 
 				 (unsigned char*)&dtmf, sizeof(dtmf_payload_t)); 
-	return;
+    return true;
 
       } else {
 	DBG("ending DTMF\n");
@@ -125,7 +125,7 @@ void AmDtmfSender::sendPacket(unsigned int ts, unsigned int remote_pt, AmRtpStre
 
 	stream->compile_and_send(remote_pt, false, current_send_dtmf_ts, 
 				 (unsigned char*)&dtmf, sizeof(dtmf_payload_t)); 
-	return;
+    return true;
       }
     } break;
     };
