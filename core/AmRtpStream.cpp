@@ -1161,17 +1161,23 @@ void AmRtpStream::relay(AmRtpPacket* p,bool process_dtmf_queue)
   if (!l_port || mute || hold) 
     return;
 
-  if(process_dtmf_queue && relay_stream && remote_telephone_event_pt.get())
-    dtmf_sender.sendPacket(p->timestamp,remote_telephone_event_pt->payload_type,relay_stream);
-
   if(session && !session->onBeforeRTPRelay(p,&r_saddr))
     return;
 
   rtp_hdr_t* hdr = (rtp_hdr_t*)p->getBuffer();
-  if (!relay_raw && !relay_transparent_seqno)
+
+  if(process_dtmf_queue && remote_telephone_event_pt.get()){
+    dtmf_sender.sendPacket(p->timestamp,remote_telephone_event_pt->payload_type,this);
+    //patch seq	 and ssrc for packet. disable transpanency
     hdr->seq = htons(sequence++);
-  if (!relay_raw && !relay_transparent_ssrc)
     hdr->ssrc = htonl(l_ssrc);
+  } else {
+
+    if (!relay_raw && !relay_transparent_seqno)
+      hdr->seq = htons(sequence++);
+    if (!relay_raw && !relay_transparent_ssrc)
+      hdr->ssrc = htonl(l_ssrc);
+  }
   p->setAddr(&r_saddr);
 
   if(p->send(l_sd, AmConfig::RTP_Ifs[l_if], &l_saddr) < 0){
