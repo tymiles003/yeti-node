@@ -3,7 +3,7 @@
 #include "SBC.h"
 #include <algorithm>
 #include "RTPParameters.h"
-
+#include "sdp_filter.h"
 
 #define assign_str(field,sql_field)\
 	field =  t[sql_field].c_str();
@@ -279,6 +279,9 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 	assign_bool_safe(aleg_rtp_ping,"aleg_rtp_ping",false,false);
 	assign_bool_safe(bleg_rtp_ping,"bleg_rtp_ping",false,false);
 
+	assign_int_safe(aleg_conn_location_id,"aleg_sdp_c_location_id",0,0);
+	assign_int_safe(bleg_conn_location_id,"bleg_sdp_c_location_id",0,0);
+
 	DBG("Yeti: loaded SQL profile\n");
 
 	return true;
@@ -449,6 +452,9 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 		DBG("bleg_relay_options: '%s'\n",bleg_relay_options?"yes":"no");
 
 		DBG("filter_noaudio_streams: '%s'\n",filter_noaudio_streams?"yes":"no");
+
+		DBG("aleg_conn_location: '%s'\n",conn_location2str(aleg_conn_location_id));
+		DBG("bleg_conn_location: '%s'\n",conn_location2str(bleg_conn_location_id));
 
 		DynFieldsT::const_iterator dfit = df.begin();
 		for(unsigned int k = 0;k<dyn_fields.size();k++){

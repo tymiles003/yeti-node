@@ -6,6 +6,20 @@
 #include "CallCtx.h"
 #include "CodecsGroup.h"
 
+
+const char *conn_location2str(int location_id){
+	static const char *both = "both";
+	static const char *session_only = "session_only";
+	static const char *media_only = "media_only";
+	static const char *unknown = "unknown";
+	switch(location_id){
+		case BOTH: return both; break;
+		case SESSION_ONLY: return session_only; break;
+		case MEDIA_ONLY: return media_only; break;
+		default: return unknown; break;
+	}
+}
+
 void dump_SdpPayload(const vector<SdpPayload> &p,string prefix){
 	if(!prefix.empty())
 		prefix.insert(0,"for ");
@@ -122,6 +136,115 @@ void fix_dynamic_payloads(AmSdp &sdp,PayloadIdMapping &mapping){
 			}
 			stream_idx++;
 		}
+	}
+}
+
+static bool all_media_conn_equal(const AmSdp &sdp, SdpConnection &conn){
+	bool all_is_equal = true;
+	for(std::vector<SdpMedia>::const_iterator m = sdp.media.begin();
+			m!=sdp.media.end();++m){
+		const SdpConnection &c = m->conn;
+		if(!c.address.empty()){
+			if(conn.address.empty()){
+				conn = c;
+				continue;
+			} else {
+				if(!(conn==c)){
+					DBG("%s mismatched with %s",
+						conn.debugPrint().c_str(),c.debugPrint().c_str());
+					all_is_equal = false;
+					break;
+				}
+			}
+		}
+	}
+	return all_is_equal;
+}
+
+static bool assert_session_conn(AmSdp &sdp){
+	if(!sdp.conn.address.empty())
+		return true; //already have session conn
+
+	bool have_session_level = false;
+
+	if(sdp.media.size()>1){
+		//we have several streams. check conn eq for them
+		//it's cheking for global conn line possibility
+		SdpConnection conn;
+		bool all_is_equal = all_media_conn_equal(sdp,conn);
+		if(all_is_equal && !conn.address.empty()){
+			sdp.conn = conn;
+			have_session_level = true;
+			DBG("propagate media level conn %s to session level",
+				sdp.conn.debugPrint().c_str());
+		}
+	} else {
+		//just [0..1] stream. propagate it's address to the session level
+		if(sdp.media.size()){
+			const SdpConnection &conn = sdp.media.begin()->conn;
+			if(!conn.address.empty()){
+				sdp.conn = conn;
+				have_session_level = true;
+				DBG("propagate media level conn %s to session level",
+					sdp.conn.debugPrint().c_str());
+			}
+		}
+	}
+	return have_session_level;
+}
+
+static bool assert_media_conn(AmSdp &sdp){
+	if(sdp.conn.address.empty()){
+		DBG("assert_media_conn no session level conn");
+		return false; //no session level conn. give up
+	}
+
+	bool changed = false;
+	int stream_idx = 0;
+	for(std::vector<SdpMedia>::iterator m = sdp.media.begin();
+			m!=sdp.media.end();++m,++stream_idx){
+		if(m->conn.address.empty()){
+			m->conn = sdp.conn;
+			changed = true;
+			DBG("propagate session level %s for media stream %d",
+				sdp.conn.debugPrint().c_str(),stream_idx);
+		}
+	}
+	return changed;
+}
+
+static void remove_media_conn(AmSdp &sdp){
+	int stream_idx = 0;
+	for(std::vector<SdpMedia>::iterator m = sdp.media.begin();
+			m!=sdp.media.end();++m,++stream_idx){
+		if(!m->conn.address.empty()){
+			DBG("remove conn %s from media stream %d",
+				m->conn.debugPrint().c_str(),stream_idx);
+			m->conn = SdpConnection();
+		}
+	}
+}
+
+void normalize_conn_location(AmSdp &sdp, int location_id){
+	DBG("normalise_conn_location(%p,%s)",&sdp,conn_location2str(location_id));
+	switch(location_id){
+	case BOTH: {
+		assert_session_conn(sdp);
+		assert_media_conn(sdp);
+	} break;
+	case SESSION_ONLY: {
+		if(assert_session_conn(sdp)){
+			//we got session level conn. clean conn from all streams
+			remove_media_conn(sdp);
+		}
+	} break;
+	case MEDIA_ONLY: {
+		assert_session_conn(sdp);
+		assert_media_conn(sdp);
+		sdp.conn = SdpConnection();
+	} break;
+	default:
+		ERROR("unknown conn_location_id = %d",location_id);
 	}
 }
 
@@ -330,6 +453,10 @@ int filterRequestSdp(SBCCallLeg *call,
 		return res;
 	}
 
+	normalize_conn_location(sdp, a_leg ?
+								call_profile.bleg_conn_location_id :
+								call_profile.aleg_conn_location_id);
+
 	dump_SdpMedia(sdp.media,"filterRequestSdp_out");
 
 	//update body
@@ -507,6 +634,10 @@ int filterReplySdp(SBCCallLeg *call,
 	}
 	fix_dynamic_payloads(sdp,call->getTranscoderMapping());
 	filterSDPalines(sdp, call_profile.sdpalinesfilter);
+
+	normalize_conn_location(sdp, a_leg ?
+								call_profile.bleg_conn_location_id :
+								call_profile.aleg_conn_location_id);
 
 	dump_SdpMedia(sdp.media,"filterReplySdp_out");
 

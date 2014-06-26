@@ -16,6 +16,14 @@ void dump_SdpMedia(const vector<SdpMedia> &m,string prefix="");
 
 void fix_dynamic_payloads(AmSdp &sdp,PayloadIdMapping &mapping);
 
+enum conn_location {
+	BOTH = 0,
+	SESSION_ONLY,
+	MEDIA_ONLY
+};
+const char *conn_location2str(int location_id);
+void normalize_conn_location(AmSdp &sdp, int location_id);
+
 /**
  * @brief filter and arrange codecs in SDP\n
  * uses static_codecs for appropriate leg\n

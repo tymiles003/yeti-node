@@ -150,6 +150,9 @@ struct SBCCallProfile
   bool aleg_rtp_ping;
   bool bleg_rtp_ping;
 
+  int aleg_conn_location_id;
+  int bleg_conn_location_id;
+
   vector<FilterEntry> headerfilter;
   vector<FilterEntry> messagefilter;
 
