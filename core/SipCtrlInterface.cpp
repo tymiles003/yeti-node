@@ -497,7 +497,7 @@ inline bool _SipCtrlInterface::sip_msg2am_request(const sip_msg *msg,
 	req.rack_cseq = get_rack(msg)->cseq;
     }
 
-    if (msg->content_type) {
+	if (msg->content_type && msg->body.len) {
 
 	if(req.body.parse(c2stlstr(msg->content_type->value),
 			  (unsigned char*)msg->body.s,
