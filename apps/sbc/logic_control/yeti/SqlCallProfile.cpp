@@ -252,6 +252,7 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 
 	assign_int(time_limit,"time_limit",0);
 	assign_str(resources,"resources");
+	//resources = "5:96247:2:1|7:1100:8:1;";
 
 	assign_int(disconnect_code_id,"disconnect_code_id",0);
 
@@ -266,9 +267,9 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 	assign_bool_safe(rtprelay_dtmf_detection,"rtprelay_dtmf_detection",false,false);
 	assign_bool_safe(rtprelay_force_dtmf_relay,"rtprelay_force_dtmf_relay",true,true);
 
-	rtprelay_dtmf_filtering = true;
+	/*rtprelay_dtmf_filtering = true;
 	rtprelay_dtmf_detection = true;
-	rtprelay_force_dtmf_relay = false;
+	rtprelay_force_dtmf_relay = false;*/
 
 	assign_bool_safe(aleg_symmetric_rtp_ignore_rtcp,"aleg_symmetric_rtp_ignore_rtcp",false,false);
 	assign_bool_safe(bleg_symmetric_rtp_ignore_rtcp,"bleg_symmetric_rtp_ignore_rtcp",false,false);

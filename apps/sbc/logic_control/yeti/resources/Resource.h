@@ -1,8 +1,11 @@
 #ifndef RESOURCE_H
 #define RESOURCE_H
 
-#include <vector>
+//#include <vector>
+#include <list>
 #include <string>
+
+#include <AmThread.h>
 
 using namespace std;
 
@@ -29,7 +32,7 @@ struct Resource {
 
 //typedef vector<Resource> ResourceList;
 
-struct ResourceList: public vector<Resource> {
+struct ResourceList: public list<Resource>, AmMutex {
 	void parse(const string s);
 };
 //ResourceList resource_parse(const string s);

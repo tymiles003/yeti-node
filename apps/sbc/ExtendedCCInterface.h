@@ -87,6 +87,7 @@ class ExtendedCCInterface
     virtual CCChainProcessing onBye(SBCCallLeg *call, const AmSipRequest &req) { return ContinueProcessing; }
     virtual CCChainProcessing onOtherBye(SBCCallLeg *call, const AmSipRequest &req) { return ContinueProcessing; }
     virtual void onCallConnected(SBCCallLeg *call, const AmSipReply& reply){ }
+	virtual void onCallEnded(SBCCallLeg *call){ }
 
 	// AmRtpStream callbacks
 	virtual void onRTPStreamDestroy(SBCCallLeg *call,AmRtpStream *stream) {}

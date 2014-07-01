@@ -136,6 +136,7 @@ ResourceCtlResponse ResourceControl::get(ResourceList &rl,
 						  int &reject_code,
 						  string &reject_reason)
 {
+	AmLock l(rl);
 	ResourceList::iterator rli;
 
 	if(rl.empty()){
@@ -163,7 +164,9 @@ ResourceCtlResponse ResourceControl::get(ResourceList &rl,
 			map<int,ResourceConfig>::iterator ti = type2cfg.find(rli->type);
 			if(ti==type2cfg.end()){
 				reject_code = 404;
-				reject_reason = "Resource with unknown type overloaded";
+				reject_reason = "Resource with unknown type "+int2str(rli->type)+" overloaded";
+				stat.rejected++;
+				return RES_CTL_REJECT;
 			} else {
 				ResourceConfig &rc  = ti->second;
 				DBG("overloaded resource %d:%d action: %s",rli->type,rli->id,rc.str_action.c_str());
@@ -203,6 +206,7 @@ ResourceCtlResponse ResourceControl::get(ResourceList &rl,
 }
 
 void ResourceControl::put(ResourceList &rl){
+	AmLock l(rl);
 	if(rl.empty()){
 		DBG("ResourceControl::put(%p) empty resources list",&rl);
 		return;

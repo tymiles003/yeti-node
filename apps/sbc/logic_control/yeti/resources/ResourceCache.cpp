@@ -162,14 +162,16 @@ void ResourceCache::run(){
 								n,get.size());
 							throw ReplyDataException("HINCRBY mismatch responses array size");
 						}
-						for(unsigned int i = 0;i<n;i++){
+
+						ResourceList::iterator it = get.begin();
+						for(unsigned int i = 0;i<n;i++,++it){
 							redisReply *r = reply->element[i];
 							if(r->type!=REDIS_REPLY_INTEGER){
 								if(r->type==REDIS_REPLY_ERROR)
 									DBG("HINCRBY redis reply_error: %s",r->str);
 								throw ReplyDataException("HINCRBY integer expected");
 							}
-							Resource &res = get[i];
+							Resource &res = *it;
 							DBG("get_resource %d:%d %d %lld",res.type,res.id,gc.node_id,r->integer);
 						}
 					}
@@ -218,14 +220,15 @@ void ResourceCache::run(){
 						redisReply *r;
 						if(reply->elements != filtered_put.size())
 							throw ReplyDataException("HDECRBY mismatch responses array size");
-						for(unsigned int i = 0;i<reply->elements;i++){
+						ResourceList::iterator it = filtered_put.begin();
+						for(unsigned int i = 0;i<reply->elements;i++,++it){
 							r = reply->element[i];
 							if(r->type!=REDIS_REPLY_INTEGER){
 								DBG("HDECRBY r->type!=REDIS_REPLY_INTEGER, r->type = %d",
 									r->type);
 								throw ReplyDataException("HDECRBY integer expected");
 							}
-							Resource &res = filtered_put[i];
+							Resource &res = *it;
 							DBG("put_resource %d:%d %d %lld",res.type,res.id,gc.node_id,r->integer);
 						}
 					}
@@ -417,9 +420,10 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 
 					//resources availability checking cycle
 					int check_state = CHECK_STATE_NORMAL;
-					for(unsigned int i = 0;i<n;i++){
+					resource = rl.begin();
+					for(unsigned int i = 0;i<n;i++,++resource){
 						long int now = Reply2Int(reply->element[i]);
-						Resource &res = rl[i];
+						Resource &res = *resource;
 
 						if(CHECK_STATE_SKIP==check_state){
 							DBG("skip %d:%d intended for failover",res.type,res.id);
@@ -440,7 +444,6 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 								check_state = CHECK_STATE_FAILOVER;
 								continue;
 							}
-							resource = resource+i;
 							resources_available = false;
 							break;
 						} else {
