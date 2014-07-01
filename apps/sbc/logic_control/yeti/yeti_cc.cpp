@@ -786,6 +786,14 @@ void Yeti::onCallConnected(SBCCallLeg *call, const AmSipReply& reply){
 	}
 }
 
+void Yeti::onCallEnded(SBCCallLeg *call){
+	getCtx_void();
+	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+	if(call->isALeg()){
+		getCdr(ctx)->update(End);
+	}
+}
+
 void Yeti::onRTPStreamDestroy(SBCCallLeg *call,AmRtpStream *stream){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	getCtx_void();

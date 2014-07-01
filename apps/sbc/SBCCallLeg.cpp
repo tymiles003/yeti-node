@@ -1270,6 +1270,9 @@ void SBCCallLeg::CCConnect(const AmSipReply& reply) {
 }
 
 void SBCCallLeg::CCEnd() {
+  for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
+	(*i)->onCallEnded(this);
+  }
   CCEnd(call_profile.cc_interfaces.end());
 }
 

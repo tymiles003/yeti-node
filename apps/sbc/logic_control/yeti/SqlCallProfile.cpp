@@ -266,6 +266,10 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 	assign_bool_safe(rtprelay_dtmf_detection,"rtprelay_dtmf_detection",false,false);
 	assign_bool_safe(rtprelay_force_dtmf_relay,"rtprelay_force_dtmf_relay",true,true);
 
+	rtprelay_dtmf_filtering = true;
+	rtprelay_dtmf_detection = true;
+	rtprelay_force_dtmf_relay = false;
+
 	assign_bool_safe(aleg_symmetric_rtp_ignore_rtcp,"aleg_symmetric_rtp_ignore_rtcp",false,false);
 	assign_bool_safe(bleg_symmetric_rtp_ignore_rtcp,"bleg_symmetric_rtp_ignore_rtcp",false,false);
 	assign_bool_safe(aleg_symmetric_rtp_nonstop,"aleg_symmetric_rtp_nonstop",false,false);
