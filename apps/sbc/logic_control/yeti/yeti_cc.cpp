@@ -790,7 +790,9 @@ void Yeti::onCallEnded(SBCCallLeg *call){
 	getCtx_void();
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	if(call->isALeg()){
-		getCdr(ctx)->update(End);
+		Cdr *cdr = getCdr(ctx);
+		cdr->update(End);
+		cdr_list.erase(cdr);
 	}
 }
 
