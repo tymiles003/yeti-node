@@ -10,10 +10,6 @@
 #include <sys/types.h>
 #include <signal.h>
 
-#define TIMEVAL_ZERO(t) t.tv_sec = 0;
-#define TIMEVAL_EMPTY(t) (t.tv_sec == 0)
-
-
 static timeval last_shutdown_time;
 
 typedef void (Yeti::*YetiRpcHandler)(const AmArg& args, AmArg& ret);
@@ -66,7 +62,7 @@ void Yeti::init_xmlrpc_cmds(){
 	xmlrpc_cmds = e->leaves;
 	AmArg &root = xmlrpc_cmds;
 
-	TIMEVAL_ZERO(last_shutdown_time);
+	timerclear(&last_shutdown_time);
 
 	/* show */
 	reg_leaf(root,show,"show","read only queries");
@@ -1133,7 +1129,7 @@ void Yeti::showSystemStatus(const AmArg& args, AmArg& ret){
 	AmArg s;
 	handler_log();
 	s["shutdown_mode"] = (bool)AmConfig::ShutdownMode;
-	s["shutdown_request_time"] = TIMEVAL_EMPTY(last_shutdown_time) ?
+	s["shutdown_request_time"] = timerisset(&last_shutdown_time) ?
 					"nil" : timeval2str(last_shutdown_time);
 	ret.push(200);
 	ret.push(s);
@@ -1199,7 +1195,7 @@ void Yeti::requestSystemShutdownGraceful(const AmArg& args, AmArg& ret){
 
 void Yeti::requestSystemShutdownCancel(const AmArg& args, AmArg& ret){
 	handler_log();
-	TIMEVAL_ZERO(last_shutdown_time);
+	timerclear(&last_shutdown_time);
 	set_system_shutdown(false);
 	ret.push(200);
 	ret.push("OK");
