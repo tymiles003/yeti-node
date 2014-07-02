@@ -208,9 +208,9 @@ int AmRtpAudio::receive(unsigned long long system_ts)
       continue;
     }
 
-    size = decode(size);
-    if(size <= 0){
-      ERROR("decode() returned %i\n",size);
+	int decoded_size = decode(size);
+	if(decoded_size <= 0){
+	  ERROR("decode() returned %i\n",decoded_size);
       return -1;
     }
 
@@ -230,7 +230,7 @@ int AmRtpAudio::receive(unsigned long long system_ts)
 
     playout_buffer->write(wallclock_ts, adjusted_rtp_ts,
 			  (ShortSample*)((unsigned char *)samples),
-			  PCM16_B2S(size), begin_talk);
+			  PCM16_B2S(decoded_size), begin_talk);
 
     if(!active) {
       DBG("switching to active-mode\t(ts=%u;stream=%p)\n",
