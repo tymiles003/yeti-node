@@ -9,7 +9,7 @@ case $1 in
                 exit 0
                 ;;
         clean)
-                find $dir -name "*.pcap" -mtime $days -exec /bin/rm -f {} \; 
+                find $dir -name "*.pcap" -mtime $days -delete 
                 exit 0
                 ;;
         *)
