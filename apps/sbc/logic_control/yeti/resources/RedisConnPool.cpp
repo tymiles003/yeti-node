@@ -4,6 +4,8 @@
 #include "exception"
 #include "../alarms.h"
 
+#define REDIS_CONN_TIMEOUT 5
+
 RedisConnPool::RedisConnPool():
 	tostop(false),
 	failed_ready(true),
@@ -43,7 +45,8 @@ void RedisConnPool::run(){
 	conn_mtx.lock();
 		unsigned int active_count = active_ctxs.size();
 		while(active_count < pool_size){
-			ctx = redisConnect(_cfg.server.c_str(),_cfg.port);
+			timeval timeout = { REDIS_CONN_TIMEOUT, 0 };
+			ctx = redisConnectWithTimeout(_cfg.server.c_str(),_cfg.port,timeout);
 			if(ctx != NULL && ctx->err){
 				ERROR("[%p] failed conn for %s redis pool <host = %s:%d>",
 					  this,
@@ -205,7 +208,9 @@ bool RedisConnPool::reconnect(redisContext *&ctx){
 		redisFree(ctx);
 		ctx = NULL;
 	}
-	ctx = redisConnect(_cfg.server.c_str(),_cfg.port);
+
+	timeval timeout = { REDIS_CONN_TIMEOUT, 0 };
+	ctx = redisConnectWithTimeout(_cfg.server.c_str(),_cfg.port,timeout);
 	if (ctx != NULL && ctx->err) {
 		ERROR("[%p] %s() can't connect: %d <%s>",this,FUNC_NAME,ctx->err,ctx->errstr);
 		redisFree(ctx);
