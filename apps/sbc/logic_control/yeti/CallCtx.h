@@ -10,7 +10,7 @@
 class SqlRouter;
 
 struct CallCtx: public
-	atomic_int
+	atomic_int, AmMutex
 {
 	Cdr *cdr;
 	bool cdr_processed;

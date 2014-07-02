@@ -290,15 +290,17 @@ void Yeti::onDestroyLeg(SBCCallLeg *call){
 	DBG("%s(%p|%s,leg%s)",FUNC_NAME,
 		call,call->getLocalTag().c_str(),call->isALeg()?"A":"B");
 	getCtx_void();
+	ctx->lock();
+	call->setLogicData(NULL);
 	if(ctx->dec_and_test()){
 		onLastLegDestroy(ctx,call);
 		ctx->router->release(routers);
-		call->setLogicData(NULL);
+		ctx->unlock();
 		delete ctx;
 	} else {
 		if(NULL!=ctx->getCurrentProfile())
 			rctl.put(ctx->getCurrentResourceList());
-		call->setLogicData(NULL);
+		ctx->unlock();
 	}
 }
 
