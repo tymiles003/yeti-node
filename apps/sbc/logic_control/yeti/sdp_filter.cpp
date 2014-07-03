@@ -40,6 +40,11 @@ void dump_SdpPayload(const vector<SdpPayload> &p,string prefix){
 
 void dump_SdpMedia(const vector<SdpMedia> &m,string prefix){
 	DBG("DUMP SdpMedia %s %p:",prefix.c_str(),&m);
+	if(m.empty()){
+		DBG("SdpMedia %s is empty",prefix.c_str());
+		return;
+	}
+
 	unsigned stream_idx = 0;
 	for (vector<SdpMedia>::const_iterator j = m.begin(); j != m.end(); ++j) {
 		const SdpMedia &media = *j;

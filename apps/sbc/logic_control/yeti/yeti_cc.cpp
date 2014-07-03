@@ -809,6 +809,11 @@ void Yeti::onRTPStreamDestroy(SBCCallLeg *call,AmRtpStream *stream){
 }
 
 static void copyMediaPayloads(vector<SdpMedia> &dst, const vector<SdpMedia> &src){
+	if(src.empty()){
+		DBG("still no negotiated media. skip copy");
+		return;
+	}
+
 	if(dst.size()!=src.size()){
 		ERROR("received and negotiated media have different streams count");
 		return;
@@ -821,19 +826,21 @@ static void copyMediaPayloads(vector<SdpMedia> &dst, const vector<SdpMedia> &src
 }
 
 void Yeti::onSdpCompleted(SBCCallLeg *call, AmSdp& offer, AmSdp& answer){
-	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
+	bool aleg = call->isALeg();
 
-	const vector<SdpMedia> &aleg_negotiated_media = getCtx(call)->aleg_negotiated_media;
-	dump_SdpMedia(aleg_negotiated_media,"aleg_negotiated media");
+	DBG("%s(%p,leg%s)",FUNC_NAME,call,aleg?"A":"B");
 
-	if(call->isALeg()){
-		//fix sdp for relay mask computing in B -> A direction
-		//answer.media = getCtx(call)->aleg_negotiated_media;
-		copyMediaPayloads(answer.media,aleg_negotiated_media);
-	}
+	getCtx_void();
+	const vector<SdpMedia> &negotiated_media = aleg ?
+				ctx->aleg_negotiated_media :
+				ctx->bleg_negotiated_media;
+
+	dump_SdpMedia(negotiated_media,"negotiated media");
+
+	//fix sdp for relay mask computing
+	copyMediaPayloads(answer.media,negotiated_media);
 
 	dump_SdpMedia(offer.media,"offer");
-
 	dump_SdpMedia(answer.media,"answer");
 }
 
