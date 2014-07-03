@@ -1129,7 +1129,7 @@ void Yeti::showSystemStatus(const AmArg& args, AmArg& ret){
 	AmArg s;
 	handler_log();
 	s["shutdown_mode"] = (bool)AmConfig::ShutdownMode;
-	s["shutdown_request_time"] = timerisset(&last_shutdown_time) ?
+	s["shutdown_request_time"] = !timerisset(&last_shutdown_time) ?
 					"nil" : timeval2str(last_shutdown_time);
 	ret.push(200);
 	ret.push(s);
