@@ -445,7 +445,9 @@ int filterRequestSdp(SBCCallLeg *call,
 	filter_arrange_SDP(sdp,static_codecs, true);
 	fix_dynamic_payloads(sdp,call->getTranscoderMapping());
 
-	filterSDPalines(sdp, call_profile.sdpalinesfilter);
+	filterSDPalines(sdp, a_leg ?
+						call_profile.sdpalinesfilter :
+						call_profile.bleg_sdpalinesfilter);
 
 	res = cutNoAudioStreams(sdp,call_profile.filter_noaudio_streams);
 	if(0 != res){
@@ -579,7 +581,7 @@ int filterReplySdp(SBCCallLeg *call,
 				continue;
 
 			//remove all unknown attributes
-			m.attributes.clear();
+			//m.attributes.clear();
 
 			dump_SdpPayload(m.payloads,"m.payloads");
 			dump_SdpPayload(other_m.payloads,"other_m.payloads");
@@ -633,7 +635,9 @@ int filterReplySdp(SBCCallLeg *call,
 		WARN("no negotiated media for leg%s. leave it as is",a_leg ? "A" : "B");
 	}
 	fix_dynamic_payloads(sdp,call->getTranscoderMapping());
-	filterSDPalines(sdp, call_profile.sdpalinesfilter);
+	filterSDPalines(sdp, a_leg ?
+						call_profile.sdpalinesfilter :
+						call_profile.bleg_sdpalinesfilter);
 
 	normalize_conn_location(sdp, a_leg ?
 								call_profile.bleg_conn_location_id :

@@ -159,6 +159,7 @@ struct SBCCallProfile
   bool anonymize_sdp;
   vector<FilterEntry> sdpfilter;
   vector<FilterEntry> sdpalinesfilter;
+  vector<FilterEntry> bleg_sdpalinesfilter;
   vector<FilterEntry> mediafilter;
 
   int static_codecs_aleg_id;
