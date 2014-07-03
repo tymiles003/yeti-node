@@ -28,6 +28,7 @@
 #define DC_NO_PRACK					127
 #define DC_SESSION_TIMEOUT			128
 #define DC_INTERNAL_ERROR			129
+#define DC_TRANSACTION_TIMEOUT		130
 
 using namespace std;
 

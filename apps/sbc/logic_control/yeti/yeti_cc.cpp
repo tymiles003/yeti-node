@@ -221,7 +221,11 @@ void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cau
 				/*if(aleg && status==CallLeg::Disconnected)
 					cdr->update_bleg_reason(cause.param.reply->reason,
 												cause.param.reply->code);*/
+
 				reason = "SipReply. code = "+int2str(cause.param.reply->code);
+				if(cause.param.reply->code==408){
+					internal_disconnect_code = DC_TRANSACTION_TIMEOUT;
+				}
 			} else
 				reason = "SipReply. empty reply";
 			break;
