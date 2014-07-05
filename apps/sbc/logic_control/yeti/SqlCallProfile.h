@@ -43,7 +43,7 @@ struct SqlCallProfile
 	bool readFromTuple(const pqxx::result::tuple &t,const DynFieldsT &df);
 	bool readFilter(const pqxx::result::tuple &t, const char* cfg_key_filter,
 			vector<FilterEntry>& filter_list, bool keep_transparent_entry,
-			bool failover_type_id = FILTER_TYPE_TRANSPARENT);
+			int failover_type_id = FILTER_TYPE_TRANSPARENT);
 	bool readCodecPrefs(const pqxx::result::tuple &t);
 	bool readTranscoder(const pqxx::result::tuple &t);
 	bool readDynFields(const pqxx::result::tuple &t,const DynFieldsT &df);

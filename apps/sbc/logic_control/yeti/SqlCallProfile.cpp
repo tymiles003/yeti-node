@@ -350,7 +350,7 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 		DBG("SDP filter is %sabled, %s, %zd items in list, %sanonymizing SDP\n",
 		sdpfilter.size()?"en":"dis", filter_type.c_str(), filter_elems, anonymize_sdp?"":"not ");
 
-		filter_type = sdpfilter.size() ? FilterType2String(sdpalinesfilter.back().filter_type) : "disabled";
+		filter_type = sdpalinesfilter.size() ? FilterType2String(sdpalinesfilter.back().filter_type) : "disabled";
 		filter_elems = sdpalinesfilter.size() ? sdpalinesfilter.back().filter_list.size() : 0;
 		DBG("SDP alines-filter is %sabled, %s, %zd items in list\n", sdpalinesfilter.size()?"en":"dis", filter_type.c_str(), filter_elems);
 
@@ -482,7 +482,7 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 
 bool SqlCallProfile::readFilter(const pqxx::result::tuple &t, const char* cfg_key_filter,
 		vector<FilterEntry>& filter_list, bool keep_transparent_entry,
-		bool failover_type_id){
+		int failover_type_id){
 	FilterEntry hf;
 
 	string filter_key_type_field = string(cfg_key_filter)+"_type_id";
@@ -490,6 +490,7 @@ bool SqlCallProfile::readFilter(const pqxx::result::tuple &t, const char* cfg_ke
 
 	int filter_type_id;
 	assign_int_safe(filter_type_id,filter_key_type_field.c_str(),FILTER_TYPE_TRANSPARENT,failover_type_id);
+
 	switch(filter_type_id){
 		case FILTER_TYPE_TRANSPARENT:
 			hf.filter_type = Transparent;
@@ -512,9 +513,6 @@ bool SqlCallProfile::readFilter(const pqxx::result::tuple &t, const char* cfg_ke
 
 	string elems_str;
 	assign_str_safe(elems_str,filter_list_field.c_str());
-
-	if(elems_str.empty())
-		return true;
 
 	vector<string> elems = explode(elems_str,",");
 	for (vector<string>::iterator it=elems.begin(); it != elems.end(); it++) {
