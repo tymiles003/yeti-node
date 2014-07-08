@@ -15,6 +15,7 @@
 #include "SqlRouter.h"
 #include "db/DbTypes.h"
 #include "yeti.h"
+#include "cdr/TrustedHeaders.h"
 
 const static_field profile_static_fields[] = {
     { "node_id", "integer" },
@@ -114,6 +115,8 @@ try {
 		profile_types.push_back(profile_static_fields[k].type);
 	for(int k = 0;k<WRITECDR_STATIC_FIELDS_COUNT;k++)
 		cdr_types.push_back(cdr_static_fields[k].type);
+	for(int k = 0;k<TrustedHeaders::instance()->count();k++)
+		cdr_types.push_back("varchar");
 
 	pqxx::connection c(dbc.conn_str());
 	c.set_variable("search_path",routing_schema+", public");

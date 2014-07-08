@@ -32,6 +32,9 @@ struct SqlCallProfile
 	int aleg_override_id,bleg_override_id;
 	int dump_level_id;
 
+	/** whether or not we should parse trusted headers from this gateway */
+	bool trusted_hdrs_gw;
+
 	AmArg dyn_fields;
 
 	string resources;

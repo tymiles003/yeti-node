@@ -26,6 +26,7 @@ struct Cdr: public
 {
     bool writed;
     bool suppress;
+	bool trusted_hdrs_gw;
 	bool inserted2list;
 	int attempt_num;
 	bool is_last;
@@ -66,6 +67,8 @@ struct Cdr: public
     AmArg dyn_fields;
     string outbound_proxy;
 
+	vector<AmArg> trusted_hdrs;
+
 	AmRtpStream::PayloadsHistory legA_payloads;
 	AmRtpStream::PayloadsHistory legB_payloads;
 
@@ -80,7 +83,7 @@ struct Cdr: public
 	void update_sql(const SqlCallProfile &profile);
 	void update_sbc(const SBCCallProfile &profile);
 	void update(const AmSipRequest &req);
-    void update(const AmSipReply &reply);
+	void update(const AmSipReply &reply);
     void update(SBCCallLeg &leg);
 	void update(SBCCallLeg *call,AmRtpStream *stream);
     void update(UpdateAction act);

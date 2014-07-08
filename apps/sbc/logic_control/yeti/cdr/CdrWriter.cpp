@@ -5,6 +5,7 @@
 #include "../Version.h"
 #include "../yeti.h"
 #include "../alarms.h"
+#include "../cdr/TrustedHeaders.h"
 
 const static_field cdr_static_fields[] = {
 	{ "node_id", "integer" },
@@ -470,6 +471,9 @@ void CdrThread::prepare_queries(pqxx::connection *c){
 		for(;dit!=config.dyn_fields.end();++dit){
 			d(dit->second,pqxx::prepare::treat_direct);
 		}
+		//trusted headers
+		TrustedHeaders::instance()->invocate(d);
+
 		c->prepare_now(it->first);
 	}
 }
@@ -554,6 +558,8 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr){
 
 	fields_values.assertArray();
 
+	//TrustedHeaders::instance()->print_hdrs(cdr->trusted_hdrs);
+
 	stats.tried_cdrs++;
 	try{
 		pqxx::result r;
@@ -618,10 +624,18 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr){
 		const size_t n = cdr->dyn_fields.size();
 		for(unsigned int k = 0;k<n;++k)
 			invoc_AmArg(invoc,cdr->dyn_fields.get(k));
+		/* invocate trusted hdrs  */
+		for(vector<AmArg>::const_iterator i = cdr->trusted_hdrs.begin();
+				i != cdr->trusted_hdrs.end(); ++i){
+			invoc_AmArg(invoc,*i);
+		}
+
 		r = invoc.exec();
 		if (r.size()!=0&&0==r[0][0].as<int>()){
 			ret = 0;
 		}
+
+
 	} catch(const pqxx::pqxx_exception &e){
 		DBG("SQL exception on CdrWriter thread: %s",e.base().what());
 		dbg_writecdr(fields_values,cdr->dyn_fields);
@@ -739,7 +753,18 @@ int CdrThread::writecdrtofile(Cdr* cdr){
 	int n = cdr->dyn_fields.size()-1;
 	for(int k = 0;k<n;k++)
 		wf << wv(AmArg::print(cdr->dyn_fields[k]));
-	wf << "'" << AmArg::print(cdr->dyn_fields[n]) << "'" << endl;
+	wf << "'" << AmArg::print(cdr->dyn_fields[n]) << "'";
+
+
+		//trusted fields
+	n = cdr->trusted_hdrs.size()-1;
+	if(n) wf << ",";
+
+	for(int k = 0;k<n;k++)
+		wf << wv(AmArg::print(cdr->trusted_hdrs[k]));
+	wf << "'" << AmArg::print(cdr->trusted_hdrs[n]) << "'";
+
+	wf << endl;
 	wf.flush();
 	stats.writed_cdrs++;
 	return 0;

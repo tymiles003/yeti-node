@@ -21,6 +21,7 @@ set (yeti_SRCS
 	resources/Resource.cpp
 	cdr/Cdr.cpp
 	cdr/CdrWriter.cpp
+	cdr/TrustedHeaders.cpp
 	hash/CdrList.cpp
 	hash/ProfilesCache.cpp
 	db/PgConnectionPool.cpp

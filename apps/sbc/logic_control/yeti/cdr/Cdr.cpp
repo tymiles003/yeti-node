@@ -2,6 +2,7 @@
 #include "AmUtils.h"
 #include "log.h"
 #include "RTPParameters.h"
+#include "TrustedHeaders.h"
 
 static const char *updateAction2str(UpdateAction act){
 	static const char *aStart = "Start";
@@ -44,6 +45,9 @@ void Cdr::init(){
 
     gettimeofday(&cdr_born_time, NULL);
 
+	trusted_hdrs_gw = false;
+	TrustedHeaders::instance()->init_hdrs(trusted_hdrs);
+
     writed=false;
     suppress = false;
 	inserted2list = false;
@@ -81,6 +85,7 @@ void Cdr::init(){
 
 void Cdr::update_sql(const SqlCallProfile &profile){
 	DBG("Cdr::%s(SqlCallProfile)",FUNC_NAME);
+	trusted_hdrs_gw = profile.trusted_hdrs_gw;
     outbound_proxy = profile.outbound_proxy;
     dyn_fields = profile.dyn_fields;
     time_limit = profile.time_limit;
@@ -124,6 +129,9 @@ void Cdr::update(const AmSipReply &reply){
 	DBG("Cdr::%s(AmSipReply)",FUNC_NAME);
     if(writed) return;
     lock();
+	if(reply.code == 200 && trusted_hdrs_gw){ //try to fill trusted headers from 200 OK reply
+		TrustedHeaders::instance()->parse_reply_hdrs(reply,trusted_hdrs);
+	}
 	if(reply.remote_port!=0){	//check for bogus reply (like timeout)
 		legB_remote_ip = reply.remote_ip;
 		legB_remote_port = reply.remote_port;

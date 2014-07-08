@@ -16,6 +16,7 @@
 #include "Version.h"
 #include "RegisterDialog.h"
 #include "Registration.h"
+#include "cdr/TrustedHeaders.h"
 #include "SBC.h"
 struct CallLegCreator;
 
@@ -139,6 +140,11 @@ int Yeti::onLoad() {
 		return -1;
 	}
 	rctl.start();
+
+	if(TrustedHeaders::instance()->configure(cfg)){
+		ERROR("TrustedHeaders configure failed");
+		return -1;
+	}
 
 	if(CodecsGroups::instance()->configure(cfg)){
 		ERROR("CodecsGroups configure failed");

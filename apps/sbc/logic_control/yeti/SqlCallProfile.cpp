@@ -293,6 +293,8 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 
 	assign_bool_safe(relay_reinvite,"relay_reinvite",true,true);
 
+	assign_bool_safe(trusted_hdrs_gw,"trusted_hdrs_gw",false,false);
+
 	DBG("Yeti: loaded SQL profile\n");
 
 	return true;
