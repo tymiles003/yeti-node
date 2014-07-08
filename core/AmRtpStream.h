@@ -310,7 +310,7 @@ protected:
   /** handle symmetric RTP/RTCP - if in passive mode, update raddr from rp */
   void handleSymmetricRtp(struct sockaddr_storage* recv_addr, bool rtcp);
 
-  void relay(AmRtpPacket* p, bool process_dtmf_queue);
+  void relay(AmRtpPacket* p, bool is_dtmf_packet, bool process_dtmf_queue);
 
   /** Sets generic parameters on SDP media */
   void getSdp(SdpMedia& m);

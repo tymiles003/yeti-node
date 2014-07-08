@@ -879,7 +879,7 @@ void AmRtpStream::bufferPacket(AmRtpPacket* p)
       add_if_no_exist(incoming_relayed_payloads,p->payload);
       if (NULL != relay_stream &&
 	  (!(relay_filter_dtmf && is_dtmf_packet))) {
-        relay_stream->relay(p, force_receive_dtmf && !force_relay_dtmf);
+		relay_stream->relay(p, is_dtmf_packet, force_receive_dtmf && !force_relay_dtmf);
 	  }
 
       mem.freePacket(p);
@@ -1155,7 +1155,7 @@ void AmRtpStream::recvRtcpPacket()
 
 }
 
-void AmRtpStream::relay(AmRtpPacket* p,bool process_dtmf_queue)
+void AmRtpStream::relay(AmRtpPacket* p, bool is_dtmf_packet, bool process_dtmf_queue)
 {
   // not yet initialized
   // or muted/on-hold
@@ -1179,6 +1179,10 @@ void AmRtpStream::relay(AmRtpPacket* p,bool process_dtmf_queue)
       if (!relay_transparent_ssrc)
         hdr->ssrc = htonl(l_ssrc);
     }
+
+	if(is_dtmf_packet && local_telephone_event_pt.get()){
+		hdr->pt = local_telephone_event_pt->payload_type;
+	}
 
   } //if(!relay_raw)
 
