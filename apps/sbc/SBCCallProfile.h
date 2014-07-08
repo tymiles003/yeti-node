@@ -196,6 +196,7 @@ struct SBCCallProfile
   string append_headers;
   string append_headers_req;
   string aleg_append_headers_req;
+  string aleg_append_headers_reply;
 
   string refuse_with;
 

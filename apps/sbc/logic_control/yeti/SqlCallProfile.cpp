@@ -8,11 +8,11 @@
 #define assign_str(field,sql_field)\
 	field =  t[sql_field].c_str();
 
-#define assign_str_safe(field,sql_field)\
+#define assign_str_safe(field,sql_field,failover_value)\
 	try { assign_str(field,sql_field); }\
 	catch(...) {\
 		ERROR("field '%s' not exist in db response",sql_field);\
-		field = "";\
+		field = failover_value;\
 	}
 
 #define assign_type(field,sql_field,default_value,type)\
@@ -217,6 +217,7 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 	assign_str(append_headers,"append_headers");
 	assign_str(append_headers_req,"append_headers_req");
 	assign_str(aleg_append_headers_req,"aleg_append_headers_req");
+	assign_str_safe(aleg_append_headers_reply,"aleg_append_headers_reply","");
 
 	assign_bool(rtprelay_enabled,"enable_rtprelay",false);
 	assign_bool_str_safe(force_symmetric_rtp,"bleg_force_symmetric_rtp",false,false);
@@ -515,7 +516,7 @@ bool SqlCallProfile::readFilter(const pqxx::result::tuple &t, const char* cfg_ke
 	return true;
 
 	string elems_str;
-	assign_str_safe(elems_str,filter_list_field.c_str());
+	assign_str_safe(elems_str,filter_list_field.c_str(),"");
 
 	vector<string> elems = explode(elems_str,",");
 	for (vector<string>::iterator it=elems.begin(); it != elems.end(); it++) {

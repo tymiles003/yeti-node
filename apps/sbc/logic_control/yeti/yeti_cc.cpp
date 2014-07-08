@@ -8,6 +8,7 @@
 #include "sdp_filter.h"
 
 #include "RegisterDialog.h"
+#include "AmSipMsg.h"
 
 #define getCtx_void()\
 	CallCtx *ctx = getCtx(call);\
@@ -972,6 +973,32 @@ int Yeti::relayEvent(SBCCallLeg *call, AmEvent *e){
 						   *negotiated_media,
 						   single_codec,
 						   call_profile.filter_noaudio_streams);
+
+			//append headers for 200 OK replyin direction B -> A
+			AmSipReply &reply = reply_ev->reply;
+			if(!a_leg &&
+				reply.code==200 &&
+				!call_profile.aleg_append_headers_reply.empty()){
+
+				size_t start_pos = 0;
+				while (start_pos<call_profile.aleg_append_headers_reply.length()) {
+					int res;
+					size_t name_end, val_begin, val_end, hdr_end;
+					if ((res = skip_header(call_profile.aleg_append_headers_reply, start_pos, name_end, val_begin,
+							val_end, hdr_end)) != 0) {
+						ERROR("skip_header for '%s' pos: %ld, return %d",
+								call_profile.aleg_append_headers_reply.c_str(),start_pos,res);
+						throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
+					}
+					string hdr_name = call_profile.aleg_append_headers_reply.substr(start_pos, name_end-start_pos);
+					start_pos = hdr_end;
+					while(!getHeader(reply.hdrs,hdr_name).empty()){
+						removeHeader(reply.hdrs,hdr_name);
+					}
+				}
+
+				reply.hdrs+=call_profile.aleg_append_headers_reply;
+			}
 		} break;
 	} //switch(e->event_id)
 	return 0;
