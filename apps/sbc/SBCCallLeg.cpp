@@ -1757,6 +1757,12 @@ void SBCCallLeg::alterHoldRequest(AmSdp &sdp)
   alterHoldRequestImpl(sdp);
 }
 
+void SBCCallLeg::processLocalReInvite(AmSipRequest &req) {
+	DBG("%s() local_tag = %s",FUNC_NAME,getLocalTag().c_str());
+	updateLocalBody(req.body);
+	dlg->reply(req,200,"OK",&req.body,"",SIP_FLAGS_VERBATIM);
+}
+
 void SBCCallLeg::createHoldRequest(AmSdp &sdp)
 {
   // hack: we need to have other side SDP (if the stream is hold already

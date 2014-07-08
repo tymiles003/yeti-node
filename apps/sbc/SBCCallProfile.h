@@ -162,6 +162,8 @@ struct SBCCallProfile
   vector<FilterEntry> bleg_sdpalinesfilter;
   vector<FilterEntry> mediafilter;
 
+  bool relay_reinvite;
+
   int static_codecs_aleg_id;
   int static_codecs_bleg_id;
   bool aleg_single_codec;
@@ -378,7 +380,8 @@ struct SBCCallProfile
     patch_ruri_next_hop(false),
     next_hop_1st_req(false),
 	next_hop_fixed(false),
-	ringing_timeout(0)
+	ringing_timeout(0),
+	relay_reinvite(true)
   { }
 
   bool readFromConfiguration(const string& name, const string profile_file_name);

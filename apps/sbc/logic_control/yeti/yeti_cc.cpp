@@ -529,7 +529,9 @@ void Yeti::onInviteException(SBCCallLeg *call,int code,string reason,bool no_rep
 CCChainProcessing Yeti::onInDialogRequest(SBCCallLeg *call, const AmSipRequest &req) {
 	bool aleg = call->isALeg();
 
-	DBG("%s(%p,leg%s) '%s'",FUNC_NAME,call,aleg?"A":"B",req.method.c_str());
+	DBG("%s(%p|%s,leg%s) '%s'",FUNC_NAME,call,call->getLocalTag().c_str(),aleg?"A":"B",req.method.c_str());
+
+	SBCCallProfile &p = call->getCallProfile();
 
 	if(req.method == SIP_METH_OPTIONS){
 		const SBCCallProfile &p = call->getCallProfile();
@@ -538,6 +540,37 @@ CCChainProcessing Yeti::onInDialogRequest(SBCCallLeg *call, const AmSipRequest &
 			call->dlg->reply(req, 200, "OK", NULL, "", SIP_FLAGS_VERBATIM);
 			return StopProcessing;
 		}
+	}
+
+	if(req.method == SIP_METH_INVITE && !p.relay_reinvite){
+		DBG("INVITE method matched. try to process locally");
+		getCtx_chained();
+
+		call->dlg->reply(req, 100, SIP_REPLY_TRYING);
+
+		int static_codecs_negotiate_id;
+		vector<SdpMedia> * negotiated_media;
+
+		if(aleg){
+			static_codecs_negotiate_id = p.static_codecs_aleg_id;
+			negotiated_media = &ctx->aleg_negotiated_media;
+		} else {
+			static_codecs_negotiate_id = p.static_codecs_bleg_id;
+			negotiated_media = &ctx->bleg_negotiated_media;
+		}
+
+		AmSipRequest inv_req(req);
+		int res = negotiateRequestSdp(p,
+									  inv_req,
+									  *negotiated_media,
+									  inv_req.method,
+									  static_codecs_negotiate_id);
+		if (res < 0) {
+			throw AmSession::Exception(488,"Not Acceptable Here");
+		}
+
+		call->processLocalReInvite(inv_req);
+		return StopProcessing;
 	}
 
 	if(aleg){

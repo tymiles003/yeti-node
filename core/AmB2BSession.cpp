@@ -860,7 +860,7 @@ int AmB2BSession::relaySip(const AmSipRequest& req)
       t++;
     } 
     if (t == relayed_req.end()) {
-      ERROR("transaction for ACK not found in relayed requests\n");
+	  DBG("transaction for ACK not found in relayed requests\n");
       // FIXME: local body (if updated) should be discarded here
       return -1;
     }

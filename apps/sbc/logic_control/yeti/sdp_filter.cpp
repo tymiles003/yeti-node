@@ -317,7 +317,6 @@ int filter_arrange_SDP(AmSdp& sdp,
 		stream_idx++;
 	}
 
-
 	dump_SdpMedia(sdp.media,"filter_arrange_SDP_out");
 
 	if ((!media_line_left) && media_line_filtered_out) {
