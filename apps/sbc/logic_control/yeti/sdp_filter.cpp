@@ -20,6 +20,19 @@ const char *conn_location2str(int location_id){
 	}
 }
 
+int AmMimeBody2Sdp(const AmMimeBody &body,AmSdp &sdp){
+	//
+	const AmMimeBody* sdp_body = body.hasContentType(SIP_APPLICATION_SDP);
+	if(!sdp_body) return -1;
+	int res = sdp.parse((const char *)sdp_body->getPayload());
+	if(0 != res) {
+		DBG("%s() SDP parsing failed: %d\n",FUNC_NAME,res);
+		return res;
+	}
+	return 0;
+}
+
+
 void dump_SdpPayload(const vector<SdpPayload> &p,string prefix){
 	if(!prefix.empty())
 		prefix.insert(0,"for ");

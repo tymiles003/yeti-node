@@ -546,6 +546,24 @@ CCChainProcessing Yeti::onInDialogRequest(SBCCallLeg *call, const AmSipRequest &
 		DBG("INVITE method matched. try to process locally");
 		getCtx_chained();
 
+		//check for hold/unhold request to pass them transparentlyAmSdp sdp;
+		AmSdp sdp;
+		if(AmMimeBody2Sdp(req.body,sdp)!=0){
+			return ContinueProcessing;
+		}
+		HoldMethod method;
+
+		if(isHoldRequest(sdp,method)){
+			DBG("skip local processing for hold request");
+			ctx->on_hold = true;
+			return ContinueProcessing;
+		} else if(ctx->on_hold){
+			DBG("we in hold state. skip local processing for unhold request");
+			ctx->on_hold = false;
+			return ContinueProcessing;
+		}
+
+		DBG("replying 100 Trying to INVITE to be processed locally\n");
 		call->dlg->reply(req, 100, SIP_REPLY_TRYING);
 
 		int static_codecs_negotiate_id;

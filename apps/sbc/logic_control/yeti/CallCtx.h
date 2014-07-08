@@ -30,6 +30,7 @@ struct CallCtx: public
 	ResourceList &getCurrentResourceList();
 	int getOverrideId(bool aleg = true);
 	void setCdrProcessed();
+	bool on_hold;
 
 	CallCtx(SqlRouter *router);
 	~CallCtx();

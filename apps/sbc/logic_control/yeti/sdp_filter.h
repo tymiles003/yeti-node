@@ -11,6 +11,8 @@ using std::vector;
 
 #define DTMF_ENCODING_NAME "TELEPHONE-EVENT"
 
+int AmMimeBody2Sdp(const AmMimeBody &body,AmSdp &sdp);
+
 void dump_SdpPayload(const vector<SdpPayload> &p,string prefix="");
 void dump_SdpMedia(const vector<SdpMedia> &m,string prefix="");
 

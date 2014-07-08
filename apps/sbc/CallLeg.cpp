@@ -49,8 +49,6 @@ ReliableB2BEvent::~ReliableB2BEvent()
 ////////////////////////////////////////////////////////////////////////////////
 // helper functions
 
-enum HoldMethod { SendonlyStream, InactiveStream, ZeroedConnection };
-
 static const string sendonly("sendonly");
 static const string recvonly("recvonly");
 static const string sendrecv("sendrecv");
@@ -99,7 +97,7 @@ static MediaActivity getMediaActivity(const SdpMedia &m, MediaActivity default_v
   return Inactive;
 }
 
-static bool isHoldRequest(AmSdp &sdp, HoldMethod &method)
+bool isHoldRequest(AmSdp &sdp, HoldMethod &method)
 {
   // set defaults from session parameters and attributes
   // inactive/sendonly/sendrecv/recvonly may be given as session attributes,

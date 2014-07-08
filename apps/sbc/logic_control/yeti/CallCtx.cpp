@@ -74,7 +74,8 @@ CallCtx::CallCtx(SqlRouter *router):
 	cdr(NULL),
 	router(router),
 	SQLexception(false),
-	cdr_processed(false)
+	cdr_processed(false),
+	on_hold(false)
 {
 	router->inc();
 	//DBG("%s() this = %p",FUNC_NAME,this);
