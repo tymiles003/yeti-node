@@ -294,8 +294,13 @@ void CdrThread::run(){
 		ERROR("can't connect to any DB on startup. give up");
 		throw std::logic_error("CdrWriter can't connect to any DB on startup");
 	}
+
+	bool db_err = false;
+
 while(true){
 	Cdr* cdr;
+
+	//DBG("next cycle");
 
 	bool qrun = queue_run.wait_for_to(config.check_interval);
 
@@ -304,8 +309,8 @@ while(true){
 		return;
 	}
 
-	if(!qrun){
-//		DBG("queue condition wait timeout. check connections");
+	if(db_err || !qrun){
+		//DBG("queue condition wait timeout. check connections");
 		//check master conn
 		if(masterconn!=NULL){
 			try {
@@ -322,6 +327,7 @@ while(true){
 				} else {
 					INFO("CdrWriter %p master DB connection failed alarm cleared",this);
 					masteralarm = false;
+					db_err = false;
 					CLEAR_ALARM(alarms::CDR_DB_CONN);
 				}
 			}
@@ -357,6 +363,7 @@ while(true){
 				} else {
 					INFO("CdrWriter %p slave DB connection failed alarm cleared",this);
 					slavealarm = false;
+					db_err = false;
 					CLEAR_ALARM(alarms::CDR_DB_CONN);
 				}
 			}
@@ -373,15 +380,23 @@ while(true){
 				CLEAR_ALARM(alarms::CDR_DB_CONN);
 			}
 		}
-		continue;
+		//continue;
 	}
 
 	//DBG("CdrWriter cycle beginstartup");
 
 	queue_mut.lock();
+		if(queue.empty()){
+			//DBG("no CDR for write");
+			queue_run.set(false);
+			queue_mut.unlock();
+			continue;
+		}
+
 		cdr=queue.front();
 		queue.pop_front();
-		if(0==queue.size()){
+
+		if(queue.empty()){
 			//DBG("CdrWriter cycle stop.Empty queue");
 			queue_run.set(false);
 		}
@@ -391,9 +406,11 @@ while(true){
 
 	if(0!=writecdr(masterconn,cdr)){
 		ERROR("Cant write CDR to master database");
+		db_err = true;
 		if (config.failover_to_slave) {
 			DBG("failover_to_slave enabled. try");
 			if(!slaveconn || 0!=writecdr(slaveconn,cdr)){
+				db_err = true;
 				ERROR("Cant write CDR to slave database");
 				if(config.failover_to_file){
 					DBG("failover_to_file enabled. try");
@@ -440,16 +457,16 @@ while(true){
 		DBG("CDR deleted from queue");
 		delete cdr;
 	} else {
-		/*
-		DBG("return CDR into queue");
-		queue_mut.lock();
-			queue.push_back(cdr);
-			queue_run.set(true);
-		queue_mut.unlock();
-		*/
-		//FIXME: what we should really do here ?
-		ERROR("CDR write failed. forget about it");
-		delete cdr;
+		if(config.failover_requeue){
+			DBG("requeuing is enabled. return CDR into queue");
+			queue_mut.lock();
+				queue.push_back(cdr);
+				//queue_run.set(true);
+			queue_mut.unlock();
+		} else {
+			ERROR("CDR write failed. forget about it");
+			delete cdr;
+		}
 	}
 } //while
 }
@@ -791,6 +808,8 @@ int CdrThreadCfg::cfg2CdrThCfg(AmConfigReader& cfg, string& prefix){
 	string suffix="master"+prefix;
 	string cdr_file_dir = prefix+"_dir";
 	string cdr_file_completed_dir = prefix+"_completed_dir";
+
+	failover_requeue = cfg.getParameterInt("failover_requeue",0);
 
 	failover_to_file = cfg.getParameterInt("failover_to_file",1);
 	if(failover_to_file){

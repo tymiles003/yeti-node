@@ -24,6 +24,7 @@ using std::vector;
 struct CdrThreadCfg{
 	bool failover_to_slave;
 	bool failover_to_file;
+	bool failover_requeue;
 	string failover_file_dir;
 	int check_interval;
 	string failover_file_completed_dir;
