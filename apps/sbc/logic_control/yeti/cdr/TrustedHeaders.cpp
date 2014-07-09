@@ -36,7 +36,7 @@ int _TrustedHeaders::load_config(){
 				if(hdr.empty()) continue;
 
 				hdrs.push_back(hdr);
-				DBG("TrustedHeader: %s",row["name"].c_str());
+				DBG("TrustedHeader: %s",hdr.c_str());
 			}
 		t.commit();
 		c.disconnect();
