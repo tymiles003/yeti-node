@@ -1220,6 +1220,7 @@ void SBCCallProfile::fix_append_hdrs(ParamReplacerCtx& ctx,
   fix_append_hdr_list(req, ctx, append_headers, "append_headers");
   fix_append_hdr_list(req, ctx, append_headers_req,"append_headers_req");
   fix_append_hdr_list(req, ctx, aleg_append_headers_req,"aleg_append_headers_req");
+  fix_append_hdr_list(req, ctx, aleg_append_headers_reply, "aleg_append_headers_reply");
 }
 
 

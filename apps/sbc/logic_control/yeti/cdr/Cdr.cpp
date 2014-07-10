@@ -169,7 +169,7 @@ void Cdr::update(UpdateAction act){
         gettimeofday(&connect_time, NULL);
         break;
     case End:
-		if(!end_time.tv_sec || end_time.tv_sec==start_time.tv_sec){
+		if(end_time.tv_sec==start_time.tv_sec){
 			gettimeofday(&end_time, NULL);
 		}
         break;
@@ -278,7 +278,7 @@ Cdr::Cdr(const Cdr& cdr,const SqlCallProfile &profile){
 	update_sql(profile);
 
 	attempt_num = cdr.attempt_num+1;
-	start_time = cdr.start_time;
+	end_time = start_time = cdr.start_time;
 
 	legA_remote_ip = cdr.legA_remote_ip;
 	legA_remote_port = cdr.legA_remote_port;
