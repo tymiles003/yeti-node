@@ -419,7 +419,10 @@ void CallLeg::b2bInitial1xx(AmSipReply& reply, bool forward)
   // Warning: 100 reply may have to tag but forward is explicitly set to false,
   // so it can't be used to check whether it is related to a forwarded request
   // or not!
-  if (reply.to_tag.empty() || reply.code == 100) return;
+  if (reply.to_tag.empty() || reply.code == 100) {
+	  DBG("discard %d. (100 Trying or missed to_tag)",reply.code);
+	  return;
+  }
 
   if (call_status == NoReply) {
     DBG("1xx reply with to-tag received in NoReply state,"
