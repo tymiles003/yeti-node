@@ -263,7 +263,7 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 	assign_int(aleg_override_id,"aleg_policy_id",0);
 	assign_int(bleg_override_id,"bleg_policy_id",0);
 
-	assign_int(ringing_timeout,"ringing_timeout",0);
+	assign_int_safe(ringing_timeout,"ringing_timeout",0,0);
 
 	assign_str(global_tag,"global_tag");
 
