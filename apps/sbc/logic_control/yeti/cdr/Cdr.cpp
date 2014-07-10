@@ -169,7 +169,7 @@ void Cdr::update(UpdateAction act){
         gettimeofday(&connect_time, NULL);
         break;
     case End:
-		if(end_time.tv_sec==start_time.tv_sec){
+		if(!end_time.tv_sec || end_time.tv_sec==start_time.tv_sec){
 			gettimeofday(&end_time, NULL);
 		}
         break;
