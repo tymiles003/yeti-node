@@ -1334,7 +1334,7 @@ void AmRtpStream::payloads_id2str(const std::vector<int> i, std::vector<string> 
 		std::string pname;
 		pname = getPayloadName(*it);
 		if(pname.empty())
-			pname = "unmapped"+int2str(*it);
+			pname = int2str(*it);
 		transform(pname.begin(), pname.end(), pname.begin(), ::tolower);
 		s.push_back(pname);
 	}
