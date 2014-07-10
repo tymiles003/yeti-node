@@ -540,8 +540,8 @@ bool SqlCallProfile::readCodecPrefs(const pqxx::result::tuple &t){
 
 	assign_int(static_codecs_aleg_id,"aleg_codecs_group_id",0);
 	assign_int(static_codecs_bleg_id,"bleg_codecs_group_id",0);
-	assign_bool(aleg_single_codec,"aleg_single_codec_in_200ok",false);
-	assign_bool(bleg_single_codec,"bleg_single_codec_in_200ok",false);
+	assign_bool_safe(aleg_single_codec,"aleg_single_codec_in_200ok",false,false);
+	assign_bool_safe(bleg_single_codec,"bleg_single_codec_in_200ok",false,false);
 	assign_bool_safe(avoid_transcoding,"try_avoid_transcoding",false,false);
 
 	return true;
