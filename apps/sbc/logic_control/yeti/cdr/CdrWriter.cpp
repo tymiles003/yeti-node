@@ -8,6 +8,7 @@
 #include "../cdr/TrustedHeaders.h"
 
 const static_field cdr_static_fields[] = {
+	{ "is_master", "boolean" },
 	{ "node_id", "integer" },
 	{ "pop_id", "integer" },
 	{ "attempt_num", "integer" },
@@ -318,7 +319,7 @@ while(true){
 				t.commit();
 			} catch (const pqxx::pqxx_exception &e) {
 				delete masterconn;
-				if(!_connectdb(&masterconn,config.masterdb.conn_str())){
+				if(!_connectdb(&masterconn,config.masterdb.conn_str(),true)){
 					if(!masteralarm){
 						ERROR("CdrWriter %p master DB connection failed alarm raised",this);
 						masteralarm = true;
@@ -332,7 +333,7 @@ while(true){
 				}
 			}
 		} else {
-			if(!_connectdb(&masterconn,config.masterdb.conn_str())){
+			if(!_connectdb(&masterconn,config.masterdb.conn_str(),true)){
 				if(!masteralarm){
 					ERROR("CdrWriter %p master DB connection failed alarm raised",this);
 					masteralarm = true;
@@ -354,7 +355,7 @@ while(true){
 				t.commit();
 			} catch (const pqxx::pqxx_exception &e) {
 				delete slaveconn;
-				if(!_connectdb(&slaveconn,config.slavedb.conn_str())){
+				if(!_connectdb(&slaveconn,config.slavedb.conn_str(),false)){
 					if(!slavealarm){
 						ERROR("CdrWriter %p slave DB connection failed alarm raised",this);
 						slavealarm = true;
@@ -368,7 +369,7 @@ while(true){
 				}
 			}
 		} else {
-			if(!_connectdb(&slaveconn,config.slavedb.conn_str())){
+			if(!_connectdb(&slaveconn,config.slavedb.conn_str(),false)){
 				if(!slavealarm){
 					ERROR("CdrWriter %p slave DB connection failed alarm raised",this);
 					slavealarm = true;
@@ -495,21 +496,21 @@ void CdrThread::prepare_queries(pqxx::connection *c){
 	}
 }
 
-int CdrThread::_connectdb(pqxx::connection **conn,string conn_str){
-	pqxx::connection *c = NULL;
+int CdrThread::_connectdb(cdr_writer_connection **conn,string conn_str,bool master){
+	cdr_writer_connection *c = NULL;
 	int ret = 0;
 	try{
-		c = new pqxx::connection(conn_str);
+		c = new cdr_writer_connection(conn_str,master);
 		if (c->is_open()){
 			prepare_queries(c);
 			INFO("CdrWriter: SQL connected. Backend pid: %d.",c->backendpid());
 			ret = 1;
 		}
 	} catch(const pqxx::broken_connection &e){
-			DBG("CdrWriter: SQL connection exception: %s",e.what());
+			ERROR("CdrWriter: SQL connection exception: %s",e.what());
 		delete c;
 	} catch(const pqxx::undefined_function &e){
-			DBG("CdrWriter: SQL connection: undefined_function query: %s, what: %s",e.query().c_str(),e.what());
+		ERROR("CdrWriter: SQL connection: undefined_function query: %s, what: %s",e.query().c_str(),e.what());
 		c->disconnect();
 		delete c;
 		throw std::runtime_error("CdrThread exception");
@@ -521,9 +522,9 @@ int CdrThread::_connectdb(pqxx::connection **conn,string conn_str){
 
 int CdrThread::connectdb(){
 	int ret;
-	ret = _connectdb(&masterconn,config.masterdb.conn_str());
+	ret = _connectdb(&masterconn,config.masterdb.conn_str(),true);
 	if(config.failover_to_slave){
-		ret|=_connectdb(&slaveconn,config.slavedb.conn_str());
+		ret|=_connectdb(&slaveconn,config.slavedb.conn_str(),false);
 	}
 	return ret;
 }
@@ -558,7 +559,7 @@ void CdrThread::dbg_writecdr(AmArg &fields_values,AmArg &dyn_fields){
 	}
 }
 
-int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr){
+int CdrThread::writecdr(cdr_writer_connection* conn, Cdr* cdr){
 #define invoc_field(field_value)\
 	fields_values.push(AmArg(field_value));\
 	invoc(field_value);
@@ -588,6 +589,7 @@ int CdrThread::writecdr(pqxx::connection* conn, Cdr* cdr){
 
 		pqxx::prepare::invocation invoc = tnx.prepared("writecdr");
 		/* invocate static fields */
+		invoc_field(conn->isMaster());
 		invoc_field(gc.node_id);
 		invoc_field(gc.pop_id);
 		invoc_field(cdr->attempt_num);

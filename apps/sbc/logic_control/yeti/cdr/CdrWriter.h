@@ -21,6 +21,16 @@ using std::string;
 using std::list;
 using std::vector;
 
+class cdr_writer_connection: public pqxx::connection {
+  private:
+	bool master;
+  public:
+	cdr_writer_connection(const PGSTD::string &opt,bool is_master):
+		master(is_master),
+		pqxx::connection(opt) {}
+	bool isMaster() { return master; }
+};
+
 struct CdrThreadCfg{
 	bool failover_to_slave;
 	bool failover_to_file;
@@ -46,17 +56,17 @@ class CdrThread : public AmThread{
 	AmMutex queue_mut;
 	AmCondition<bool> queue_run;
 	AmCondition<bool> stopped;
-	pqxx::connection *masterconn,*slaveconn;
+	cdr_writer_connection *masterconn,*slaveconn;
 	CdrThreadCfg config;
 	auto_ptr<ofstream> wfp;
 	string write_path;
 	string completed_path;
 	bool masteralarm,slavealarm;
-	int _connectdb(pqxx::connection **conn,string conn_str);
+	int _connectdb(cdr_writer_connection **conn,string conn_str,bool master);
 	int connectdb();
 	void prepare_queries(pqxx::connection *c);
 	void dbg_writecdr(AmArg &fields_values,AmArg &dyn_fields);
-	int writecdr(pqxx::connection* conn,Cdr* cdr);
+	int writecdr(cdr_writer_connection* conn,Cdr* cdr);
 	int writecdrtofile(Cdr* cdr);
 	bool invoc_AmArg(pqxx::prepare::invocation &invoc,const AmArg &arg);
 	bool openfile();
