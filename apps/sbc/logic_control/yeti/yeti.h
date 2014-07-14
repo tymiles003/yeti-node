@@ -115,6 +115,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   xmlrpc_handler GetConfig;
   xmlrpc_handler GetCall;
   xmlrpc_handler GetCalls;
+  xmlrpc_handler GetCallsFields;
   xmlrpc_handler GetCallsCount;
   xmlrpc_handler GetRegistration;
   xmlrpc_handler RenewRegistration;

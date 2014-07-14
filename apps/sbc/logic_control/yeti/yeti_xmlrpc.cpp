@@ -81,6 +81,8 @@ void Yeti::init_xmlrpc_cmds(){
 		reg_leaf_method_arg(show,show_calls,"calls","active calls",GetCalls,"show current active calls",
 						"<LOCAL-TAG>","retreive call by local_tag");
 			reg_method(show_calls,"count","active calls count",GetCallsCount,"");
+			reg_method_arg(show_calls,"filtered","active calls. specify desired fields",GetCallsFields,"",
+						"<field1> <field2> ...","active calls. send only certain fields");
 
 		reg_method(show,"configuration","actual settings",GetConfig,"");
 
@@ -485,6 +487,24 @@ void Yeti::GetCalls(const AmArg& args, AmArg& ret) {
 	} else {
 		cdr_list.getCalls(calls,calls_show_limit,router);
 	}
+
+	ret.push(200);
+	ret.push(calls);
+}
+
+void Yeti::GetCallsFields(const AmArg &args, AmArg &ret){
+	AmArg calls;
+
+	handler_log();
+
+	if(!args.size()){
+		ret.push(500);
+		ret.push("you should specify at least one field");
+		return;
+	}
+
+	calls.assertArray();
+	cdr_list.getCallsFields(calls,calls_show_limit,router,args);
 
 	ret.push(200);
 	ret.push(calls);

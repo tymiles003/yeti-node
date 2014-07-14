@@ -13,6 +13,7 @@ class CdrList: public MurmurHash<string,string,Cdr> {
 	
     Cdr *get_by_local_tag(string local_tag);
 	void getCalls(AmArg &calls,int limit,const SqlRouter *router);
+	void getCallsFields(AmArg &calls,int limit,const SqlRouter *router,const AmArg &fields);
 	int getCall(const string &local_tag,AmArg &call,const SqlRouter *router);
 	int insert(Cdr *cdr);
 	int erase(Cdr *cdr);
@@ -24,7 +25,8 @@ class CdrList: public MurmurHash<string,string,Cdr> {
 	void free_key(string *key);
 	
     private:
-	void cdr2arg(const Cdr *cdr,const SqlRouter *router,AmArg& arg);
+	void cdr2arg(const Cdr *cdr,const SqlRouter *router, AmArg& arg);
+	void cdr2arg(const Cdr *cdr, const SqlRouter *router, AmArg& arg, const vector<string> &wanted_fields);
 };
 
 #endif

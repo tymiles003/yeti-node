@@ -108,44 +108,126 @@ void CdrList::getCalls(AmArg &calls,int limit,const SqlRouter *router){
 	unlock();
 }
 
+void CdrList::getCallsFields(AmArg &calls,int limit,const SqlRouter *router,const AmArg &fields){
+	vector<string> str_fields;
+	AmArg call;
+	entry *e;
+	Cdr *cdr;
+
+	//convert AmArg array to vector of strings
+	assertArgArray(fields);
+	for(unsigned int k = 0;k < fields.size(); k++)
+		str_fields.push_back(fields.get(k).asCStr());
+
+	int i = limit;
+	lock();
+		e = first;
+		while(e&&i--){
+			cdr = e->data;
+			//cdr->lock();
+				cdr2arg(cdr,router,call,str_fields);
+			//cdr->unlock();
+			calls.push(call);
+			e = e->list_next;
+		}
+	unlock();
+}
+
 void CdrList::cdr2arg(const Cdr *cdr,const SqlRouter *router, AmArg& arg){
-	#define add_field_to_ret(val)\
+	#define add_field(val)\
 		arg[#val] = cdr->val;
-	#define add_timeval_field_to_ret(val)\
+	#define add_timeval_field(val)\
 		arg[#val] = (cdr->val.tv_sec+cdr->val.tv_usec/1e6);
 
 	struct timeval now;
 
 	gettimeofday(&now, NULL);
 	arg["local_time"] = now.tv_sec+now.tv_usec/1e6;
-	add_timeval_field_to_ret(cdr_born_time);
-	add_timeval_field_to_ret(start_time);
-	add_timeval_field_to_ret(connect_time);
-	add_timeval_field_to_ret(end_time);
+	add_timeval_field(cdr_born_time);
+	add_timeval_field(start_time);
+	add_timeval_field(connect_time);
+	add_timeval_field(end_time);
 
-	add_field_to_ret(legB_remote_port);
-	add_field_to_ret(legB_local_port);
-	add_field_to_ret(legA_remote_port);
-	add_field_to_ret(legA_local_port);
-	add_field_to_ret(legB_remote_ip);
-	add_field_to_ret(legB_local_ip);
-	add_field_to_ret(legA_remote_ip);
-	add_field_to_ret(legA_local_ip);
+	add_field(legB_remote_port);
+	add_field(legB_local_port);
+	add_field(legA_remote_port);
+	add_field(legA_local_port);
+	add_field(legB_remote_ip);
+	add_field(legB_local_ip);
+	add_field(legA_remote_ip);
+	add_field(legA_local_ip);
 
-	add_field_to_ret(orig_call_id);
-	add_field_to_ret(term_call_id);
-	add_field_to_ret(local_tag);
-	add_field_to_ret(global_tag);
+	add_field(orig_call_id);
+	add_field(term_call_id);
+	add_field(local_tag);
+	add_field(global_tag);
 
-	add_field_to_ret(time_limit);
-	add_field_to_ret(dump_level_id);
+	add_field(time_limit);
+	add_field(dump_level_id);
 
 	const DynFieldsT &router_dyn_fields = router->getDynFields();
 	DynFieldsT::const_iterator it = router_dyn_fields.begin();
 	const size_t n = cdr->dyn_fields.size();
-	for(unsigned int k = 0;k<n;++k){
-		string field_name = it->first;
-		arg[field_name] = cdr->dyn_fields.get(k);
-		++it;
+	for(unsigned int k = 0;k<n;++k,++it){
+		arg[it->first] = cdr->dyn_fields.get(k);
 	}
+
+	#undef add_field
+	#undef add_timeval_field
+}
+
+void CdrList::cdr2arg(const Cdr *cdr,const SqlRouter *router, AmArg& arg, const vector<string> &wanted_fields){
+	#define filter(val)\
+		if(find(wanted_fields.begin(),wanted_fields.end(),val)!=wanted_fields.end())
+	#define add_field(val)\
+		filter(#val)\
+			arg[#val] = cdr->val;
+	#define add_timeval_field(val)\
+		filter(#val)\
+			arg[#val] = (cdr->val.tv_sec+cdr->val.tv_usec/1e6);
+
+	struct timeval now;
+
+	arg.assertStruct();
+
+	if(wanted_fields.empty())
+		return;
+
+	filter("local_time") {
+		gettimeofday(&now, NULL);
+		arg["local_time"] = now.tv_sec+now.tv_usec/1e6;
+	}
+	add_timeval_field(cdr_born_time);
+	add_timeval_field(start_time);
+	add_timeval_field(connect_time);
+	add_timeval_field(end_time);
+
+	add_field(legB_remote_port);
+	add_field(legB_local_port);
+	add_field(legA_remote_port);
+	add_field(legA_local_port);
+	add_field(legB_remote_ip);
+	add_field(legB_local_ip);
+	add_field(legA_remote_ip);
+	add_field(legA_local_ip);
+
+	add_field(orig_call_id);
+	add_field(term_call_id);
+	add_field(local_tag);
+	add_field(global_tag);
+
+	add_field(time_limit);
+	add_field(dump_level_id);
+
+	const DynFieldsT &router_dyn_fields = router->getDynFields();
+	DynFieldsT::const_iterator it = router_dyn_fields.begin();
+	const size_t n = cdr->dyn_fields.size();
+	for(unsigned int k = 0;k<n;++k,++it){
+		filter(it->first)
+			arg[it->first] = cdr->dyn_fields.get(k);
+	}
+
+	#undef add_field
+	#undef add_timeval_field
+	#undef filter
 }
