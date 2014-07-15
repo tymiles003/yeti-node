@@ -436,7 +436,7 @@ ResourceResponse ResourceCache::get(ResourceList &rl,
 							res.type,res.id,now,res.limit);
 
 						//check limit
-						if(now > res.limit){
+						if(now >= res.limit){
 							DBG("resource %d:%d overload ",
 								res.type,res.id);
 							if(res.failover_to_next){
