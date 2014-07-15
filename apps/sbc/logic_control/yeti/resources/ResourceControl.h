@@ -96,6 +96,7 @@ public:
 	void GetConfig(AmArg& ret);
 	void clearStats();
 	void getStats(AmArg &ret);
+	void getResourceState(int type, int id, AmArg &ret);
 };
 
 #endif // RESOURCECONTROL_H

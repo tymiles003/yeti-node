@@ -248,3 +248,7 @@ void ResourceControl::getStats(AmArg &ret){
 	stat.get(ret);
 }
 
+void ResourceControl::getResourceState(int type, int id, AmArg &ret){
+	cache.getResourceState(type,id,ret);
+}
+

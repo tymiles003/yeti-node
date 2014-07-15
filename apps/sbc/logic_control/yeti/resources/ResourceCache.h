@@ -47,6 +47,8 @@ public:
 						 ResourceList::iterator &resource);
 	void put(ResourceList &rl);
 
+	void getResourceState(int type, int id, AmArg &ret);
+
 	void GetConfig(AmArg& ret);
 };
 

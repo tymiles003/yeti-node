@@ -507,6 +507,57 @@ void ResourceCache::put(ResourceList &rl){
 	data_ready.set(true);
 }
 
+void ResourceCache::getResourceState(int type, int id, AmArg &ret){
+	DBG("getResourceState(%d,%d,...)",type,id);
+
+	redisReply *reply = NULL;
+	redisContext *redis_ctx = NULL;
+
+	ret.assertStruct();
+
+	redis_ctx = read_pool.getConnection();
+	if(redis_ctx==NULL){
+		return;
+	}
+
+		//create fake resource
+	Resource r;
+	r.type = type;
+	r.id = id;
+
+		//prepare request
+	string key = get_key(r);
+	redisAppendCommand(redis_ctx,"HGETALL %b",
+		key.c_str(),key.size());
+
+	int state = redisGetReply(redis_ctx,(void **)&reply);
+
+	if(state!=REDIS_OK || reply==NULL){
+		read_pool.putConnection(redis_ctx,RedisConnPool::CONN_STATE_ERR);
+		return;
+	}
+
+	if(reply->type != REDIS_REPLY_ARRAY){
+		freeReplyObject(reply);
+		read_pool.putConnection(redis_ctx,RedisConnPool::CONN_STATE_ERR);
+		return;
+	}
+
+	size_t n = reply->elements;
+	unsigned int i = 0;
+	while(i < n){
+		long int node_id = Reply2Int(reply->element[i]);
+		long int value = Reply2Int(reply->element[i+1]);
+		//DBG("node_id = %ld, value = %ld ",node_id,value);
+		ret.push(int2str((unsigned int)node_id),
+				 AmArg(value));
+		i+=2;
+	}
+
+	freeReplyObject(reply);
+	read_pool.putConnection(redis_ctx,RedisConnPool::CONN_STATE_OK);
+}
+
 void ResourceCache::GetConfig(AmArg& ret){
 	AmArg u;
 

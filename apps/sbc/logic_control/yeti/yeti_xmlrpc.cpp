@@ -150,6 +150,11 @@ void Yeti::init_xmlrpc_cmds(){
 				reg_leaf(request_system_log,request_system_log_di_log,"di_log","memory ringbuffer logging facility");
 					reg_method_arg(request_system_log_di_log,"dump","",requestSystemLogDump,
 								   "","<path>","save memory log to path");
+
+		reg_leaf(request,request_resource,"resource","resources cache");
+			reg_method_arg(request_resource,"state","",getResourceState,
+						   "","<type> <id>","get current state of resource");
+
 	/* set */
 	reg_leaf(root,lset,"set","set");
 		reg_leaf(lset,set_system,"system","system commands");
@@ -1219,4 +1224,40 @@ void Yeti::requestSystemShutdownCancel(const AmArg& args, AmArg& ret){
 	set_system_shutdown(false);
 	ret.push(200);
 	ret.push("OK");
+}
+
+void Yeti::getResourceState(const AmArg& args, AmArg& ret){
+	handler_log();
+	AmArg state;
+	int type, id;
+
+	if(args.size()<2){
+		ret.push(500);
+		ret.push("specify type and id of resource");
+		return;
+	}
+
+	args.assertArrayFmt("ss");
+
+	if(!str2int(args.get(0).asCStr(),type)){
+		ret.push(500);
+		ret.push(AmArg("invalid resource type"));
+		return;
+	}
+
+	if(!str2int(args.get(1).asCStr(),id)){
+		ret.push(500);
+		ret.push(AmArg("invalid resource id"));
+		return;
+	}
+
+	rctl.getResourceState(type,id,state);
+
+	if(!state.size()){
+		ret.push(404);
+		ret.push("unknown resource or storage error");
+	} else {
+		ret.push(200);
+		ret.push(state);
+	}
 }
