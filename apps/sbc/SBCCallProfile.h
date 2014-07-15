@@ -163,6 +163,7 @@ struct SBCCallProfile
   vector<FilterEntry> mediafilter;
 
   bool relay_reinvite;
+  bool relay_hold;
 
   int static_codecs_aleg_id;
   int static_codecs_bleg_id;
@@ -382,6 +383,7 @@ struct SBCCallProfile
     next_hop_1st_req(false),
 	next_hop_fixed(false),
 	ringing_timeout(0),
+	relay_hold(true),
 	relay_reinvite(true)
   { }
 

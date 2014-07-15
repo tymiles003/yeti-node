@@ -49,12 +49,14 @@ int filter_arrange_SDP(AmSdp& sdp,
  * @param[out] negotiated_media
  * @param[in] method
  * @param[in] static_codecs_id
+ * @param[in] local negotiate for request local processing (no further relay)
  * @return 0 if succ. negative value with error code on errors
  */
 int negotiateRequestSdp(SBCCallProfile &call_profile,
 					AmSipRequest &req, vector<SdpMedia> &negotiated_media,
 					const string &method,
-					int static_codecs_id);
+					int static_codecs_id,
+					bool local = false);
 
 /**
  * @brief transform request SDP in both directions between legs

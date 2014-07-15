@@ -757,6 +757,9 @@ int AmRtpStream::init(const AmSdp& local,
 
   local_telephone_event_pt.reset(local.telephoneEventPayload());
 
+  DBG("recv = %d, send = %d",
+	  local_media.recv, local_media.send);
+
   if(local_media.recv) {
     resume();
   } else {
@@ -774,6 +777,7 @@ int AmRtpStream::init(const AmSdp& local,
   } else {
     mute = true;
   }
+  DBG("RTP Stream instance [%p] mute = %d",this,mute);
 
   payload = getDefaultPT();
   if(payload < 0) {

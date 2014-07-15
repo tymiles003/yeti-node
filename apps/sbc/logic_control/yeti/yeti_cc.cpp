@@ -555,9 +555,12 @@ CCChainProcessing Yeti::onInDialogRequest(SBCCallLeg *call, const AmSipRequest &
 		HoldMethod method;
 
 		if(isHoldRequest(sdp,method)){
-			DBG("skip local processing for hold request");
-			ctx->on_hold = true;
-			return ContinueProcessing;
+			DBG("hold request matched. relay_hold = %d",p.relay_hold);
+			if(p.relay_hold){
+				DBG("skip local processing for hold request");
+				ctx->on_hold = true;
+				return ContinueProcessing;
+			}
 		} else if(ctx->on_hold){
 			DBG("we in hold state. skip local processing for unhold request");
 			ctx->on_hold = false;
@@ -579,11 +582,13 @@ CCChainProcessing Yeti::onInDialogRequest(SBCCallLeg *call, const AmSipRequest &
 		}
 
 		AmSipRequest inv_req(req);
+
 		int res = negotiateRequestSdp(p,
 									  inv_req,
 									  *negotiated_media,
 									  inv_req.method,
-									  static_codecs_negotiate_id);
+									  static_codecs_negotiate_id,
+									  true);
 		if (res < 0) {
 			throw AmSession::Exception(488,"Not Acceptable Here");
 		}
@@ -874,6 +879,8 @@ static void copyMediaPayloads(vector<SdpMedia> &dst, const vector<SdpMedia> &src
 	vector<SdpMedia>::iterator i = dst.begin();
 	for (vector<SdpMedia>::const_iterator j = src.begin(); j != src.end(); ++j, ++i) {
 		i->payloads = j->payloads;
+		/*i->recv = j->recv;
+		i->send = j->send;*/
 	}
 }
 

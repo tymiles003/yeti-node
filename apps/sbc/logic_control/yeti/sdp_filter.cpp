@@ -5,6 +5,7 @@
 #include "SDPFilter.h"
 #include "CallCtx.h"
 #include "CodecsGroup.h"
+#include "CallLeg.h"
 
 
 const char *conn_location2str(int location_id){
@@ -211,6 +212,22 @@ static bool assert_session_conn(AmSdp &sdp){
 	return have_session_level;
 }
 
+static void fix_media_activity(AmSdp &sdp){
+	HoldMethod method;
+
+	if(isHoldRequest(sdp,method)){
+		for(std::vector<SdpMedia>::iterator m = sdp.media.begin();
+				m!=sdp.media.end();++m){
+			SdpMedia &media = *m;
+			//sendonly -> recvonly
+			if(media.send && !media.recv){
+				media.send = false;
+				media.recv = true;
+			}
+		}
+	}
+}
+
 static bool assert_media_conn(AmSdp &sdp){
 	if(sdp.conn.address.empty()){
 		DBG("assert_media_conn no session level conn");
@@ -374,7 +391,8 @@ int cutNoAudioStreams(AmSdp &sdp, bool cut){
 int negotiateRequestSdp(SBCCallProfile &call_profile,
 					AmSipRequest &req, vector<SdpMedia> &negotiated_media,
 					const string &method,
-					int static_codecs_id)
+					int static_codecs_id,
+					bool local)
 {
 	DBG("negotiateRequestSdp() method = %s\n",method.c_str());
 	AmMimeBody &body = req.body;
@@ -402,6 +420,9 @@ int negotiateRequestSdp(SBCCallProfile &call_profile,
 	filterSDPalines(sdp, call_profile.sdpalinesfilter);
 
 	filterNoAudioStreams(sdp,call_profile.filter_noaudio_streams);
+
+	if(local)
+		fix_media_activity(sdp);
 
 	//save negotiated result for the future usage
 	negotiated_media = sdp.media;
