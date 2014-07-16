@@ -517,10 +517,10 @@ void ResourceCache::getResourceState(int type, int id, AmArg &ret){
 
 	redis_ctx = read_pool.getConnection();
 	if(redis_ctx==NULL){
-		return;
+		throw ResourceCacheException("can't get connection from read_pool",500);
 	}
 
-		//create fake resource
+	//create fake resource
 	Resource r;
 	r.type = type;
 	r.id = id;
@@ -534,16 +534,22 @@ void ResourceCache::getResourceState(int type, int id, AmArg &ret){
 
 	if(state!=REDIS_OK || reply==NULL){
 		read_pool.putConnection(redis_ctx,RedisConnPool::CONN_STATE_ERR);
-		return;
+		throw ResourceCacheException("no reply from storage",500);
 	}
 
 	if(reply->type != REDIS_REPLY_ARRAY){
 		freeReplyObject(reply);
 		read_pool.putConnection(redis_ctx,RedisConnPool::CONN_STATE_ERR);
-		return;
+		throw ResourceCacheException("undesired reply from storage",500);
 	}
 
 	size_t n = reply->elements;
+	if(0==n){
+		freeReplyObject(reply);
+		read_pool.putConnection(redis_ctx,RedisConnPool::CONN_STATE_OK);
+		throw ResourceCacheException("unknown resource",404);
+	}
+
 	unsigned int i = 0;
 	while(i < n){
 		long int node_id = Reply2Int(reply->element[i]);

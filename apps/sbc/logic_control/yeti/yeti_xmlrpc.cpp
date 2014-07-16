@@ -1251,13 +1251,12 @@ void Yeti::getResourceState(const AmArg& args, AmArg& ret){
 		return;
 	}
 
-	rctl.getResourceState(type,id,state);
-
-	if(!state.size()){
-		ret.push(404);
-		ret.push("unknown resource or storage error");
-	} else {
+	try {
+		rctl.getResourceState(type,id,state);
 		ret.push(200);
 		ret.push(state);
+	} catch(const ResourceCacheException &e){
+		ret.push(e.code);
+		ret.push(e.what);
 	}
 }

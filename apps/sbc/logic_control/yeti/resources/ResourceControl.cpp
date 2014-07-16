@@ -249,6 +249,12 @@ void ResourceControl::getStats(AmArg &ret){
 }
 
 void ResourceControl::getResourceState(int type, int id, AmArg &ret){
+	cfg_lock.lock();
+	if(type2cfg.find(type)==type2cfg.end()){
+		cfg_lock.unlock();
+		throw ResourceCacheException("unknown resource type",500);
+	}
+	cfg_lock.unlock();
 	cache.getResourceState(type,id,ret);
 }
 
