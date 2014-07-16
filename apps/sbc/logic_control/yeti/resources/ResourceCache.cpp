@@ -550,14 +550,9 @@ void ResourceCache::getResourceState(int type, int id, AmArg &ret){
 		throw ResourceCacheException("unknown resource",404);
 	}
 
-	unsigned int i = 0;
-	while(i < n){
-		long int node_id = Reply2Int(reply->element[i]);
-		long int value = Reply2Int(reply->element[i+1]);
-		//DBG("node_id = %ld, value = %ld ",node_id,value);
-		ret.push(int2str((unsigned int)node_id),
-				 AmArg(value));
-		i+=2;
+	for(unsigned int i = 0; i < n; i+=2){
+		ret.push(int2str((unsigned int)Reply2Int(reply->element[i])),	//node_id
+				 AmArg(Reply2Int(reply->element[i+1])));				//value
 	}
 
 	freeReplyObject(reply);
