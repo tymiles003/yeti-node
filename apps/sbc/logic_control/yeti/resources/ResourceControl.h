@@ -45,12 +45,6 @@ enum ResourceCtlResponse {
 	RES_CTL_ERROR
 };
 
-enum ResourceState {
-	RES_STATE_OK,
-	RES_STATE_ERR,
-	RES_STATE_UNKNOWN
-};
-
 class ResourceControl
 {
 	ResourceCache cache;
