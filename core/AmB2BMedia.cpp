@@ -514,11 +514,13 @@ AmB2BMedia::AmB2BMedia(AmB2BSession *_a, AmB2BSession *_b):
   a_leg_muted(false), b_leg_muted(false),
   relay_paused(false),
   logger(NULL)
-{ 
+{
+  DBG("AmB2BMedia(%p,%p) this = %p",_a,_b,this);
 }
 
 AmB2BMedia::~AmB2BMedia()
 {
+  DBG("~AmB2BMedia() this = %p",this);
   if (logger) dec_ref(logger);
 }
 
@@ -649,7 +651,7 @@ void AmB2BMedia::sendDtmf(bool a_leg, int event, unsigned int duration_ms)
 
 void AmB2BMedia::clearAudio(bool a_leg)
 {
-  TRACE("clear %s leg audio\n", a_leg ? "A" : "B");
+  TRACE("[%p] clear %s leg audio\n", this, a_leg ? "A" : "B");
   AmLock lock(mutex);
 
   for (AudioStreamIterator i = audio.begin(); i != audio.end(); ++i) {
@@ -1061,9 +1063,9 @@ void AmB2BMedia::onMediaProcessingTerminated()
 bool AmB2BMedia::replaceOffer(AmSdp &sdp, bool a_leg)
 {
   TRACE("replacing offer with a local one\n");
-  createStreams(sdp); // create missing streams
-
   AmLock lock(mutex);
+
+  createStreams(sdp); // create missing streams
 
   try {
 
@@ -1171,6 +1173,8 @@ void AmB2BMedia::createHoldAnswer(bool a_leg, const AmSdp &offer, AmSdp &answer,
 
 void AmB2BMedia::setRtpLogger(msg_logger* _logger)
 {
+  AmLock lock(mutex);
+
   if (logger) dec_ref(logger);
   logger = _logger;
   if (logger) inc_ref(logger);
@@ -1181,6 +1185,8 @@ void AmB2BMedia::setRtpLogger(msg_logger* _logger)
 }
 
 void AmB2BMedia::setRelayDTMFReceiving(bool enabled) {
+  AmLock lock(mutex);
+
   DBG("relay_streams.size() = %zd, audio_streams.size() = %zd\n", relay_streams.size(), audio.size());
   for (RelayStreamIterator j = relay_streams.begin(); j != relay_streams.end(); j++) {
     DBG("force_receive_dtmf %sabled for [%p]\n", enabled?"en":"dis", &(*j)->a);
@@ -1222,6 +1228,8 @@ void AmB2BMedia::setReceiving(bool receiving_a, bool receiving_b) {
 }
 
 void AmB2BMedia::pauseRelay() {
+  AmLock lock(mutex);
+
   DBG("relay_streams.size() = %zd, audio_streams.size() = %zd\n", relay_streams.size(), audio.size());
   relay_paused = true;
   for (RelayStreamIterator j = relay_streams.begin(); j != relay_streams.end(); j++) {
@@ -1236,6 +1244,8 @@ void AmB2BMedia::pauseRelay() {
 }
 
 void AmB2BMedia::restartRelay() {
+  AmLock lock(mutex);
+
   DBG("relay_streams.size() = %zd, audio_streams.size() = %zd\n", relay_streams.size(), audio.size());
   relay_paused = false;
   for (RelayStreamIterator j = relay_streams.begin(); j != relay_streams.end(); j++) {
@@ -1272,6 +1282,7 @@ void AudioStreamData::getInfo(AmArg &ret)
 // print debug info
 void AmB2BMedia::debug()
 {
+  AmLock lock(mutex);
   // walk through all the streams
   DBG("B2B media session %p ('%s' <-> '%s'):",
       this,
@@ -1301,6 +1312,8 @@ void AmB2BMedia::debug()
 }
 
 void AmB2BMedia::getInfo(AmArg &ret){
+	AmLock lock(mutex);
+
 	AmArg arg_audio, arg_relay_streams;
 
 	ret["a_tag"] = a ? a->getLocalTag() : "nullptr";
