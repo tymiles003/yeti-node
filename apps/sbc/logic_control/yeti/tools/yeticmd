@@ -26,12 +26,6 @@ def walk_over_keys(v,keys,key):
 		v = v[k]
 		if i+1 == len(keys):
 			pprint.PrettyPrinter(indent=4).pprint(v)
-		#else:
-		#	if type(v) is list:
-		#		for j,l in  enumerate(v):
-		#			kk[i+1] = "{}[{}]".format(key[i+1],j)
-		#			walk_over_keys(l,keys[i+1:],kk)
-		#		break
 	return
 
 class shell(Cmd):
@@ -67,19 +61,27 @@ class shell(Cmd):
 		try:
 			if self.node_id is None:
 				raise BaseException("you should choose node first")
-			args =line.split('|')
-			cmds = args[0].split()
-			keys = args[1].strip() if len(args) > 1 else None
-
-			data = self.rpc_do(cmds)
+			cc = [c.strip() for c in line.split('&')]
+			for c in cc:
+				args = c.split('|')
+				cmds = args[0].split()
+				keys = args[1].strip() if len(args) > 1 else None
+			
+				if len(cc) > 1:	
+					print "{}...".format(args[0])
+				data = self.rpc_do(cmds)
 	
-			if keys is not None and len(keys) > 0:
-				kk = keys.split('.')
-				walk_over_keys(data[1],kk[:],kk)
-			else:
-				if keys is not None:
-					data = data[1]
-				pprint.PrettyPrinter(indent=4).pprint(data)
+				if keys is not None and len(keys) > 0:
+					chunks = [k.strip() for k in keys.split(',')]
+					for k in chunks:
+						if len(chunks) > 1:
+							print "{}:".format(k)
+						kk = k.split('.')
+						walk_over_keys(data[1],kk[:],kk)
+				else:
+					if keys is not None:
+						data = data[1]
+					pprint.PrettyPrinter(indent=4).pprint(data)
 					
 		except BaseException as err:
 			print err
@@ -95,7 +97,7 @@ class shell(Cmd):
 		'apply rpc_cmd for all nodes from config'
 		tmp_node_id = self.node_id
 		for n in self.cfg['nodes']:
-			print "{}: ".format(n)
+			print "\n--- {} ---".format(n)
 			self.node_id = n
 			self.rpc_command(line)
 		self.node_id = tmp_node_id	
