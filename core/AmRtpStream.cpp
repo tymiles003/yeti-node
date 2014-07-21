@@ -431,6 +431,7 @@ AmRtpStream::AmRtpStream(AmSession* _s, int _if)
 	symmetric_rtp_endless(false),
     force_receive_dtmf(false),
 	rtp_ping(false),
+	dead_rtp_time(AmConfig::DeadRtpTime),
     incoming_bytes(0),
     outgoing_bytes(0)
 {
@@ -1008,11 +1009,11 @@ int AmRtpStream::nextPacket(AmRtpPacket*& p)
   receive_mut.lock();
   timersub(&now,&last_recv_time,&diff);
   if(monitor_rtp_timeout &&
-     AmConfig::DeadRtpTime && 
+	 dead_rtp_time &&
      (diff.tv_sec > 0) &&
-     ((unsigned int)diff.tv_sec > AmConfig::DeadRtpTime)){
+	 ((unsigned int)diff.tv_sec > dead_rtp_time)){
 	WARN("[%p] RTP Timeout detected. Last received packet is too old "
-	 "(diff.tv_sec = %i\n",this,(unsigned int)diff.tv_sec);
+	 "(diff.tv_sec = %i, limit = %i\n",this,(unsigned int)diff.tv_sec,dead_rtp_time);
     receive_mut.unlock();
     return RTP_TIMEOUT;
   }
@@ -1301,6 +1302,16 @@ void AmRtpStream::setRtpPing(bool enable){
 	DBG("%sabled RTP Ping RTP stream instance [%p]\n",
 		enable ? "en":"dis", this);
 	rtp_ping = enable;
+}
+
+void AmRtpStream::setRtpTimeout(unsigned int timeout){
+	dead_rtp_time = timeout;
+	DBG("set RTP dead time to %i for stream instance [%p]\n",
+		dead_rtp_time, this);
+}
+
+unsigned int AmRtpStream::getRtpTimeout(){
+	return dead_rtp_time;
 }
 
 void AmRtpStream::stopReceiving()

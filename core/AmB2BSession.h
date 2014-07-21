@@ -289,6 +289,8 @@ private:
   bool enable_dtmf_rtp_detection;
   /** relay DTMD even in active state */
   bool enable_dtmf_rtp_force_relay;
+  /** rtp dead time */
+  unsigned int dead_rtp_time;
 
   /** Low fidelity payloads for which inband DTMF 
       transcoding should be used */
@@ -334,6 +336,7 @@ private:
   bool getRtpRelayForceSymmetricRtp() const { return rtp_relay_force_symmetric_rtp; }
   bool getRtpEndlessSymmetricRtp() const { return symmetric_rtp_endless; }
   bool getRtpPing() const { return rtp_ping; }
+  unsigned int getRtpTimeout() const { return dead_rtp_time; }
   bool getRtpSymmetricRtpIgnoreRTCP() const { return symmetric_rtp_ignore_rtcp; }
   bool getEnableDtmfTranscoding() const { return enable_dtmf_transcoding; }
   bool getEnableDtmfRtpFiltering() const { return enable_dtmf_rtp_filtering; }
@@ -352,6 +355,7 @@ private:
   void setEnableDtmfRtpFiltering(bool enable);
   void setEnableDtmfRtpDetection(bool enable);
   void setEnableRtpPing(bool enable);
+  void setRtpTimeout(unsigned int timeout);
   void setEnableDtmfForceRelay(bool enable);
   void setLowFiPLs(const vector<SdpPayload>& lowfi_payloads);
   

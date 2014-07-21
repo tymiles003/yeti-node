@@ -79,6 +79,7 @@ AmB2BSession::AmB2BSession(const string& other_local_tag, AmSipDialog* p_dlg,
     enable_dtmf_rtp_filtering(false),
     enable_dtmf_rtp_detection(false),
 	enable_dtmf_rtp_force_relay(true),
+	dead_rtp_time(AmConfig::DeadRtpTime),
     rtp_relay_transparent_seqno(true), rtp_relay_transparent_ssrc(true),
     est_invite_cseq(0),est_invite_other_cseq(0),
     media_session(NULL)
@@ -977,6 +978,10 @@ void AmB2BSession::setEnableDtmfRtpDetection(bool enable) {
 
 void AmB2BSession::setEnableRtpPing(bool enable){
   rtp_ping = enable;
+}
+
+void AmB2BSession::setRtpTimeout(unsigned int timeout) {
+  dead_rtp_time = timeout;
 }
 
 void AmB2BSession::setEnableDtmfForceRelay(bool enable) {

@@ -153,6 +153,8 @@ struct SBCCallProfile
   int aleg_conn_location_id;
   int bleg_conn_location_id;
 
+  unsigned int dead_rtp_time;
+
   vector<FilterEntry> headerfilter;
   vector<FilterEntry> messagefilter;
 

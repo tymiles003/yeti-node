@@ -165,6 +165,8 @@ protected:
   unsigned long incoming_bytes;
   unsigned long outgoing_bytes;
 
+  unsigned int dead_rtp_time;
+
   struct PayloadMapping {
     // remote payload type
     int8_t remote_pt;
@@ -541,6 +543,12 @@ public:
   /** enable or disable initial rtp ping on stream initialization.
 	  also it will set mark for all packets to zero */
   void setRtpPing(bool enable);
+
+  /** set dead rtp time for stream */
+  void setRtpTimeout(unsigned int timeout);
+
+  /** get dead rtp time */
+  unsigned int getRtpTimeout();
 
   /** remove from RTP receiver */
   void stopReceiving();

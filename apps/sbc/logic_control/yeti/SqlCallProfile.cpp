@@ -291,6 +291,8 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 	assign_int_safe(aleg_conn_location_id,"aleg_sdp_c_location_id",0,0);
 	assign_int_safe(bleg_conn_location_id,"bleg_sdp_c_location_id",0,0);
 
+	assign_int_safe(dead_rtp_time,"dead_rtp_time",AmConfig::DeadRtpTime,AmConfig::DeadRtpTime);
+
 	assign_bool_safe(relay_reinvite,"relay_reinvite",true,true);
 	assign_bool_safe(relay_hold,"relay_hold",true,true);
 	if(!relay_hold && relay_reinvite){
@@ -450,6 +452,7 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 
 		DBG("time_limit: %i\n", time_limit);
 		DBG("ringing_timeout: %i\n", ringing_timeout);
+		DBG("dead_rtp_time: %i\n",dead_rtp_time);
 		DBG("global_tag: %s\n", global_tag.c_str());
 
 		DBG("resources: %s\n", resources.c_str());

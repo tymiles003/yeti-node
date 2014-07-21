@@ -220,6 +220,7 @@ void SBCCallLeg::applyAProfile()
     setEnableDtmfRtpDetection(call_profile.rtprelay_dtmf_detection);
 	setEnableDtmfForceRelay(call_profile.rtprelay_force_dtmf_relay);
 	setEnableRtpPing(call_profile.aleg_rtp_ping);
+	setRtpTimeout(call_profile.dead_rtp_time);
 
     if(call_profile.transcoder.isActive()) {
       setRtpRelayMode(RTP_Transcoding);
@@ -353,6 +354,7 @@ void SBCCallLeg::applyBProfile()
     setEnableDtmfRtpDetection(call_profile.rtprelay_dtmf_detection);
 	setEnableDtmfForceRelay(call_profile.rtprelay_force_dtmf_relay);
 	setEnableRtpPing(call_profile.aleg_rtp_ping);
+	setRtpTimeout(call_profile.dead_rtp_time);
 
     // copy stats counters
     rtp_pegs = call_profile.bleg_rtp_counters;
