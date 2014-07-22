@@ -807,13 +807,17 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
 
   initCCExtModules();
 
-  if (!logger && !call_profile.get_logger_path().empty()) {
+  if (!logger &&
+	  !call_profile.get_logger_path().empty() &&
+	  (call_profile.log_sip || call_profile.log_rtp)) {
 	// open the logger if not already opened
 	ParamReplacerCtx ctx(&call_profile);
 	string log_path = ctx.replaceParameters(call_profile.get_logger_path(),
 						"msg_logger_path",req);
 	if(openLogger(log_path)){
-		req.log(getLogger());
+		if(call_profile.log_sip){
+			req.log(getLogger());
+		}
 	}
   }
 
