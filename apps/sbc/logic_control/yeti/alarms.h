@@ -19,6 +19,8 @@ class alarm_entry {
 	void raise();
 	void clear();
 	bool is_raised() const;
+	int value() const;
+
 	const timeval &get_change_time() const;
 
 	void set_info(int alarm_id, std::string alarm_descr);

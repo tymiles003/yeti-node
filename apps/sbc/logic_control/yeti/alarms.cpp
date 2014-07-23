@@ -61,6 +61,10 @@ bool alarm_entry::is_raised() const {
 	return (raised.get()!=0);
 }
 
+int alarm_entry::value() const {
+	return raised.get();
+}
+
 const std::string& alarm_entry::get_name() const {
 	return name;
 }
