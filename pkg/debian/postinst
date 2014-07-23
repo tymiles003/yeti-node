@@ -192,7 +192,7 @@ for dir in "/var/spool/sems/cdrs/completed" "/var/spool/sems/dump"
 do
 	mkdir -p $dir 
 done
-chown -R sems:sems "/var/spool/sems"
+chown sems:sems "/var/spool/sems"
 
 echo ""
 echo "***"
