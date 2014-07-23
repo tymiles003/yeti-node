@@ -386,6 +386,7 @@ void PgConnectionPool::getStats(AmArg &arg){
 	arg["total_connections"] = (int)total_connections;
 	arg["failed_connections"] = (int)failed_connections;
 	arg["transactions"] = stats.transactions_count;
+	arg["exceptions"] = (int)exceptions_count;
 	arg["check_transactions"] = stats.check_transactions_count;
 	arg["tt_min"] = stats.tt_min;
 	arg["tt_max"] = stats.tt_max;
