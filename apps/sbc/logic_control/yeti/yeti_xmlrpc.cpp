@@ -1164,16 +1164,8 @@ void Yeti::showSystemAlarms(const AmArg& args, AmArg& ret){
 	AmArg as;
 	alarms *a = alarms::instance();
 	for(int id = 0; id < alarms::MAX_ALARMS; id++){
-		AmArg r;
-		alarm_entry &e = a->get(id);
-		const timeval &change_time = e.get_change_time();
-		r["id"] = id;
-		r["name"] = e.get_name();
-		r["state"] = e.is_raised();
-		r["value"] = e.value();
-		r["changed_at"] = !timerisset(&last_shutdown_time) ?
-					"nil" : timeval2str(change_time);
-		as.push(r);
+		as.push(AmArg());
+		a->get(id).getInfo(as.back());
 	}
 	ret.push(200);
 	ret.push(as);

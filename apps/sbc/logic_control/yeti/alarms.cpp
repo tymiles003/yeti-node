@@ -1,8 +1,6 @@
 #include "alarms.h"
 #include "log.h"
 
-///#include <cstring>
-
 #include "AmUtils.h"
 
 static const char *alarms_descr[] = {
@@ -76,6 +74,15 @@ const timeval &alarm_entry::get_change_time() const {
 void alarm_entry::set_info(int alarm_id, std::string alarm_name) {
 	id = alarm_id;
 	name  = alarm_name;
+}
+
+void alarm_entry::getInfo(AmArg &r){
+	r["id"] = id;
+	r["name"] = name;
+	r["state"] = is_raised();
+	r["value"] = value();
+	r["changed_at"] = !timerisset(&change_time) ?
+				"nil" : timeval2str(change_time);
 }
 
 _alarms::_alarms() {

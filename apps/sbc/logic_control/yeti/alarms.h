@@ -4,6 +4,7 @@
 #include <string>
 #include <singleton.h>
 #include "AmThread.h"
+#include "AmArg.h"
 #include "atomic_types.h"
 
 #define RAISE_ALARM(alarm_id) alarms::instance()->get(alarm_id).raise();
@@ -25,6 +26,8 @@ class alarm_entry {
 
 	void set_info(int alarm_id, std::string alarm_descr);
 	const std::string &get_name() const;
+	void getInfo(AmArg &ret);
+
   private:
 	int id;
 	std::string name;
