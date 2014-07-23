@@ -1162,6 +1162,7 @@ void Yeti::showSystemStatus(const AmArg& args, AmArg& ret){
 
 void Yeti::showSystemAlarms(const AmArg& args, AmArg& ret){
 	AmArg as;
+	handler_log();
 	alarms *a = alarms::instance();
 	for(int id = 0; id < alarms::MAX_ALARMS; id++){
 		as.push(AmArg());
