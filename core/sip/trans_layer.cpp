@@ -1678,12 +1678,21 @@ int _trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* 
     
 	if(reply_code >= 300){
 	
-	    if(reply_code == 503) {
+		bool forget_reply = false;
+		if(reply_code == 503 &&
+			(t->state == TS_CALLING ||
+			t->state == TS_PROCEEDING)) {
 		/*tr_blacklist::instance()->insert(&t->msg->remote_ip,
 						 default_bl_ttl,"503");*/
-		if(!try_next_ip(bucket,t,false))
-		    goto end;
-	    }
+
+			if(msg->local_socket) { // remote reply
+				if(!try_next_ip(bucket,t,true))
+					forget_reply = true;
+			} else { //local reply
+				if(!try_next_ip(bucket,t,false))
+					goto end;
+			}
+		}
     
 	    // Final error reply
 	    switch(t->state){
@@ -1700,6 +1709,9 @@ int _trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* 
 		send_non_200_ack(msg,t);
 		t->reset_timer(STIMER_D, D_TIMER, bucket->get_id());
 		
+		if(forget_reply)
+			goto end;
+
 		goto pass_reply;
 		
 	    case TS_ABANDONED:
@@ -2259,7 +2271,11 @@ void _trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
     } break;
 
     case STIMER_M: {
-	try_next_ip(bucket,tr,true);
+		if(!try_next_ip(bucket,tr,true)){
+			// Abandon old transaction
+			tr->clear_timer(STIMER_A);
+			tr->state = TS_ABANDONED;
+		}
     } break;
 
     case STIMER_BL:
@@ -2441,10 +2457,6 @@ int _trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr,
 
 	tmp_msg.release();
 	n_tr->msg = p_msg;
-
-	// Abandon old transaction
-	tr->clear_timer(STIMER_A);
-	tr->state = TS_ABANDONED;
 
 	// restore old R-URI
 	tr->msg->u.request->ruri_str = old_uri;
