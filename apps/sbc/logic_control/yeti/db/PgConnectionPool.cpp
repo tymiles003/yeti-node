@@ -216,6 +216,8 @@ void PgConnectionPool::run(){
 
 	try_connect.set(true); //for initial connections setup
 
+	bool initial_cycle = true;
+
 	while (!gotostop) {
 		try_connect.wait_for_to(PG_CONN_POOL_CHECK_TIMER_RATE);
 
@@ -239,6 +241,10 @@ void PgConnectionPool::run(){
 			while(m_failed_connections){
 				succ = false;
 				PgConnection* conn = NULL;
+
+				if(!initial_cycle)
+					stats.reconnect_attempts++;
+
 				try {
 					conn = new PgConnection(conn_str);
 					if(conn->is_open()){
@@ -339,6 +345,8 @@ void PgConnectionPool::run(){
 			}
 			//DBG("while end");
 		} // if (try_connect.get()) else
+
+		initial_cycle = false;
 	} //while(true)
 
 	connections_mut.lock();
@@ -369,6 +377,7 @@ void PgConnectionPool::clearStats(){
 	tpi = 0;
 	stats.transactions_count = 0;
 	stats.check_transactions_count = 0;
+	stats.reconnect_attempts = 0;
 	stats.tt_min = 0;
 	stats.tt_max = 0;
 	stats.tps_max = 0;
@@ -387,6 +396,7 @@ void PgConnectionPool::getStats(AmArg &arg){
 	arg["failed_connections"] = (int)failed_connections;
 	arg["transactions"] = stats.transactions_count;
 	arg["exceptions"] = (int)exceptions_count;
+	arg["reconnect_attempts"] = stats.reconnect_attempts;
 	arg["check_transactions"] = stats.check_transactions_count;
 	arg["tt_min"] = stats.tt_min;
 	arg["tt_max"] = stats.tt_max;

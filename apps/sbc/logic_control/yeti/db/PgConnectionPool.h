@@ -69,6 +69,7 @@ class PgConnectionPool:
 	struct {
 		int transactions_count;			//total succ transactions count
 		int check_transactions_count;	//total succ check_transactions count
+		int reconnect_attempts;					//reconnect attempts count
 		double tt_min,tt_max;			//transactions time (duration)
 		double tps_max,tps_avg;			//transactions per second
 	} stats;
