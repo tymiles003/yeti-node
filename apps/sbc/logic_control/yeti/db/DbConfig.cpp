@@ -3,7 +3,12 @@
 string DbConfig::conn_str()
 {
   string ret;
-  ret="host="+host+" port="+int2str(port)+" user="+user+" dbname="+name+" password="+pass;
+  ret="host="+host+
+	  " port="+int2str(port)+
+	  " user="+user+
+	  " dbname="+name+
+	  " password="+pass+
+	  " connect_timeout=2";
   return ret;
 }
 
