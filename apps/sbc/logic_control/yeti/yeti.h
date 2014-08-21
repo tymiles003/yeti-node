@@ -139,6 +139,9 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   xmlrpc_handler setSystemLogSyslogLevel;
   xmlrpc_handler setSystemLogDiLogLevel;
 
+  xmlrpc_handler showSessions;
+  xmlrpc_handler setSessionsLimit;
+
   xmlrpc_handler requestSystemShutdown;
   xmlrpc_handler requestSystemShutdownImmediate;
   xmlrpc_handler requestSystemShutdownGraceful;

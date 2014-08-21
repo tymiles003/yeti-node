@@ -97,6 +97,7 @@ void Yeti::init_xmlrpc_cmds(){
 			reg_method(show_system,"log-level","loglevels",showSystemLogLevel,"");
 			reg_method(show_system,"status","system states",showSystemStatus,"");
 			reg_method(show_system,"alarms","system alarms",showSystemAlarms,"");
+			reg_method(show_system,"session-limit","actual sessions limit config",showSessions,"");
 
 	/* request */
 	reg_leaf(root,request,"request","modify commands");
@@ -163,6 +164,9 @@ void Yeti::init_xmlrpc_cmds(){
 							   "","<log_level>","set new log level");
 				reg_method_arg(set_system_log_level,"syslog","",setSystemLogSyslogLevel,
 							   "","<log_level>","set new log level");
+
+			reg_method_arg(set_system,"session-limit","",setSessionsLimit,
+						   "","<limit> <overload response code> <overload response reason>","set new session limit params");
 
 #undef reg_leaf
 #undef reg_method
@@ -1256,3 +1260,43 @@ void Yeti::getResourceState(const AmArg& args, AmArg& ret){
 		ret.push(e.what);
 	}
 }
+
+void Yeti::showSessions(const AmArg& args, AmArg& ret){
+	ret.push(200);
+	ret.push(AmArg());
+	AmArg &info = ret.back();
+
+	info["limit"] = (long int)AmConfig::SessionLimit;
+	info["limit_error_code"] = (long int)AmConfig::SessionLimitErrCode;
+	info["limit_error_reason"] = AmConfig::SessionLimitErrReason;
+}
+
+void Yeti::setSessionsLimit(const AmArg& args, AmArg& ret){
+	if(args.size()<3){
+		ret.push(500);
+		ret.push("missed parameter");
+		return;
+	}
+	args.assertArrayFmt("sss");
+
+	int limit,code;
+	if(!str2int(args.get(0).asCStr(),limit)){
+		ret.push(500);
+		ret.push(AmArg("non integer value for sessions limit"));
+		return;
+	}
+	if(!str2int(args.get(1).asCStr(),code)){
+		ret.push(500);
+		ret.push(AmArg("non integer value for overload response code"));
+		return;
+	}
+
+	AmConfig::SessionLimit = limit;
+	AmConfig::SessionLimitErrCode = code;
+	AmConfig::SessionLimitErrReason = args.get(2).asCStr();
+
+	ret.push(200);
+	ret.push("OK");
+}
+
+
