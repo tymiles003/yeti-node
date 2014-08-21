@@ -279,14 +279,18 @@ bool AmBasicSipDialog::onRxReqSanity(const AmSipRequest& req)
 	// for implementations which follow 3265 instead of 5057
 	string hdrs = SIP_HDR_COLSP(SIP_HDR_RETRY_AFTER)  "0"  CRLF;
 
-	INFO("remote cseq lower than previous ones - refusing request\n");
+	INFO("remote cseq lower than previous ones - refusing request. "
+		 "method = %s, call-id = '%s'\n",
+		 req.method.c_str(),callid.c_str());
 	// see 12.2.2
 	reply_error(req, 500, SIP_REPLY_SERVER_INTERNAL_ERROR, hdrs);
 	return false;
       }
     }
     else {
-      INFO("remote cseq lower than previous ones - refusing request\n");
+	  INFO("remote cseq lower than previous ones - refusing request. "
+		   "method = %s, call-id = '%s'\n",
+		   req.method.c_str(),callid.c_str());
       // see 12.2.2
       reply_error(req, 500, SIP_REPLY_SERVER_INTERNAL_ERROR);
       return false;
