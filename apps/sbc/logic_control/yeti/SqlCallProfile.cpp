@@ -294,6 +294,7 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 	assign_int_safe(dead_rtp_time,"dead_rtp_time",AmConfig::DeadRtpTime,AmConfig::DeadRtpTime);
 
 	assign_bool_safe(relay_reinvite,"relay_reinvite",true,true);
+	assign_bool_safe(relay_prack,"relay_prack",true,true);
 	assign_bool_safe(relay_hold,"relay_hold",true,true);
 	if(!relay_hold && relay_reinvite){
 		WARN("useless value for relay_hold when relay_reinvite enabled");
@@ -480,6 +481,7 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 		DBG("aleg_conn_location: '%s'\n",conn_location2str(aleg_conn_location_id));
 		DBG("bleg_conn_location: '%s'\n",conn_location2str(bleg_conn_location_id));
 		DBG("relay_reinvite: '%s'\n",relay_reinvite?"yes":"no");
+		DBG("relay_prack: '%s'\n",relay_prack?"yes":"no");
 		DBG("relay_hold: '%s'\n",relay_hold?"yes":"no");
 
 		DynFieldsT::const_iterator dfit = df.begin();

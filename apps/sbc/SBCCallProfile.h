@@ -164,6 +164,7 @@ struct SBCCallProfile
   vector<FilterEntry> bleg_sdpalinesfilter;
   vector<FilterEntry> mediafilter;
 
+  bool relay_prack;
   bool relay_reinvite;
   bool relay_hold;
 
@@ -386,6 +387,7 @@ struct SBCCallProfile
 	next_hop_fixed(false),
 	ringing_timeout(0),
 	relay_hold(true),
+	relay_prack(true),
 	relay_reinvite(true)
   { }
 

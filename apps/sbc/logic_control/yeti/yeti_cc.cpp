@@ -541,9 +541,10 @@ CCChainProcessing Yeti::onInDialogRequest(SBCCallLeg *call, const AmSipRequest &
 			call->dlg->reply(req, 200, "OK", NULL, "", SIP_FLAGS_VERBATIM);
 			return StopProcessing;
 		}
-	}
-
-	if(req.method == SIP_METH_INVITE && !p.relay_reinvite){
+	} else if(req.method == SIP_METH_PRACK && !p.relay_prack){
+		call->dlg->reply(req,200, "OK", NULL, "", SIP_FLAGS_VERBATIM);
+		return StopProcessing;
+	} else if(req.method == SIP_METH_INVITE && !p.relay_reinvite){
 		DBG("INVITE method matched. try to process locally");
 		getCtx_chained();
 
