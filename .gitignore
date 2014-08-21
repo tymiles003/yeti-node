@@ -24,8 +24,8 @@ core.*
 *.patch
 CMakeLists.txt.user
 CMakeLists.txt.user.2.7pre1
-apps/sbc/logic_control/yeti/Version.h
-apps/sbc/logic_control/yeti/etc/oodprofile.yeti.dist.conf
-apps/sbc/logic_control/yeti/etc/yeti.dist.conf
+apps/sbc/lc/yeti/Version.h
+apps/sbc/lc/yeti/etc/oodprofile.yeti.dist.conf
+apps/sbc/lc/yeti/etc/yeti.dist.conf
 core/etc/sems.conf.dist
 core/sems.h
