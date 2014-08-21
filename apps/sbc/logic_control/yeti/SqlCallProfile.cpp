@@ -296,9 +296,9 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 	assign_bool_safe(relay_reinvite,"relay_reinvite",true,true);
 	assign_bool_safe(relay_prack,"relay_prack",true,true);
 	assign_bool_safe(relay_hold,"relay_hold",true,true);
-	if(!relay_hold && relay_reinvite){
+	/*if(!relay_hold && relay_reinvite){
 		WARN("useless value for relay_hold when relay_reinvite enabled");
-	}
+	}*/
 
 	assign_bool_safe(trusted_hdrs_gw,"trusted_hdrs_gw",false,false);
 
