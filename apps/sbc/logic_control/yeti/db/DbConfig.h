@@ -10,6 +10,7 @@ class DbConfig{
 public:
   string host,name,user,pass;
   unsigned int port;
+  unsigned int timeout;
   string conn_str();
   int cfg2dbcfg(AmConfigReader& cfg,string& prefix);
 };

@@ -1,5 +1,7 @@
 #include "DbConfig.h"
 
+#define DBCONFIG_DEFAULT_TIMEOUT 2
+
 string DbConfig::conn_str()
 {
   string ret;
@@ -8,7 +10,7 @@ string DbConfig::conn_str()
 	  " user="+user+
 	  " dbname="+name+
 	  " password="+pass+
-	  " connect_timeout=2";
+	  " connect_timeout="+int2str(timeout);
   return ret;
 }
 
@@ -50,5 +52,7 @@ int DbConfig::cfg2dbcfg(AmConfigReader& cfg, string& prefix)
     pass="sqlrouter";
     WARN("Variable %s not found in config. Using default value: %s",var.c_str(),pass.c_str());
   }
+  var=prefix+"_timeout";
+  timeout=cfg.getParameterInt(var,DBCONFIG_DEFAULT_TIMEOUT);
   return 0;
 }
