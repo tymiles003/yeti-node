@@ -100,6 +100,7 @@ void ResourceControl::replace(string &s,Resource &r,ResourceConfig &rc){
 }
 
 int ResourceControl::load_resources_config(){
+	map<int,ResourceConfig> _type2cfg;
 	try {
 		pqxx::result r;
 		pqxx::connection c(dbc.conn_str());
@@ -118,13 +119,19 @@ int ResourceControl::load_resources_config(){
 				row["reject_reason"].c_str(),
 				row["action_id"].as<int>()
 			);
-			type2cfg.insert(pair<int,ResourceConfig>(id,rc));
+			_type2cfg.insert(pair<int,ResourceConfig>(id,rc));
 		}
+
+		INFO("resources types are loaded successfully. apply changes");
+
+		type2cfg.swap(_type2cfg);
+
 		map<int,ResourceConfig>::const_iterator mi = type2cfg.begin();
 		for(;mi!=type2cfg.end();++mi){
 			const ResourceConfig &c = mi->second;
 			DBG("resource cfg:     <%s>",c.print().c_str());
 		}
+
 		return 0;
 	} catch(const pqxx::pqxx_exception &e){
 		ERROR("pqxx_exception: %s ",e.base().what());

@@ -55,15 +55,11 @@ bool CodesTranslator::reload(){
 
 int CodesTranslator::load_translations_config(){
 	int ret = 1;
-	code2pref_mutex.lock();
-	code2trans_mutex.lock();
-	icode2resp_mutex.lock();
-	overrides_mutex.lock();
 
-	code2pref.clear();
-	code2trans.clear();
-	icode2resp.clear();
-	overrides.clear();
+	map<int,pref> _code2pref;
+	map<int,trans> _code2trans;
+	map<unsigned int,icode> _icode2resp;
+	map<unsigned int,override> _overrides;
 
 	try {
 		pqxx::result r;
@@ -77,7 +73,7 @@ int CodesTranslator::load_translations_config(){
 				int code = row["received_code"].as<int>(0);
 				pref p(row["stop_rerouting"].as<bool>(true));
 
-				code2pref.insert(pair<int,pref>(code,p));
+				_code2pref.insert(pair<int,pref>(code,p));
 				DBG("ResponsePref:     %d -> stop_hunting: %d",
 					code,p.is_stop_hunting);
 			}
@@ -95,7 +91,7 @@ int CodesTranslator::load_translations_config(){
 							row["o_rewrited_code"].as<int>(code),
 							rewrited_reason);
 
-				code2trans.insert(pair<int,trans>(code,t));
+				_code2trans.insert(pair<int,trans>(code,t));
 				DBG("ResponseTrans:     %d -> %d:'%s' pass_reason: %d",
 					code,t.rewrite_code,t.rewrite_reason.c_str(),t.pass_reason_to_originator);
 			}
@@ -118,7 +114,7 @@ int CodesTranslator::load_translations_config(){
 						response_code,response_reason,
 						row["o_store_cdr"].as<bool>(true),
 						row["o_silently_drop"].as<bool>(false));
-				icode2resp.insert(pair<unsigned int,icode>(code,ic));
+				_icode2resp.insert(pair<unsigned int,icode>(code,ic));
 
 				DBG("DbTrans:     %d -> <%d:'%s'>, <%d:'%s'>",code,
 					internal_code,internal_reason.c_str(),
@@ -135,7 +131,7 @@ int CodesTranslator::load_translations_config(){
 				int code = row["received_code"].as<int>(0);
 				pref p(row["stop_rerouting"].as<bool>(true));
 
-				pair<map<unsigned int,override>::iterator,bool> pit = overrides.insert(pair<unsigned int,override>(override_id,override()));
+				pair<map<unsigned int,override>::iterator,bool> pit = _overrides.insert(pair<unsigned int,override>(override_id,override()));
 				it = pit.first;
 				it->second.code2prefs.insert(pair<int,pref>(code,p));
 
@@ -159,7 +155,7 @@ int CodesTranslator::load_translations_config(){
 							row["o_rewrited_code"].as<int>(code),
 							rewrited_reason);
 
-				pair<map<unsigned int,override>::iterator,bool> pit = overrides.insert(pair<unsigned int,override>(override_id,override()));
+				pair<map<unsigned int,override>::iterator,bool> pit = _overrides.insert(pair<unsigned int,override>(override_id,override()));
 				it = pit.first;
 				it->second.code2trans.insert(pair<int,trans>(code,t));
 
@@ -169,15 +165,30 @@ int CodesTranslator::load_translations_config(){
 
 		t.commit();
 		c.disconnect();
+
+		INFO("translations are loaded successfully. apply changes");
+
+		code2pref_mutex.lock();
+		code2trans_mutex.lock();
+		icode2resp_mutex.lock();
+		overrides_mutex.lock();
+
+		code2pref.swap(_code2pref);
+		code2trans.swap(_code2trans);
+		icode2resp.swap(_icode2resp);
+		overrides.swap(_overrides);
+
+		code2pref_mutex.unlock();
+		code2trans_mutex.unlock();
+		icode2resp_mutex.unlock();
+		overrides_mutex.unlock();
+
 		ret = 0;
 	} catch(const pqxx::pqxx_exception &e){
 		ERROR("pqxx_exception: %s ",e.base().what());
+	} catch(...){
+		ERROR("unexpected exception");
 	}
-
-	code2pref_mutex.unlock();
-	code2trans_mutex.unlock();
-	icode2resp_mutex.unlock();
-	overrides_mutex.unlock();
 
 	return ret;
 }

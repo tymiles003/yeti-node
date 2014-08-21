@@ -874,7 +874,7 @@ void Yeti::reloadResources(const AmArg& args, AmArg& ret){
 		ret.push("OK");
 	} else {
 		ret.push(500);
-		ret.push("errors during resources config reload. there is empty resources config now");
+		ret.push("errors during resources config reload. leave old state");
 	}
 }
 
@@ -888,7 +888,7 @@ void Yeti::reloadTranslations(const AmArg& args, AmArg& ret){
 		ret.push("OK");
 	} else {
 		ret.push(500);
-		ret.push("errors during translations config reload. there is empty translation hashes now");
+		ret.push("errors during translations config reload. leave old state");
 	}
 }
 
@@ -901,7 +901,7 @@ void Yeti::reloadRegistrations(const AmArg& args, AmArg& ret){
 		ret.push("OK");
 	} else {
 		ret.push(500);
-		ret.push("errors during registrations config reload. there is empty registrations list now");
+		ret.push("errors during registrations config reload. leave old state");
 	}
 }
 
@@ -915,7 +915,7 @@ void Yeti::reloadCodecsGroups(const AmArg& args, AmArg& ret){
 		ret.push("OK");
 	} else {
 		ret.push(500);
-		ret.push("errors during codecs groups reload. there is empty resources config now");
+		ret.push("errors during codecs groups reload. leave old state");
 	}
 }
 

@@ -1,6 +1,7 @@
 #include "CodecsGroup.h"
 #include "AmUtils.h"
 #include "AmPlugIn.h"
+#include "AmThread.h"
 #include "log.h"
 #include "amci.h"
 #include "RTPParameters.h"
@@ -139,7 +140,7 @@ bool CodecsGroups::reload(){
 }
 
 int CodecsGroups::load_codecs_groups(){
-	m.clear();
+	map<unsigned int,CodecsGroupEntry> _m;
 	int ret = 1;
 	try {
 		pqxx::result r;
@@ -157,13 +158,19 @@ int CodecsGroups::load_codecs_groups(){
 			int dyn_payload_id = row["o_dynamic_payload_id"].as<int>(-1);
 			string sdp_format_params = row["o_format_params"].c_str();
 			string codec = row["o_codec_name"].c_str();
-			if(!insert(group_id,codec,sdp_format_params, dyn_payload_id)){
+			if(!insert(_m,group_id,codec,sdp_format_params, dyn_payload_id)){
 				ERROR("can't insert codec '%s'",row["o_codec_name"].c_str());
 				return 1;
 			} else {
 				DBG("codec '%s' added to group %d",codec.c_str(),group_id);
 			}
 		}
+
+		INFO("codecs groups are loaded successfully. apply changes");
+		_lock.lock();
+		m.swap(_m);
+		_lock.unlock();
+
 		ret = 0;
 	} catch(const pqxx::pqxx_exception &e){
 		ERROR("pqxx_exception: %s ",e.base().what());

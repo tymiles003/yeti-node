@@ -30,6 +30,7 @@ class CodecsGroupEntry {
 
 class CodecsGroups {
 	static CodecsGroups* _instance;
+	AmMutex _lock;
 
 	DbConfig dbc;
 	string db_schema;
@@ -50,15 +51,18 @@ class CodecsGroups {
 	bool reload();
 
 	void get(int group_id,CodecsGroupEntry &e) {
+		_lock.lock();
 		map<unsigned int,CodecsGroupEntry>::iterator i = m.find(group_id);
-		if(i==m.end())
+		if(i==m.end()){
+			_lock.unlock();
 			throw CodecsGroupException(FC_CG_GROUP_NOT_FOUND,group_id);
+		}
 		e = i->second;
+		_lock.unlock();
 	}
 
-	bool insert(unsigned int group_id, string codec,string sdp_params,int dyn_payload_id = NO_DYN_PAYLOAD) {
-		return m[group_id].add_codec(codec,sdp_params,dyn_payload_id);
-		//m.insert(pair<unsigned int,CodecsGroupEntry>(group_id,CodecsGroupEntry(group_codecs)));
+	bool insert(map<unsigned int,CodecsGroupEntry> &dst, unsigned int group_id, string codec,string sdp_params,int dyn_payload_id = NO_DYN_PAYLOAD) {
+		return dst[group_id].add_codec(codec,sdp_params,dyn_payload_id);
 	}
 
 	void clear(){ m.clear(); }
