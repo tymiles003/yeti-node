@@ -173,7 +173,8 @@ PgConnection* PgConnectionPool::getActiveConnection(){
 			}
 
 			// wait until a connection is back
-			DBG("%s: waiting for an active connection to return\n",pool_name.c_str());
+			DBG("%s: waiting for an active connection to return, max_wait = %d\n",
+				pool_name.c_str(), cfg.max_wait);
 			if (!have_active_connection.wait_for_to(cfg.max_wait)) {
 				WARN("%s: timeout waiting for an active connection (waited %ums)\n",pool_name.c_str(), cfg.max_wait);
 				break;

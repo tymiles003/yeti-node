@@ -19,8 +19,8 @@ class alarm_entry {
 	void set(int value, bool silent = false);
 	void raise();
 	void clear();
-	bool is_raised() const;
-	int value() const;
+	bool is_raised();
+	int value();
 
 	const timeval &get_change_time() const;
 
@@ -33,8 +33,9 @@ class alarm_entry {
 	std::string name;
 
 	timeval change_time;
-	atomic_int raised;
-	//AmMutex _lock;
+	//atomic_int raised;
+	int raised;
+	AmMutex _lock;
 };
 
 class _alarms {

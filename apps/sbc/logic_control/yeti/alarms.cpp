@@ -30,37 +30,53 @@ alarm_entry::alarm_entry() { }
 alarm_entry::~alarm_entry() { }
 
 void alarm_entry::set(int value, bool silent) {
+	AmLock l(_lock);
 	gettimeofday(&change_time,NULL);
-	raised.set(value);
+	//raised.set(value);
+	raised = value;
 	if(!silent) {
 		if(value!=0){
-			ERROR("ALARM %d [%s] raised. current: %d",id,name.c_str(),raised.get());
+			//ERROR("ALARM %d [%s] raised. current: %d",id,name.c_str(),raised.get());
+			ERROR("ALARM %d [%s] raised. current: %d",id,name.c_str(),raised);
 		} else {
-			ERROR("ALARM %d [%s] cleared. current: %d",id,name.c_str(),raised.get());
+			//ERROR("ALARM %d [%s] cleared. current: %d",id,name.c_str(),raised.get());
+			ERROR("ALARM %d [%s] cleared. current: %d",id,name.c_str(),raised);
 		}
 	}
 }
 
 void alarm_entry::raise() {
+	AmLock l(_lock);
 	gettimeofday(&change_time,NULL);
-	raised.inc();
-	ERROR("ALARM %d [%s] raised. current: %d",id,name.c_str(),raised.get());
+	//raised.inc();
+	raised++;
+	//ERROR("ALARM %d [%s] raised. current: %d",id,name.c_str(),raised.get());
+	ERROR("ALARM %d [%s] raised. current: %d",id,name.c_str(),raised);
 }
 
 void alarm_entry::clear() {
+	AmLock l(_lock);
 	gettimeofday(&change_time,NULL);
-	if(raised.dec_and_test()){
+	//if(raised.dec_and_test()){
+	raised--;
+	if(raised < 0) raised = 0; //avoid negative values
+
+	if(!raised){
 		INFO("ALARM %d [%s] cleared",id,name.c_str());
 	}
 	//INFO("ALARM %d [%s] changed. current: %d",id,name.c_str(),raised.get());
 }
 
-bool alarm_entry::is_raised() const {
-	return (raised.get()!=0);
+bool alarm_entry::is_raised() {
+	AmLock l(_lock);
+	//return (raised.get()!=0);
+	return (raised!=0);
 }
 
-int alarm_entry::value() const {
-	return raised.get();
+int alarm_entry::value() {
+	AmLock l(_lock);
+	//return raised.get();
+	return raised;
 }
 
 const std::string& alarm_entry::get_name() const {
