@@ -44,20 +44,23 @@ void LowcFE::convertfs(Float *f, short *t, int cnt)
 
 void LowcFE::copyf(Float *f, Float *t, int cnt)
 {
-  for (int i = 0; i < cnt; i++)
-    t[i] = f[i];
+  memcpy(t,f,sizeof(Float)*cnt);
+  /*for (int i = 0; i < cnt; i++)
+	t[i] = f[i];*/
 }
 
 void LowcFE::copys(short *f, short *t, int cnt)
 {
-  for (int i = 0; i < cnt; i++)
-    t[i] = f[i];
+  memcpy(t,f,sizeof(short)*cnt);
+  /*for (int i = 0; i < cnt; i++)
+	t[i] = f[i];*/
 }
 
 void LowcFE::zeros(short *s, int cnt)
 {
-  for (int i = 0; i < cnt; i++)
-    s[i] = 0;
+  bzero(s,sizeof(short)*cnt);
+  /*for (int i = 0; i < cnt; i++)
+	s[i] = 0;*/
 }
 
 LowcFE::LowcFE(unsigned int sample_rate)

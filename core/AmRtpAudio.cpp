@@ -336,7 +336,9 @@ int AmRtpAudio::init(const AmSdp& local,
   fmt_p->setCurrentPayload(payloads[pl_it->second.index]);
   fmt.reset(fmt_p);
 
+#ifndef USE_SPANDSP_PLC
   fec.reset(new LowcFE(getSampleRate()));
+#endif // USE_SPANDSP_PLC
 
   if (m_playout_type == SIMPLE_PLAYOUT) {
     playout_buffer.reset(new AmPlayoutBuffer(this,getSampleRate()));
