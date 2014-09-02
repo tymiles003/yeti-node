@@ -40,10 +40,19 @@ public:
 		CONN_STATE_ERR
 	};
 
+	typedef void cb_func(void *);
+
+	cb_func *reconnect_cb;
+	void *reconnect_cb_arg;
+	void registerReconnectCallback(cb_func *func,void *arg);
+	void setPoolSize(unsigned int poolsize);
+
 	RedisConnPool();
 	int configure(const AmConfigReader &cfg,string name,bool is_readonly);
 	void run();
 	void on_stop();
+
+	void on_reconnect();
 
 	redisContext *getConnection(unsigned int timeout = 0);
 	void putConnection(redisContext *,ConnReturnState state);

@@ -72,9 +72,12 @@ ResourceCache::ResourceCache():
 }
 
 int ResourceCache::configure(const AmConfigReader &cfg){
-	return
-		write_pool.configure(cfg,"write",false) ||
-		read_pool.configure(cfg,"read",true);
+	int ret = write_pool.configure(cfg,"write",false) ||
+			  read_pool.configure(cfg,"read",true);
+	//!TODO: remove this dirty hack with proper write_pool class replace
+	if(!ret){
+		write_pool.setPoolSize(1); //set pool size to 1 for write_pool anyway
+	}
 }
 
 void ResourceCache::run(){
@@ -264,6 +267,9 @@ void ResourceCache::on_stop(){
 	read_pool.stop();
 }
 
+void ResourceCache::registerReconnectCallback(RedisConnPool::cb_func *func,void *arg){
+	write_pool.registerReconnectCallback(func,arg);
+}
 
 string ResourceCache::get_key(Resource &r){
 	ostringstream ss;

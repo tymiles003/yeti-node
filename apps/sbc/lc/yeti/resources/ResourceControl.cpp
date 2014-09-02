@@ -5,6 +5,13 @@
 #include "../db/DbConfig.h"
 #include <pqxx/pqxx>
 
+//workaround for callback
+static ResourceControl *_instance;
+
+static void on_reconnect_static(void *){
+	_instance->on_reconnect();
+}
+
 void ResourceControl::handler_info(HandlersIt &i, AmArg &a){
 	a["handler"] = i->first;
 	i->second.info(a);
@@ -50,6 +57,7 @@ string ResourceConfig::print() const{
 
 ResourceControl::ResourceControl()
 {
+	_instance = this;
 	stat.clear();
 }
 
@@ -67,6 +75,8 @@ int ResourceControl::configure(AmConfigReader &cfg){
 		ERROR("can't load resources config");
 		return -1;
 	}
+
+	cache.registerReconnectCallback(&on_reconnect_static,NULL);
 
 	return cache.configure(cfg);
 }
@@ -103,7 +113,7 @@ bool ResourceControl::invalidate_resources(){
 
 	handlers_lock.lock();
 
-	DBG("ResourceControl::invalidate_resources(): we have %ld handlers to invalidate",
+	INFO("ResourceControl::invalidate_resources(): we have %ld handlers to invalidate",
 		handlers.size());
 
 	for(Handlers::iterator i = handlers.begin();i!=handlers.end();++i)
@@ -167,6 +177,13 @@ int ResourceControl::load_resources_config(){
 	} catch(const pqxx::pqxx_exception &e){
 		ERROR("pqxx_exception: %s ",e.base().what());
 		return 1;
+	}
+}
+
+void ResourceControl::on_reconnect(){
+	ERROR("ResourceControl::on_reconnect(): invalidate resources");
+	if(!invalidate_resources()){
+		ERROR("can't clear resources. please examine actual state. (all handlers invalidated)");
 	}
 }
 

@@ -13,7 +13,6 @@
 //used for resources lookup in function getResourceState
 #define ANY_VALUE -1
 
-
 struct ResourceCacheException {
 	int code;
 	string what;
@@ -49,6 +48,8 @@ public:
 	int configure(const AmConfigReader &cfg);
 	void run();
 	void on_stop();
+
+	void registerReconnectCallback(RedisConnPool::cb_func *func,void *arg);
 
 	ResourceResponse get(ResourceList &rl,
 						 ResourceList::iterator &resource);

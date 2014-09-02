@@ -10,7 +10,9 @@ RedisConnPool::RedisConnPool():
 	tostop(false),
 	failed_ready(true),
 	active_ready(false),
-	failed_count(0)
+	failed_count(0),
+	reconnect_cb(NULL),
+	reconnect_cb_arg(NULL)
 {
 
 }
@@ -18,11 +20,9 @@ RedisConnPool::RedisConnPool():
 int RedisConnPool::configure(const AmConfigReader &cfg,string name, bool is_readonly){
 	pool_name = name;
 	readonly = is_readonly;
-	pool_size= cfg.getParameterInt(name+"_redis_size");
-	if(!pool_size){
-		ERROR("no pool size for %s redis",name.c_str());
-		return -1;
-	}
+
+	pool_size= cfg.getParameterInt(name+"_redis_size",1);
+
 	active_timeout = cfg.getParameterInt(name+"_redis_timeout");
 	if(!active_timeout){
 		ERROR("no timeout for %s redis",name.c_str());
@@ -33,6 +33,15 @@ int RedisConnPool::configure(const AmConfigReader &cfg,string name, bool is_read
 		return -1;
 	}
 	return cfg2RedisCfg(cfg,_cfg,pool_name);
+}
+
+void RedisConnPool::registerReconnectCallback(cb_func *func,void *arg){
+	reconnect_cb = func;
+	reconnect_cb_arg = arg;
+}
+
+void RedisConnPool::setPoolSize(unsigned int poolsize){
+	pool_size = poolsize;
 }
 
 void RedisConnPool::run(){
@@ -93,6 +102,9 @@ void RedisConnPool::run(){
 				sleep(5);
 			}
 		}
+		//all failed connections is reconnected
+		on_reconnect();
+
 		conn_mtx.lock();
 			failed_ready.set(failed_count>0);
 		conn_mtx.unlock();
@@ -124,6 +136,13 @@ void RedisConnPool::on_stop(){
 	conn_mtx.unlock();
 
 //	DBG("%s() finished",FUNC_NAME);
+}
+
+void RedisConnPool::on_reconnect(){
+	if(reconnect_cb){
+		DBG("RedisConnPool::on_reconnect() have reconnect call back function. call it");
+		(*reconnect_cb)(reconnect_cb_arg);
+	}
 }
 
 redisContext *RedisConnPool::getConnection(unsigned int timeout){

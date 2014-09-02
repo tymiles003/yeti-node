@@ -98,15 +98,18 @@ class ResourceControl
 			arg["errors"] = (long)errors;
 		}
 	} stat;
+
 public:
 
 	ResourceControl();
+
 	int configure(AmConfigReader &cfg);
 	void configure_db(AmConfigReader &cfg);
 	void start();
 	void stop();
 	bool reload();
 	bool invalidate_resources();
+	void on_reconnect();
 
 	ResourceCtlResponse get(ResourceList &rl,
 							  string &handler,
