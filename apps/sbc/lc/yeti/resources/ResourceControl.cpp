@@ -1,8 +1,23 @@
 #include "ResourceControl.h"
 #include "../yeti.h"
 #include "AmUtils.h"
+#include "AmSession.h"
 #include "../db/DbConfig.h"
 #include <pqxx/pqxx>
+
+void ResourceControl::handler_info(HandlersIt &i, AmArg &a){
+	a["handler"] = i->first;
+	i->second.info(a);
+}
+
+void ResourceControl::handlers_entry::info(AmArg &a) const {
+	a["onwer_tag"] = owner_tag;
+	a["valid"] = valid;
+	AmArg &r = a["resources"];
+	for(ResourceList::const_iterator j = resources.begin(); j!=resources.end();++j){
+		r.push(j->print());
+	}
+}
 
 void ResourceConfig::set_action(int a){
 	switch(a){
@@ -83,6 +98,22 @@ bool ResourceControl::reload(){
 	return ret;
 }
 
+bool ResourceControl::invalidate_resources(){
+	bool ret = false;
+
+	handlers_lock.lock();
+
+	DBG("ResourceControl::invalidate_resources(): we have %ld handlers to invalidate",
+		handlers.size());
+
+	for(Handlers::iterator i = handlers.begin();i!=handlers.end();++i)
+		i->second.invalidate();
+	ret = cache.init_resources();
+
+	handlers_lock.unlock();
+	return ret;
+}
+
 void ResourceControl::replace(string& s, const string& from, const string& to){
 	size_t pos = 0;
 	while ((pos = s.find(from, pos)) != string::npos) {
@@ -140,6 +171,8 @@ int ResourceControl::load_resources_config(){
 }
 
 ResourceCtlResponse ResourceControl::get(ResourceList &rl,
+						  string &handler,
+						  const string &owner_tag,
 						  int &reject_code,
 						  string &reject_reason)
 {
@@ -162,6 +195,16 @@ ResourceCtlResponse ResourceControl::get(ResourceList &rl,
 
 	switch(ret){
 		case RES_SUCC: {
+			handler = AmSession::getNewId();
+			handlers_lock.lock();
+			handlers.insert(std::pair<string,handlers_entry>(handler,
+															 handlers_entry(
+																 rl,
+																 owner_tag)));
+			handlers_lock.unlock();
+			DBG("ResourceControl::get() return resources handler '%s' for %p",
+				handler.c_str(),&rl);
+			//TODO: add to internal handlers list
 			return RES_CTL_OK;
 			break;
 		}
@@ -212,38 +255,74 @@ ResourceCtlResponse ResourceControl::get(ResourceList &rl,
 	return RES_CTL_OK;
 }
 
-void ResourceControl::put(ResourceList &rl){
-	AmLock l(rl);
-	if(rl.empty()){
-		DBG("ResourceControl::put(%p) empty resources list",&rl);
+//void ResourceControl::put(ResourceList &rl){
+void ResourceControl::put(const string &handler){
+	if(handler.empty()){
+		DBG("ResourceControl::put() empty handler");
 		return;
 	}
-	cache.put(rl);
-	rl.clear();
+
+	handlers_lock.lock();
+	Handlers::iterator h = handlers.find(handler);
+	if(h==handlers.end()){
+		handlers_lock.unlock();
+		WARN("ResourceControl::put(%s) attempt to free resources using not existent handler",
+			 handler.c_str());
+		return;
+	}
+
+	//!TODO: validate handler. remove if found but invalid.
+	handlers_entry &e = h->second;
+
+	if(!e.is_valid()){
+		DBG("ResourceControl::put(%s) invalid handler. remove it",
+			handler.c_str());
+		handlers.erase(h);
+		handlers_lock.unlock();
+		return;
+	}
+
+	if(!e.resources.empty()){
+		cache.put(e.resources);
+	} else {
+		DBG("ResourceControl::put(%p) empty resources list",&e.resources);
+	}
+
+	handlers.erase(h);
+	handlers_lock.unlock();
 }
 
-void ResourceControl::GetConfig(AmArg& ret){
-	AmArg u;
+void ResourceControl::GetConfig(AmArg& ret,bool types_only){
+	DBG("types_only = %d, size = %ld",types_only,type2cfg.size());
 
-	ret["db_config"] = dbc.conn_str();
-	ret["db_schema"] = db_schema;
-
-	cfg_lock.lock();
+	if(types_only){
+		cfg_lock.lock();
 		map<int,ResourceConfig>::const_iterator it = type2cfg.begin();
-		for(;it!=type2cfg.end();++it){
-			AmArg p;
+		for(map<int,ResourceConfig>::const_iterator it = type2cfg.begin();
+			it!=type2cfg.end();++it)
+		{
+			string key = int2str(it->first);
+
+			ret.push(key,AmArg());
+
+			AmArg &p = ret[key];
 			const ResourceConfig &c = it->second;
 			p["name"] =  c.name;
 			p["reject_code"] = c.reject_code;
 			p["reject_reason"] = c.reject_reason;
 			p["action"] = c.str_action;
-			u.push(int2str(it->first),p);
 		}
+		cfg_lock.unlock();
+		return;
+	}
 
-		u.clear();
+	ret["db_config"] = dbc.conn_str();
+	ret["db_schema"] = db_schema;
+
+	cfg_lock.lock();
+		ret.push("cache",AmArg());
+		AmArg &u = ret["cache"];
 		cache.GetConfig(u);
-		ret.push("cache",u);
-
 	cfg_lock.unlock();
 }
 
@@ -256,12 +335,64 @@ void ResourceControl::getStats(AmArg &ret){
 }
 
 void ResourceControl::getResourceState(int type, int id, AmArg &ret){
-	cfg_lock.lock();
-	if(type2cfg.find(type)==type2cfg.end()){
+	if(type!=ANY_VALUE){
+		cfg_lock.lock();
+		if(type2cfg.find(type)==type2cfg.end()){
+			cfg_lock.unlock();
+			throw ResourceCacheException("unknown resource type",500);
+		}
 		cfg_lock.unlock();
-		throw ResourceCacheException("unknown resource type",500);
 	}
-	cfg_lock.unlock();
 	cache.getResourceState(type,id,ret);
 }
 
+void ResourceControl::showResources(AmArg &ret){
+	handlers_lock.lock();
+	for(HandlersIt i = handlers.begin();i!=handlers.end();++i){
+		const handlers_entry &e = i->second;
+		ret.push(AmArg());
+		handler_info(i,ret.back());
+	}
+	handlers_lock.unlock();
+}
+
+void ResourceControl::showResourceByHandler(const string &h, AmArg &ret){
+	handlers_lock.lock();
+
+	HandlersIt i = handlers.find(h);
+	if(i==handlers.end()){
+		handlers_lock.unlock();
+		ret.push(404);
+		ret.push(AmArg("no such handler"));
+		return;
+	}
+
+	ret.push(200);
+	ret.push(AmArg());
+	handler_info(i,ret.back());
+
+	handlers_lock.unlock();
+}
+
+void ResourceControl::showResourceByLocalTag(const string &tag, AmArg &ret){
+	handlers_lock.lock();
+
+	HandlersIt i = handlers.begin();
+	for(;i!=handlers.end();++i){
+		const handlers_entry &e = i->second;
+		if (e.owner_tag.empty()) continue;
+		if(e.owner_tag==tag) break;
+	}
+	if(i==handlers.end()){
+		handlers_lock.unlock();
+		ret.push(404);
+		ret.push(AmArg("no such handler"));
+		return;
+	}
+
+	ret.push(200);
+	ret.push(AmArg());
+	handler_info(i,ret.back());
+
+	handlers_lock.unlock();
+}

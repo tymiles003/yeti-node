@@ -91,7 +91,7 @@ void ResourceCache::run(){
 	read_pool.start();
 	write_pool.start();
 
-	if(!init_resources()){
+	if(!init_resources(true)){
 		DBG("can't init resources. stop thread");
 		return;
 	}
@@ -271,7 +271,7 @@ string ResourceCache::get_key(Resource &r){
 	return ss.str();
 }
 
-bool ResourceCache::init_resources(){
+bool ResourceCache::init_resources(bool initial){
 	redisContext *write_ctx = NULL;
 	redisReply *reply = NULL;
 	list <int> desired_response;
@@ -280,6 +280,10 @@ bool ResourceCache::init_resources(){
 	try {
 		write_ctx = write_pool.getConnection();
 		while(write_ctx==NULL){
+			if(!initial) {
+				ERROR("get connection can't get connection from write redis pool");
+				return false;
+			}
 			ERROR("get connection can't get connection from write redis pool. retry every 1s");
 			sleep(1);
 			if(tostop) return false;
@@ -512,6 +516,7 @@ void ResourceCache::getResourceState(int type, int id, AmArg &ret){
 
 	redisReply *reply = NULL;
 	redisContext *redis_ctx = NULL;
+	list <int> d;
 
 	ret.assertStruct();
 
@@ -520,42 +525,124 @@ void ResourceCache::getResourceState(int type, int id, AmArg &ret){
 		throw ResourceCacheException("can't get connection from read_pool",500);
 	}
 
-	//create fake resource
-	Resource r;
-	r.type = type;
-	r.id = id;
+	if(type!=ANY_VALUE and id!=ANY_VALUE){
+		//create fake resource
+		Resource r;
+		r.type = type;
+		r.id = id;
 
 		//prepare request
-	string key = get_key(r);
-	redisAppendCommand(redis_ctx,"HGETALL %b",
-		key.c_str(),key.size());
+		string key = get_key(r);
+		redisAppendCommand(redis_ctx,"HGETALL %b",
+			key.c_str(),key.size());
 
-	int state = redisGetReply(redis_ctx,(void **)&reply);
+		int state = redisGetReply(redis_ctx,(void **)&reply);
 
-	if(state!=REDIS_OK || reply==NULL){
-		read_pool.putConnection(redis_ctx,RedisConnPool::CONN_STATE_ERR);
-		throw ResourceCacheException("no reply from storage",500);
-	}
+		if(state!=REDIS_OK || reply==NULL){
+			read_pool.putConnection(redis_ctx,RedisConnPool::CONN_STATE_ERR);
+			throw ResourceCacheException("no reply from storage",500);
+		}
 
-	if(reply->type != REDIS_REPLY_ARRAY){
+		if(reply->type != REDIS_REPLY_ARRAY){
+			freeReplyObject(reply);
+			read_pool.putConnection(redis_ctx,RedisConnPool::CONN_STATE_ERR);
+			throw ResourceCacheException("undesired reply from storage",500);
+		}
+
+		size_t n = reply->elements;
+		if(0==n){
+			freeReplyObject(reply);
+			read_pool.putConnection(redis_ctx,RedisConnPool::CONN_STATE_OK);
+			throw ResourceCacheException("unknown resource",404);
+		}
+
+		for(unsigned int i = 0; i < n; i+=2){
+			ret.push(int2str((unsigned int)Reply2Int(reply->element[i])),	//node_id
+					 AmArg(Reply2Int(reply->element[i+1])));				//value
+		}
+
 		freeReplyObject(reply);
-		read_pool.putConnection(redis_ctx,RedisConnPool::CONN_STATE_ERR);
-		throw ResourceCacheException("undesired reply from storage",500);
-	}
+	} else { //if(type!=ANY_VALUE and id!=ANY_VALUE){
+#define int2key(v) (v==ANY_VALUE) ? "*" : int2str(v)
+		string key = int2key(type);
+		key.append(":");
+		key.append(int2key(id));
+#undef int2key
+		DBG("%s(): lookup of keys '%s'",FUNC_NAME,key.c_str());
+		redisAppendCommand(redis_ctx,"KEYS %s",key.c_str());
 
-	size_t n = reply->elements;
-	if(0==n){
+		int state = redisGetReply(redis_ctx,(void **)&reply);
+		if(state!=REDIS_OK || reply==NULL){
+			read_pool.putConnection(redis_ctx,RedisConnPool::CONN_STATE_ERR);
+			throw ResourceCacheException("no reply from storage",500);
+		}
+
+
+		if(reply->type != REDIS_REPLY_ARRAY){
+			if(reply->type==REDIS_REPLY_NIL){
+				freeReplyObject(reply);
+				read_pool.putConnection(redis_ctx,RedisConnPool::CONN_STATE_OK);
+				throw ResourceCacheException("no resources matched",404);
+			}
+			freeReplyObject(reply);
+			read_pool.putConnection(redis_ctx,RedisConnPool::CONN_STATE_ERR);
+			throw ResourceCacheException("undesired reply from storage",500);
+		}
+		DBG("%s(): got %ld keys",FUNC_NAME,reply->elements);
+
+		list<string> keys;
+		redisAppendCommand(redis_ctx,"MULTI");
+		d.push_back(REDIS_REPLY_STATUS);
+		for(unsigned int i = 0;i<reply->elements;i++){
+			redisReply *r = reply->element[i];
+			redisAppendCommand(redis_ctx,"HGETALL %s",r->str);
+			keys.push_back(r->str);
+			d.push_back(REDIS_REPLY_STATUS);
+		}
+		redisAppendCommand(redis_ctx,"EXEC");
+		d.push_back(REDIS_REPLY_ARRAY);
+
 		freeReplyObject(reply);
-		read_pool.putConnection(redis_ctx,RedisConnPool::CONN_STATE_OK);
-		throw ResourceCacheException("unknown resource",404);
-	}
 
-	for(unsigned int i = 0; i < n; i+=2){
-		ret.push(int2str((unsigned int)Reply2Int(reply->element[i])),	//node_id
-				 AmArg(Reply2Int(reply->element[i+1])));				//value
+		while(!d.empty()){
+			int desired = d.front();
+			d.pop_front();
+			state = redisGetReply(redis_ctx,(void **)&reply);
+			if(state!=REDIS_OK || reply==NULL){
+				read_pool.putConnection(redis_ctx,RedisConnPool::CONN_STATE_ERR);
+				throw ResourceCacheException("no reply from storage",500);
+			}
+			if(reply->type!=desired){
+				freeReplyObject(reply);
+				read_pool.putConnection(redis_ctx,RedisConnPool::CONN_STATE_ERR);
+				throw ResourceCacheException("undesired reply from storage",500);
+			}
+			if(reply->type == REDIS_REPLY_ARRAY){
+				list<string>::const_iterator k = keys.begin();
+				for(unsigned int i = 0; i < reply->elements; i++,k++){
+					redisReply *r = reply->element[i];
+					if(r->type!=REDIS_REPLY_ARRAY){
+						freeReplyObject(reply);
+						read_pool.putConnection(redis_ctx,RedisConnPool::CONN_STATE_ERR);
+						throw ResourceCacheException("undesired reply from storage",500);
+					}
+					ret.push(*k,AmArg());
+					AmArg &q = ret[*k];
+					for(unsigned int j = 0; j < r->elements; j+=2){
+						try {
+						q.push(int2str((unsigned int)Reply2Int(r->element[j])),	//node_id
+							 AmArg(Reply2Int(r->element[j+1])));				//value*/
+						} catch(...){
+							freeReplyObject(reply);
+							read_pool.putConnection(redis_ctx,RedisConnPool::CONN_STATE_ERR);
+							throw ResourceCacheException("can't parse response",500);
+						}
+					}
+				}
+			}
+			freeReplyObject(reply);
+		}
 	}
-
-	freeReplyObject(reply);
 	read_pool.putConnection(redis_ctx,RedisConnPool::CONN_STATE_OK);
 }
 

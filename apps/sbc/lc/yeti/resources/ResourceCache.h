@@ -7,7 +7,12 @@
 #include "AmArg.h"
 #include "hiredis/hiredis.h"
 #include "RedisConnPool.h"
+
 #include <list>
+
+//used for resources lookup in function getResourceState
+#define ANY_VALUE -1
+
 
 struct ResourceCacheException {
 	int code;
@@ -33,12 +38,14 @@ class ResourceCache
 
 	string get_key(Resource &r);
 
-	bool init_resources();
 	void pending_get(Resource &r);
 	void pending_get_finish();
 
 public:
-	ResourceCache();redisContext *w_ctx;
+	ResourceCache();
+	bool init_resources(bool initial = false);
+
+	redisContext *w_ctx;
 	int configure(const AmConfigReader &cfg);
 	void run();
 	void on_stop();

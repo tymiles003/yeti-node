@@ -53,6 +53,25 @@ class ResourceControl
 	DbConfig dbc;
 	string db_schema;
 
+	struct handlers_entry {
+		ResourceList resources;
+		string owner_tag;
+		bool valid;
+
+		handlers_entry(const ResourceList &l,const string &tag):
+			resources(l), owner_tag(tag), valid(true) {}
+		void invalidate() { valid = false; }
+		bool is_valid() { return valid; }
+		void info(AmArg &a) const;
+	};
+	typedef map<string,handlers_entry> Handlers;
+	typedef Handlers::const_iterator HandlersIt;
+
+	void handler_info(HandlersIt &i, AmArg &a);
+
+	Handlers handlers;
+	AmMutex handlers_lock;
+
 	void replace(string &s,Resource &r,ResourceConfig &rc);
 	void replace(string& s, const string& from, const string& to);
 	int load_resources_config();
@@ -80,23 +99,31 @@ class ResourceControl
 		}
 	} stat;
 public:
+
 	ResourceControl();
 	int configure(AmConfigReader &cfg);
 	void configure_db(AmConfigReader &cfg);
 	void start();
 	void stop();
 	bool reload();
+	bool invalidate_resources();
 
 	ResourceCtlResponse get(ResourceList &rl,
+							  string &handler,
+							  const string &owner_tag,
 							  int &reject_code,
 							  string &reject_reason);
 
-	void put(ResourceList &rl);
+	//void put(ResourceList &rl);
+	void put(const string &handler);
 
-	void GetConfig(AmArg& ret);
+	void GetConfig(AmArg& ret,bool types_only = false);
 	void clearStats();
 	void getStats(AmArg &ret);
 	void getResourceState(int type, int id, AmArg &ret);
+	void showResources(AmArg &ret);
+	void showResourceByHandler(const string &h, AmArg &ret);
+	void showResourceByLocalTag(const string &tag, AmArg &ret);
 };
 
 #endif // RESOURCECONTROL_H

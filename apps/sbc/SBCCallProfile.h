@@ -168,6 +168,8 @@ struct SBCCallProfile
   bool relay_reinvite;
   bool relay_hold;
 
+  string resource_handler;
+
   int static_codecs_aleg_id;
   int static_codecs_bleg_id;
   bool aleg_single_codec;

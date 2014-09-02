@@ -303,8 +303,10 @@ void Yeti::onDestroyLeg(SBCCallLeg *call){
 		ctx->unlock();
 		delete ctx;
 	} else {
-		if(NULL!=ctx->getCurrentProfile())
-			rctl.put(ctx->getCurrentResourceList());
+		SqlCallProfile *p = ctx->getCurrentProfile();
+		if(NULL!=p){
+			rctl.put(p->resource_handler);
+		}
 		ctx->unlock();
 	}
 }
@@ -348,7 +350,8 @@ CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, AmSipReply& reply) {
 			DBG("continue hunting");
 
 			//put current resources
-			rctl.put(ctx->getCurrentResourceList());
+			//rctl.put(ctx->getCurrentResourceList());
+			rctl.put(ctx->getCurrentProfile()->resource_handler);
 
 			if(ctx->initial_invite!=NULL){
 				if(chooseNextProfile(call)){
@@ -402,7 +405,10 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 	PROF_START(rchk);
 	do {
 		DBG("%s() check resources for profile. attempt %d",FUNC_NAME,attempt);
-		rctl_ret = rctl.get(ctx->getCurrentResourceList(),refuse_code,refuse_reason);
+		rctl_ret = rctl.get(ctx->getCurrentResourceList(),
+							ctx->getCurrentProfile()->resource_handler,
+							call->getLocalTag(),
+							refuse_code,refuse_reason);
 
 		if(rctl_ret == RES_CTL_OK){
 			DBG("%s() check resources succ",FUNC_NAME);
@@ -491,13 +497,13 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 
 	} catch(InternalException &e) {
 		DBG("onInitialInvite() catched InternalException(%d)",e.icode);
-		rctl.put(ctx->getCurrentResourceList());
+		rctl.put(call->getCallProfile().resource_handler);
 		cdr->update_internal_reason(DisconnectByTS,e.internal_reason,e.internal_code);
 		throw AmSession::Exception(e.response_code,e.response_reason);
 	} catch(AmSession::Exception &e) {
 		DBG("onInitialInvite() catched AmSession::Exception(%d,%s)",
 			e.code,e.reason.c_str());
-		rctl.put(ctx->getCurrentResourceList());
+		rctl.put(call->getCallProfile().resource_handler);
 		//!TODO: rewrite response here
 		cdr->update_internal_reason(DisconnectByTS,e.reason,e.code);
 		throw e;
@@ -752,7 +758,7 @@ void Yeti::onServerShutdown(SBCCallLeg *call){
 	getCtx_void();
 	getCdr(ctx)->update_internal_reason(DisconnectByTS,"ServerShutdown",200);
 	//may never reach onDestroy callback so free resources here
-	rctl.put(ctx->getCurrentResourceList());
+	rctl.put(call->getCallProfile().resource_handler);
 }
 
 CCChainProcessing Yeti::onTearDown(SBCCallLeg *call){
@@ -1237,7 +1243,14 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 
 		DBG("%s() no refuse field. check it for resources",FUNC_NAME);
         ResourceList &rl = profile->rl;
-		rctl_ret = rl.empty() ? RES_CTL_OK : rctl.get(rl,refuse_code,refuse_reason);
+		if(rl.empty()){
+			rctl_ret = RES_CTL_OK;
+		} else {
+			rctl_ret = rctl.get(rl,
+								profile->resource_handler,
+								call->getLocalTag(),
+								refuse_code,refuse_reason);
+		}
 
 		if(rctl_ret == RES_CTL_OK){
 			DBG("%s() check resources  successed",FUNC_NAME);

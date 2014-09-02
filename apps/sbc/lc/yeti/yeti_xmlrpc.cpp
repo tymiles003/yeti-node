@@ -69,6 +69,19 @@ void Yeti::init_xmlrpc_cmds(){
 
 		reg_method(show,"version","show version",showVersion,"");
 
+		reg_leaf(show,show_resource,"resource","resources related functions");
+
+			reg_leaf_method_arg(show_resource,show_resource_state,"state","get resources state from redis",getResourceState,
+								"","<type>/all <id>/all","retreive info about certain resources state");
+
+			reg_leaf_method(show_resource_state,show_resource_state_used,"used","show active resources handlers",showResources,"");
+			reg_method_arg(show_resource_state_used,"by_id","find resource by handler id",showResourceByHandler,"",
+						   "<handler_id>","find resource by handler id");
+			reg_method_arg(show_resource_state_used,"by_owner","find resource by onwer local_tag",showResourceByLocalTag,"",
+						   "<onwer_local_tag>","find resource by onwer local_tag");
+
+			reg_method(show_resource,"types","show resources types",showResourceTypes,"");
+
 		reg_leaf(show,show_router,"router","active router instance");
 			reg_method(show_router,"cache","show callprofile's cache state",ShowCache,"");
 
@@ -101,6 +114,7 @@ void Yeti::init_xmlrpc_cmds(){
 
 	/* request */
 	reg_leaf(root,request,"request","modify commands");
+
 		reg_leaf(request,request_router,"router","active router instance");
 
 			reg_method(request_router,"reload","reload active instance",reloadRouter,"");
@@ -155,7 +169,7 @@ void Yeti::init_xmlrpc_cmds(){
 		reg_leaf(request,request_resource,"resource","resources cache");
 			reg_method_arg(request_resource,"state","",getResourceState,
 						   "","<type> <id>","get current state of resource");
-
+			reg_method(request_resource,"invalidate","invalidate all resources",requestResourcesInvalidate,"");
 	/* set */
 	reg_leaf(root,lset,"set","set");
 		reg_leaf(lset,set_system,"system","system commands");
@@ -1228,7 +1242,7 @@ void Yeti::requestSystemShutdownCancel(const AmArg& args, AmArg& ret){
 
 void Yeti::getResourceState(const AmArg& args, AmArg& ret){
 	handler_log();
-	AmArg state;
+	AmArg states;
 	int type, id;
 
 	if(args.size()<2){
@@ -1239,25 +1253,70 @@ void Yeti::getResourceState(const AmArg& args, AmArg& ret){
 
 	args.assertArrayFmt("ss");
 
-	if(!str2int(args.get(0).asCStr(),type)){
+	const string all_values = "all";
+	if(all_values==args.get(0).asCStr()){
+		type = ANY_VALUE;
+	} else if(!str2int(args.get(0).asCStr(),type)){
 		ret.push(500);
 		ret.push(AmArg("invalid resource type"));
 		return;
 	}
-
-	if(!str2int(args.get(1).asCStr(),id)){
+	if(all_values==args.get(1).asCStr()){
+		id = ANY_VALUE;
+	}
+	else if(!str2int(args.get(1).asCStr(),id)){
 		ret.push(500);
 		ret.push(AmArg("invalid resource id"));
 		return;
 	}
 
 	try {
-		rctl.getResourceState(type,id,state);
+		rctl.getResourceState(type,id,states);
 		ret.push(200);
-		ret.push(state);
+		ret.push(states);
 	} catch(const ResourceCacheException &e){
 		ret.push(e.code);
 		ret.push(e.what);
+	}
+}
+
+void Yeti::showResources(const AmArg& args, AmArg& ret){
+	ret.push(200);
+	ret.push(AmArg());
+	rctl.showResources(ret.back());
+}
+
+void Yeti::showResourceByHandler(const AmArg& args, AmArg& ret){
+	if(!args.size()){
+		ret.push(500);
+		ret.push(AmArg("specify handler id"));
+		return;
+	}
+	rctl.showResourceByHandler(args.get(0).asCStr(),ret);
+}
+
+void Yeti::showResourceByLocalTag(const AmArg& args, AmArg& ret){
+	if(!args.size()){
+		ret.push(500);
+		ret.push(AmArg("specify local_tag"));
+		return;
+	}
+	rctl.showResourceByLocalTag(args.get(0).asCStr(),ret);
+}
+
+void Yeti::showResourceTypes(const AmArg& args, AmArg& ret){
+	ret.push(200);
+	ret.push(AmArg());
+	rctl.GetConfig(ret.back(),true);
+}
+
+void Yeti::requestResourcesInvalidate(const AmArg& args, AmArg& ret){
+	if(rctl.invalidate_resources()){
+		ret.push(200);
+		ret.push(AmArg("OK"));
+	} else {
+		ret.push(500);
+		ret.push(AmArg("handlers invalidated. but resources initialization failed"));
 	}
 }
 
