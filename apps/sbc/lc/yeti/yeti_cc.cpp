@@ -577,13 +577,16 @@ CCChainProcessing Yeti::onInDialogRequest(SBCCallLeg *call, const AmSipRequest &
 		DBG("replying 100 Trying to INVITE to be processed locally\n");
 		call->dlg->reply(req, 100, SIP_REPLY_TRYING);
 
+		bool single_codec;
 		int static_codecs_negotiate_id;
 		vector<SdpMedia> * negotiated_media;
 
 		if(aleg){
+			single_codec = p.aleg_single_codec;
 			static_codecs_negotiate_id = p.static_codecs_aleg_id;
 			negotiated_media = &ctx->aleg_negotiated_media;
 		} else {
+			single_codec = p.bleg_single_codec;
 			static_codecs_negotiate_id = p.static_codecs_bleg_id;
 			negotiated_media = &ctx->bleg_negotiated_media;
 		}
@@ -595,7 +598,8 @@ CCChainProcessing Yeti::onInDialogRequest(SBCCallLeg *call, const AmSipRequest &
 									  *negotiated_media,
 									  inv_req.method,
 									  static_codecs_negotiate_id,
-									  true);
+									  true,
+									  single_codec);
 		if (res < 0) {
 			throw AmSession::Exception(488,"Not Acceptable Here");
 		}

@@ -388,11 +388,51 @@ int cutNoAudioStreams(AmSdp &sdp, bool cut){
 	return 0;
 }
 
+inline bool is_telephone_event(const SdpPayload &p){
+	string c = p.encoding_name;
+	std::transform(c.begin(), c.end(), c.begin(), ::toupper);
+	return (c==DTMF_ENCODING_NAME);
+}
+
+//add payload into payloads list with checking
+inline void add_codec(std::vector<SdpPayload> &pl,const SdpPayload &p,bool single_codec){
+	if(!single_codec ||										//single codec not enabled
+	   pl.empty() ||										//no payloads added yet
+	   (pl.size()==1 && is_telephone_event(pl.front())) ||	//payloads no empty but contain telephone-event (for cases when telephone-event added first)
+	   is_telephone_event(p))								//telephone-event can be added even if we already have payload
+	{
+		DBG("add_codec: add payload: '%s', pl.size = %ld, ",
+			p.encoding_name.c_str(),pl.size());
+		pl.push_back(p);
+	}
+}
+
+inline void reduce_codecs_to_single(std::vector<SdpMedia> &media){
+	for (vector<SdpMedia>::iterator m_it = media.begin();
+		m_it != media.end(); ++m_it)
+	{
+		SdpMedia& m = *m_it;
+
+		if(m.type!=MT_AUDIO)
+			continue;
+
+		std::vector<SdpPayload> new_pl;
+		for(std::vector<SdpPayload>::const_iterator p_it = m.payloads.begin();
+			p_it != m.payloads.end(); p_it++)
+		{
+			add_codec(new_pl,*p_it,true);
+		}
+		m.payloads = new_pl;
+
+	}
+}
+
 int negotiateRequestSdp(SBCCallProfile &call_profile,
 					AmSipRequest &req, vector<SdpMedia> &negotiated_media,
 					const string &method,
 					int static_codecs_id,
-					bool local)
+					bool local,
+					bool single_codec)
 {
 	DBG("negotiateRequestSdp() method = %s\n",method.c_str());
 	AmMimeBody &body = req.body;
@@ -423,6 +463,9 @@ int negotiateRequestSdp(SBCCallProfile &call_profile,
 
 	if(local)
 		fix_media_activity(sdp);
+
+	if(single_codec)
+		reduce_codecs_to_single(sdp.media);
 
 	//save negotiated result for the future usage
 	negotiated_media = sdp.media;
@@ -506,36 +549,6 @@ int filterRequestSdp(SBCCallLeg *call,
 
 	return res;
 }
-
-inline bool is_telephone_event(const SdpPayload &p){
-	string c = p.encoding_name;
-	std::transform(c.begin(), c.end(), c.begin(), ::toupper);
-	return (c==DTMF_ENCODING_NAME);
-}
-
-//add payload into payloads list with checking
-inline void add_codec(std::vector<SdpPayload> &pl,const SdpPayload &p,bool single_codec){
-	if(!single_codec ||										//single codec not enabled
-	   pl.empty() ||										//no payloads added yet
-	   (pl.size()==1 && is_telephone_event(pl.front())) ||	//payloads no empty but contain telephone-event (for cases when telephone-event added first)
-	   is_telephone_event(p))								//telephone-event can be added even if we already have payload
-	{
-		DBG("add_codec: add payload: '%s', pl.size = %ld, ",
-			p.encoding_name.c_str(),pl.size());
-		pl.push_back(p);
-	}
-}
-
-/*void copy_media_conn(SdpMedia &dst,const SdpMedia &src)
-{
-	dst.port = src.port;
-	dst.conn = src.conn;
-}
-
-void copy_sdp_conn(SdpMedia &dst,const SdpMedia &src)
-{
-	//
-}*/
 
 int filterReplySdp(SBCCallLeg *call,
 				   AmMimeBody &body, const string &method,
