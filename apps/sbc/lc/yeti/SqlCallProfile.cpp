@@ -296,7 +296,7 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 	assign_bool_safe(relay_reinvite,"relay_reinvite",true,true);
 	assign_bool_safe(relay_prack,"relay_prack",true,true);
 	assign_bool_safe(relay_hold,"relay_hold",true,true);
-	assign_bool_safe(relay_timestamp_aligning,"relay_timestamp_aligning",false,false);
+	assign_bool_safe(relay_timestamp_aligning,"rtp_relay_timestamp_aligning",false,false);
 
 	assign_bool_safe(trusted_hdrs_gw,"trusted_hdrs_gw",false,false);
 
