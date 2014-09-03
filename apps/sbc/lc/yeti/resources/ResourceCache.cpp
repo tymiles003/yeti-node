@@ -78,6 +78,7 @@ int ResourceCache::configure(const AmConfigReader &cfg){
 	if(!ret){
 		write_pool.setPoolSize(1); //set pool size to 1 for write_pool anyway
 	}
+	return ret;
 }
 
 void ResourceCache::run(){
