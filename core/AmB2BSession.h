@@ -280,6 +280,8 @@ private:
   bool rtp_relay_transparent_seqno;
   /** transparent SSRC for RTP relay */
   bool rtp_relay_transparent_ssrc;
+  /** if true, try to adjust timestamp on relay */
+  bool rtp_relay_timestamp_aligning;
   /** If true, transcoded audio is injected into 
       the inband DTMF detector */
   bool enable_dtmf_transcoding;
@@ -342,6 +344,7 @@ private:
   bool getEnableDtmfRtpFiltering() const { return enable_dtmf_rtp_filtering; }
   bool getEnableDtmfRtpDetection() const { return enable_dtmf_rtp_detection; }
   bool getEnableDtmfForceRelay() const { return enable_dtmf_rtp_force_relay; }
+  bool getRtpRelayTimestampAligning() const { return rtp_relay_timestamp_aligning; }
   void getLowFiPLs(vector<SdpPayload>& lowfi_payloads) const;
 
   virtual void setRtpInterface(int relay_interface);
@@ -350,6 +353,7 @@ private:
   virtual void setRtpSymmetricRtpIgnoreRTCP(bool ignore_rtcp);
   void setRtpRelayTransparentSeqno(bool transparent);
   void setRtpRelayTransparentSSRC(bool transparent);
+  void setRtpRelayTimestampAligning(bool enable);
 
   void setEnableDtmfTranscoding(bool enable);
   void setEnableDtmfRtpFiltering(bool enable);

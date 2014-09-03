@@ -80,7 +80,8 @@ AmB2BSession::AmB2BSession(const string& other_local_tag, AmSipDialog* p_dlg,
     enable_dtmf_rtp_detection(false),
 	enable_dtmf_rtp_force_relay(true),
 	dead_rtp_time(AmConfig::DeadRtpTime),
-    rtp_relay_transparent_seqno(true), rtp_relay_transparent_ssrc(true),
+	rtp_relay_transparent_seqno(true), rtp_relay_transparent_ssrc(true),
+	rtp_relay_timestamp_aligning(false),
     est_invite_cseq(0),est_invite_other_cseq(0),
     media_session(NULL)
 {
@@ -964,6 +965,10 @@ void AmB2BSession::setRtpRelayTransparentSSRC(bool transparent) {
   rtp_relay_transparent_ssrc = transparent;
 }
 
+void AmB2BSession::setRtpRelayTimestampAligning(bool enable) {
+  rtp_relay_timestamp_aligning = enable;
+}
+
 void AmB2BSession::setEnableDtmfTranscoding(bool enable) {
   enable_dtmf_transcoding = enable;
 }
@@ -1325,6 +1330,7 @@ void AmB2BCallerSession::initializeRTPRelay(AmB2BCalleeSession* callee_session) 
   callee_session->setEnableDtmfRtpFiltering(enable_dtmf_rtp_filtering);
   callee_session->setEnableDtmfRtpDetection(enable_dtmf_rtp_detection);
   callee_session->setLowFiPLs(lowfi_payloads);
+  callee_session->setRtpRelayTimestampAligning(rtp_relay_timestamp_aligning);
 
   if ((rtp_relay_mode == RTP_Relay) || (rtp_relay_mode == RTP_Transcoding)) {
     setMediaSession(new AmB2BMedia(this, callee_session)); // we need to add our reference

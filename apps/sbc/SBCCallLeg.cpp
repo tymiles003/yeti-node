@@ -216,6 +216,7 @@ void SBCCallLeg::applyAProfile()
 
     setRtpRelayTransparentSeqno(call_profile.rtprelay_transparent_seqno);
     setRtpRelayTransparentSSRC(call_profile.rtprelay_transparent_ssrc);
+	setRtpRelayTimestampAligning(call_profile.relay_timestamp_aligning);
     setEnableDtmfRtpFiltering(call_profile.rtprelay_dtmf_filtering);
     setEnableDtmfRtpDetection(call_profile.rtprelay_dtmf_detection);
 	setEnableDtmfForceRelay(call_profile.rtprelay_force_dtmf_relay);
@@ -350,6 +351,7 @@ void SBCCallLeg::applyBProfile()
 
     setRtpRelayTransparentSeqno(call_profile.rtprelay_transparent_seqno);
     setRtpRelayTransparentSSRC(call_profile.rtprelay_transparent_ssrc);
+	setRtpRelayTimestampAligning(call_profile.relay_timestamp_aligning);
     setEnableDtmfRtpFiltering(call_profile.rtprelay_dtmf_filtering);
     setEnableDtmfRtpDetection(call_profile.rtprelay_dtmf_detection);
 	setEnableDtmfForceRelay(call_profile.rtprelay_force_dtmf_relay);

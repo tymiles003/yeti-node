@@ -167,6 +167,10 @@ protected:
 
   unsigned int dead_rtp_time;
 
+  signed int ts_adjust;
+  unsigned int last_sent_ts;
+  unsigned int last_sent_ts_diff;
+
   struct PayloadMapping {
     // remote payload type
     int8_t remote_pt;
@@ -282,6 +286,7 @@ protected:
   bool filter (2833 / 4733) in active even in active state */
 
   bool            force_relay_dtmf;
+  bool            relay_timestamp_aligning;
 
   /** ignore rtcp for symmetric rtp switching */
   bool            symmetric_rtp_ignore_rtcp;
@@ -530,6 +535,9 @@ public:
 
   /** enable or disable filtering of RTP DTMF for relay */
   void setRtpRelayFilterRtpDtmf(bool filter);
+
+  /** enable or disable timestamp aligning for relay */
+  void setRtpRelayTimestampAligning(bool enable_aligning);
 
   /** enable or disable relay of RTP DTMF in active state */
   void setRtpForceRelayDtmf(bool relay);

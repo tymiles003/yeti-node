@@ -296,9 +296,7 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 	assign_bool_safe(relay_reinvite,"relay_reinvite",true,true);
 	assign_bool_safe(relay_prack,"relay_prack",true,true);
 	assign_bool_safe(relay_hold,"relay_hold",true,true);
-	/*if(!relay_hold && relay_reinvite){
-		WARN("useless value for relay_hold when relay_reinvite enabled");
-	}*/
+	assign_bool_safe(relay_timestamp_aligning,"relay_timestamp_aligning",false,false);
 
 	assign_bool_safe(trusted_hdrs_gw,"trusted_hdrs_gw",false,false);
 
@@ -404,6 +402,8 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 			rtprelay_transparent_seqno?"transparent":"opaque");
 			DBG("RTP Relay %s SSRC\n",
 			rtprelay_transparent_ssrc?"transparent":"opaque");
+			DBG("RTP Relay timestamp aligning %sabled\n",
+			relay_timestamp_aligning?"en":"dis");
 		}
 
 		DBG("RTP Ping Aleg %sabled\n", aleg_rtp_ping?"en":"dis");

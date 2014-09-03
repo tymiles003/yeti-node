@@ -167,6 +167,7 @@ struct SBCCallProfile
   bool relay_prack;
   bool relay_reinvite;
   bool relay_hold;
+  bool relay_timestamp_aligning;
 
   string resource_handler;
 
@@ -388,6 +389,7 @@ struct SBCCallProfile
     next_hop_1st_req(false),
 	next_hop_fixed(false),
 	ringing_timeout(0),
+	relay_timestamp_aligning(false),
 	relay_hold(true),
 	relay_prack(true),
 	relay_reinvite(true)

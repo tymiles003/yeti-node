@@ -427,13 +427,17 @@ AmRtpStream::AmRtpStream(AmSession* _s, int _if)
     relay_transparent_seqno(true),
     relay_filter_dtmf(false),
 	force_relay_dtmf(true),
+	relay_timestamp_aligning(false),
 	symmetric_rtp_ignore_rtcp(false),
 	symmetric_rtp_endless(false),
     force_receive_dtmf(false),
 	rtp_ping(false),
 	dead_rtp_time(AmConfig::DeadRtpTime),
     incoming_bytes(0),
-    outgoing_bytes(0)
+	outgoing_bytes(0),
+	ts_adjust(0),
+	last_sent_ts(0),
+	last_sent_ts_diff(0)
 {
 
   memset(&r_saddr,0,sizeof(struct sockaddr_storage));
@@ -1189,6 +1193,47 @@ void AmRtpStream::relay(AmRtpPacket* p, bool is_dtmf_packet, bool process_dtmf_q
 		hdr->pt = local_telephone_event_pt->payload_type;
 	}
 
+	if(relay_timestamp_aligning){
+		//timestamp adjust code
+		unsigned int orig_ts = p->timestamp;
+		unsigned int new_ts = orig_ts+ts_adjust; //adjust ts
+		unsigned int ts_diff = last_sent_ts ? abs(new_ts-last_sent_ts) : 0;
+
+		//check if diff changed more than 4 times
+		if(last_sent_ts_diff && (ts_diff > (last_sent_ts_diff<<2))){
+			//it's right time to adjust
+			DBG("AmRtpStream::relay()[%p] timestamp adjust condition reached: "
+				"orig_ts: %i,"
+				"new_ts: %i, "
+				"ts_adjust: %d, "
+				"ts_diff: %i, "
+				"last_sent_ts_diff: %i",
+				this,orig_ts,new_ts,ts_adjust,ts_diff,last_sent_ts_diff);
+
+			signed int old_ts_adjust = ts_adjust;
+
+			ts_adjust = (last_sent_ts+last_sent_ts_diff) - orig_ts;
+
+			DBG("AmRtpStream::relay()[%p] ts_adjust changed from %d to %d",
+				this,old_ts_adjust,ts_adjust);
+
+			//adjust again
+			new_ts = p->timestamp+ts_adjust;
+
+			last_sent_ts_diff = last_sent_ts ? abs(last_sent_ts-new_ts) : 0;
+		} else { //if (<adjust condition>)
+			//no need to recalc last_sent_ts_diff. we can use value from ts_diff
+			last_sent_ts_diff = ts_diff;
+		}
+
+		p->timestamp = last_sent_ts = new_ts;
+		hdr->ts = htonl(p->timestamp);
+
+		/*DBG("AmRtpStream::relay()[%p] packet: orig_ts: %i, ts_adjust: %d, last_sent_ts(new_ts): %i, last_sent_ts_diff: %i",
+			this,orig_ts,ts_adjust,last_sent_ts,last_sent_ts_diff);*/
+
+	} //if(relay_timestamp_aligning)
+
   } //if(!relay_raw)
 
   p->setAddr(&r_saddr);
@@ -1278,6 +1323,12 @@ void AmRtpStream::setRtpRelayFilterRtpDtmf(bool filter) {
   DBG("%sabled RTP relay filtering of RTP DTMF (2833 / 3744) for RTP stream instance [%p]\n",
       filter ? "en":"dis", this);
   relay_filter_dtmf = filter;
+}
+
+void AmRtpStream::setRtpRelayTimestampAligning(bool enable_aligning) {
+  DBG("%sabled RTP relay timestamp aligning for RTP stream instance [%p]\n",
+	  enable_aligning ? "en":"dis", this);
+  relay_timestamp_aligning = enable_aligning;
 }
 
 void AmRtpStream::setRtpForceRelayDtmf(bool relay) {
