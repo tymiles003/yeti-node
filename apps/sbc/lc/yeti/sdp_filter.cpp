@@ -507,20 +507,22 @@ int filterRequestSdp(SBCCallLeg *call,
 	return res;
 }
 
+inline bool is_telephone_event(const SdpPayload &p){
+	string c = p.encoding_name;
+	std::transform(c.begin(), c.end(), c.begin(), ::toupper);
+	return (c==DTMF_ENCODING_NAME);
+}
+
 //add payload into payloads list with checking
 inline void add_codec(std::vector<SdpPayload> &pl,const SdpPayload &p,bool single_codec){
-	if(!single_codec){
+	if(!single_codec ||										//single codec not enabled
+	   pl.empty() ||										//no payloads added yet
+	   (pl.size()==1 && is_telephone_event(pl.front())) ||	//payloads no empty but contain telephone-event (for cases when telephone-event added first)
+	   is_telephone_event(p))								//telephone-event can be added even if we already have payload
+	{
+		DBG("add_codec: add payload: '%s', pl.size = %ld, ",
+			p.encoding_name.c_str(),pl.size());
 		pl.push_back(p);
-	} else {
-		if(pl.empty()){
-			pl.push_back(p);
-		} else {
-			string c = p.encoding_name;
-			std::transform(c.begin(), c.end(), c.begin(), ::toupper);
-			if(c==DTMF_ENCODING_NAME){
-				pl.push_back(p);
-			}
-		}
 	}
 }
 
