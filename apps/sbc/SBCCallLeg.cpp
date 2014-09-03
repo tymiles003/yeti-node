@@ -355,7 +355,7 @@ void SBCCallLeg::applyBProfile()
     setEnableDtmfRtpFiltering(call_profile.rtprelay_dtmf_filtering);
     setEnableDtmfRtpDetection(call_profile.rtprelay_dtmf_detection);
 	setEnableDtmfForceRelay(call_profile.rtprelay_force_dtmf_relay);
-	setEnableRtpPing(call_profile.aleg_rtp_ping);
+	setEnableRtpPing(call_profile.bleg_rtp_ping);
 	setRtpTimeout(call_profile.dead_rtp_time);
 
     // copy stats counters
