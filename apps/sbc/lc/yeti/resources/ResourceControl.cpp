@@ -283,7 +283,7 @@ void ResourceControl::put(const string &handler){
 	Handlers::iterator h = handlers.find(handler);
 	if(h==handlers.end()){
 		handlers_lock.unlock();
-		WARN("ResourceControl::put(%s) attempt to free resources using not existent handler",
+		DBG("ResourceControl::put(%s) attempt to free resources using not existent handler",
 			 handler.c_str());
 		return;
 	}
