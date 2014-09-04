@@ -75,9 +75,9 @@ void Yeti::init_xmlrpc_cmds(){
 								"","<type>/all <id>/all","retreive info about certain resources state");
 
 			reg_leaf_method(show_resource_state,show_resource_state_used,"used","show active resources handlers",showResources,"");
-			reg_method_arg(show_resource_state_used,"by_id","find resource by handler id",showResourceByHandler,"",
+			reg_method_arg(show_resource_state_used,"handler","find resource by handler id",showResourceByHandler,"",
 						   "<handler_id>","find resource by handler id");
-			reg_method_arg(show_resource_state_used,"by_owner","find resource by onwer local_tag",showResourceByLocalTag,"",
+			reg_method_arg(show_resource_state_used,"owner_tag","find resource by onwer local_tag",showResourceByLocalTag,"",
 						   "<onwer_local_tag>","find resource by onwer local_tag");
 
 			reg_method(show_resource,"types","show resources types",showResourceTypes,"");
@@ -167,8 +167,8 @@ void Yeti::init_xmlrpc_cmds(){
 								   "","<path>","save memory log to path");
 
 		reg_leaf(request,request_resource,"resource","resources cache");
-			reg_method_arg(request_resource,"state","",getResourceState,
-						   "","<type> <id>","get current state of resource");
+			/*reg_method_arg(request_resource,"state","",getResourceState,
+						   "","<type> <id>","get current state of resource");*/
 			reg_method(request_resource,"invalidate","invalidate all resources",requestResourcesInvalidate,"");
 	/* set */
 	reg_leaf(root,lset,"set","set");
