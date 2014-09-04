@@ -28,7 +28,7 @@ SET(sbc_config_files
 #prepaid.sbcprofile
 #refuse.sbcprofile
 #replytranslate.sbcprofile
-sbc
+sbc.dist
 #src_ipmap
 #sst_b2b.sbcprofile
 #transparent.sbcprofile
