@@ -199,6 +199,8 @@ void SBCCallLeg::applyAProfile()
   // apply A leg configuration (but most of the configuration is applied in
   // SBCFactory::onInvite)
 
+  setAllow1xxWithoutToTag(call_profile.allow_1xx_without_to_tag);
+
   if (call_profile.rtprelay_enabled || call_profile.transcoder.isActive()) {
     DBG("Enabling RTP relay mode for SBC call\n");
 
@@ -292,6 +294,8 @@ void SBCCallLeg::applyBProfile()
   // if (!call_profile.contact.empty()) {
   //   dlg->contact_uri = SIP_HDR_COLSP(SIP_HDR_CONTACT) + call_profile.contact + CRLF;
   // }
+
+  setAllow1xxWithoutToTag(call_profile.allow_1xx_without_to_tag);
 
   if (call_profile.auth_enabled) {
     // adding auth handler

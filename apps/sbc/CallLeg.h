@@ -116,6 +116,8 @@ class CallLeg: public AmB2BSession
       }
     };
 
+	bool allow_1xx_without_to_tag;
+
     /** List of legs which can be connected to this leg, it is valid for A leg until first
      * 2xx response which moves the A leg to Connected state and terminates all
      * other B legs.
@@ -282,6 +284,8 @@ class CallLeg: public AmB2BSession
     void changeRtpMode(RTPRelayMode new_mode);
 
     virtual void updateLocalSdp(AmSdp &sdp);
+
+	void setAllow1xxWithoutToTag(bool allow) { allow_1xx_without_to_tag = allow; }
 
   public:
     virtual void onB2BEvent(B2BEvent* ev);

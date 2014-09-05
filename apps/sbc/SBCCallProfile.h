@@ -155,6 +155,8 @@ struct SBCCallProfile
 
   unsigned int dead_rtp_time;
 
+  bool allow_1xx_without_to_tag;
+
   vector<FilterEntry> headerfilter;
   vector<FilterEntry> messagefilter;
 
@@ -392,7 +394,8 @@ struct SBCCallProfile
 	relay_timestamp_aligning(false),
 	relay_hold(true),
 	relay_prack(true),
-	relay_reinvite(true)
+	relay_reinvite(true),
+	allow_1xx_without_to_tag(false)
   { }
 
   bool readFromConfiguration(const string& name, const string profile_file_name);

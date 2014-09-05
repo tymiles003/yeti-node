@@ -300,6 +300,8 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 
 	assign_bool_safe(trusted_hdrs_gw,"trusted_hdrs_gw",false,false);
 
+	assign_bool_safe(allow_1xx_without_to_tag,"allow_1xx_without_to_tag",false,false);
+
 	DBG("Yeti: loaded SQL profile\n");
 
 	return true;
