@@ -819,16 +819,16 @@ CCChainProcessing Yeti::onBye(SBCCallLeg *call, const AmSipRequest &req){
 	if(call->isALeg()){
 		if(call->getCallStatus()!=CallLeg::Connected){
 			ERROR("received Bye in not connected state");
-			cdr->update_internal_reason(DisconnectByORG,"onEarlyBye",500);
-			cdr->update_aleg_reason("onEarlyBye",200);
+			cdr->update_internal_reason(DisconnectByORG,"EarlyBye",500);
+			cdr->update_aleg_reason("EarlyBye",200);
 			cdr->update_bleg_reason("Cancel",487);
 		} else {
-			cdr->update_internal_reason(DisconnectByORG,"onBye",200);
-			cdr->update_bleg_reason("onBye",200);
+			cdr->update_internal_reason(DisconnectByORG,"Bye",200);
+			cdr->update_bleg_reason("Bye",200);
 		}
 	} else {
-		cdr->update_internal_reason(DisconnectByDST,"onOtherBye",200);
-		cdr->update_bleg_reason("onBye",200);
+		cdr->update_internal_reason(DisconnectByDST,"Bye",200);
+		cdr->update_bleg_reason("Bye",200);
 	}
 	return ContinueProcessing;
 }
@@ -841,7 +841,7 @@ CCChainProcessing Yeti::onOtherBye(SBCCallLeg *call, const AmSipRequest &req){
 			//avoid considering of bye in not connected state as succ call
 			ERROR("received OtherBye in not connected state");
 			Cdr *cdr = getCdr(ctx);
-			cdr->update_internal_reason(DisconnectByDST,"onEarlyOtherBye",500);
+			cdr->update_internal_reason(DisconnectByDST,"EarlyBye",500);
 			cdr->update_aleg_reason("Request terminated",487);
 			cdr_list.erase(cdr);
 			ctx->cdr_processed = true;
