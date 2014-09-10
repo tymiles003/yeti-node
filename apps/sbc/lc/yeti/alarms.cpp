@@ -25,7 +25,11 @@ const char *id2str(int alarm_id){
 	return alarms_descr[alarm_id];
 }
 
-alarm_entry::alarm_entry() { }
+alarm_entry::alarm_entry()
+	: raised(0)
+{
+	timerclear(&change_time);
+}
 
 alarm_entry::~alarm_entry() { }
 
