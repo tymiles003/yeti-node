@@ -1012,7 +1012,8 @@ int _trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 			       const cstring& dialog_id,
 			       const cstring& _next_hop, 
 			       int out_interface, unsigned int flags,
-			       msg_logger* logger)
+				   msg_logger* logger,
+				   unsigned int trans_timeout)
 {
     // Request-URI
     // To
@@ -1197,7 +1198,7 @@ int _trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 	int method = p_msg->u.request->method;
 
 	DBG("update_uac_request tt->_t =%p\n", tt->_t);
-	send_err = update_uac_request(tt->_bucket,tt->_t,p_msg);
+	send_err = update_uac_request(tt->_bucket,tt->_t,p_msg,trans_timeout);
 	if(send_err < 0){
 	    DBG("Could not update UAC state for request\n");
 	    delete p_msg;
@@ -1855,7 +1856,7 @@ int _trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* 
     return 0;
 }
 
-int _trans_layer::update_uac_request(trans_bucket* bucket, sip_trans*& t, sip_msg* msg)
+int _trans_layer::update_uac_request(trans_bucket* bucket, sip_trans*& t, sip_msg* msg, unsigned int trans_timeout)
 {
     if(msg->u.request->method != sip_request::ACK){
 	t = bucket->add_trans(msg,TT_UAC);
@@ -1905,7 +1906,9 @@ int _trans_layer::update_uac_request(trans_bucket* bucket, sip_trans*& t, sip_ms
 	}
 
 	// for any transport type
-	t->reset_timer(STIMER_B,B_TIMER,bucket->get_id());
+	t->reset_timer(STIMER_B,
+				   trans_timeout ? trans_timeout : B_TIMER,
+				   bucket->get_id());
 	break;
     
     default:

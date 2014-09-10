@@ -372,6 +372,8 @@ void SBCCallLeg::applyBProfile()
 
   if(!call_profile.bleg_dlg_contact_params.empty())
     dlg->setContactParams(call_profile.bleg_dlg_contact_params);
+
+  setInviteTransactionTimeout(call_profile.inv_tt);
 }
 
 int SBCCallLeg::relayEvent(AmEvent* ev)

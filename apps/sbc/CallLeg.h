@@ -98,6 +98,8 @@ class CallLeg: public AmB2BSession
 
     CallStatus call_status; //< status of the call (replaces callee's status)
 
+	unsigned int inv_tt; //INVITE request SIP transaction timeout
+
     /** information needed in A leg for a B leg */
     struct OtherLegInfo {
       /** local tag of the B leg */
@@ -216,6 +218,7 @@ class CallLeg: public AmB2BSession
 
   protected:
 
+	void setInviteTransactionTimeout(unsigned int timeout) { inv_tt = timeout; }
     // functions offered to successors
 
     virtual void setCallStatus(CallStatus new_status);

@@ -181,7 +181,8 @@ int _SipCtrlInterface::cancel(trans_ticket* tt, const string& hdrs)
 
 int _SipCtrlInterface::send(AmSipRequest &req, const string& dialog_id,
 			    const string& next_hop, int out_interface,
-			    unsigned int flags, msg_logger* logger)
+				unsigned int flags, msg_logger* logger,
+				unsigned int trans_timeout)
 {
     if(req.method == "CANCEL")
 	return cancel(&req.tt, req.hdrs);
@@ -283,7 +284,7 @@ int _SipCtrlInterface::send(AmSipRequest &req, const string& dialog_id,
 						    stl2cstr(dialog_id),
 						    stl2cstr(next_hop),
 						    out_interface,
-						    flags,logger);
+							flags,logger,trans_timeout);
     delete msg;
 
     return res;

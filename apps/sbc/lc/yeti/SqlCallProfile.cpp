@@ -302,6 +302,8 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 
 	assign_bool_safe(allow_1xx_without_to_tag,"allow_1xx_wo2tag",false,false);
 
+	assign_type_safe(inv_tt,"invite_timeout",0,unsigned int,0);
+
 	DBG("Yeti: loaded SQL profile\n");
 
 	return true;
