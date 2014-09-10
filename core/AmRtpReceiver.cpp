@@ -202,8 +202,8 @@ void AmRtpReceiverThread::addStream(int sd, AmRtpStream* stream)
 
   if(nfds >= MAX_RTP_SESSIONS){
     streams_mut.unlock();
-    ERROR("maximum number of sessions reached (%i)\n",
-    MAX_RTP_SESSIONS);
+	ERROR("maximum number of sessions reached limit: %i, current: %i\n",
+		MAX_RTP_SESSIONS,nfds);
     throw string("maximum number of sessions reached");
   }
 

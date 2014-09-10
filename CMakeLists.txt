@@ -56,7 +56,10 @@ OPTION(SEMS_USE_OPENSSL       "Build with OpenSSL" ON)
 OPTION(SEMS_USE_MONITORING    "Build with monitoring support" ON)
 OPTION(SEMS_USE_IPV6          "Build with IPv6 support" OFF)
 OPTION(SEMS_USE_EPOLL         "Build with epoll support" ON)
-OPTION(MAX_RTP_SESSIONS:int   "How many rtp sessions SEMS will handle simultaneously? (default 2048)" 2048)
+#OPTION(MAX_RTP_SESSIONS:int   "How many rtp sessions SEMS will handle simultaneously? (default 2048)" 2048)
+
+SET(MAX_RTP_SESSIONS 8192)
+MESSAGE(STATUS "max RTP sessions was set to: ${MAX_RTP_SESSIONS}")
 
 # Fix weird static libs handling in old CMake
 IF (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} STREQUAL "2.4")
