@@ -1009,24 +1009,27 @@ void Yeti::showPayloads(const AmArg& args, AmArg& ret){
 		compute_cost = size > 0;
 	}
 
-	AmArg p_list;
+	ret.push(200);
+	ret.push(AmArg());
+	AmArg &p_list = ret.back();
+
 	vector<SdpPayload>::const_iterator it = payloads.begin();
 	for(;it!=payloads.end();++it){
 		const SdpPayload &p = *it;
-		AmArg a;
+		p_list.push(p.encoding_name,AmArg());
+		AmArg &a = p_list[p.encoding_name];
+
+		DBG("process codec: %s (%d)",
+			p.encoding_name.c_str(),p.payload_type);
 		a["payload_type"] = p.payload_type;
 		a["clock_rate"] = p.clock_rate;
 		if(compute_cost){
 			get_codec_cost(p.payload_type,buf,size,a);
 		}
-		p_list.push(p.encoding_name,a);
 	}
 
 	if(compute_cost)
 		delete[] buf;
-
-	ret.push(200);
-	ret.push(p_list);
 }
 
 void Yeti::showInterfaces(const AmArg& args, AmArg& ret){
