@@ -656,7 +656,7 @@ int AmBasicSipDialog::sendRequest(const string& method,
 				  const AmMimeBody* body,
 				  const string& hdrs,
 				  int flags,
-				  unsigned int trans_timeout)
+				  sip_timers_override *timers_override)
 {
   AmSipRequest req;
 
@@ -711,7 +711,7 @@ int AmBasicSipDialog::sendRequest(const string& method,
 				   remote_tag.empty() || !next_hop_1st_req ?
 				   next_hop : "",
 				   outbound_interface,
-				   send_flags,logger,trans_timeout);
+				   send_flags,logger,timers_override);
   if(res) {
     ERROR("Could not send request: method=%s; call-id=%s; cseq=%i\n",
 	  req.method.c_str(),req.callid.c_str(),req.cseq);

@@ -71,7 +71,8 @@ sip_trans::sip_trans()
       retr_socket(NULL),
       retr_len(0),
       last_rseq(0),
-      logger(NULL)
+	  logger(NULL),
+	  timer_m(0)
 {
     memset(timers,0,SIP_TRANS_TIMERS*sizeof(void*));
 }

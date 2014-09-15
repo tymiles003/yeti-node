@@ -30,6 +30,7 @@
 #define _SipCtrlInterface_h_
 
 #include "sip/sip_ua.h"
+#include "sip/sip_timers.h"
 #include "AmThread.h"
 
 #include <string>
@@ -92,7 +93,7 @@ public:
     static int send(AmSipRequest &req, const string& dialog_id,
 		    const string& next_hop = "", int outbound_interface = -1,
 			unsigned int flags = 0, msg_logger* logger = NULL,
-			unsigned int trans_timeout = 0);
+			sip_timers_override *timers_override = NULL);
 
     /**
      * Sends a SIP reply. 

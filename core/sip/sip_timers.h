@@ -73,7 +73,6 @@ enum sip_timer_type {
     __STIMER_MAX
 };
 
-
 /**
  * SIP transaction timer default values
  */
@@ -160,6 +159,15 @@ extern unsigned int sip_timers[__STIMER_MAX];
 extern unsigned int sip_timer_t2;
 
 const char* timer_name(unsigned int type);
+
+struct sip_timers_override {
+	unsigned int stimer_b;
+	unsigned int stimer_m;
+	sip_timers_override():
+		stimer_b(0),
+		stimer_m(0)
+	{}
+};
 
 #endif
 

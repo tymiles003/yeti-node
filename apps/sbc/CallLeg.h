@@ -4,7 +4,7 @@
 #include "AmB2BSession.h"
 #include "AmSessionContainer.h"
 #include "CallLegEvents.h"
-
+#include <sip/sip_timers.h>
 #include <queue>
 
 struct PendingReinvite
@@ -98,7 +98,8 @@ class CallLeg: public AmB2BSession
 
     CallStatus call_status; //< status of the call (replaces callee's status)
 
-	unsigned int inv_tt; //INVITE request SIP transaction timeout
+	//unsigned int inv_tt; //INVITE request SIP transaction timeout
+	sip_timers_override inv_timers_override;
 
     /** information needed in A leg for a B leg */
     struct OtherLegInfo {
@@ -218,7 +219,8 @@ class CallLeg: public AmB2BSession
 
   protected:
 
-	void setInviteTransactionTimeout(unsigned int timeout) { inv_tt = timeout; }
+	void setInviteTransactionTimeout(unsigned int timeout) { inv_timers_override.stimer_b = timeout; }
+	void setInviteRetransmitTimeout(unsigned int timeout) { inv_timers_override.stimer_m = timeout; }
     // functions offered to successors
 
     virtual void setCallStatus(CallStatus new_status);

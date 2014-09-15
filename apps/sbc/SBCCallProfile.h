@@ -246,6 +246,7 @@ struct SBCCallProfile
 
   int ringing_timeout;
   unsigned int inv_tt;
+  unsigned int inv_srv_failover_timeout;
 
   string global_tag;
 
@@ -397,6 +398,7 @@ struct SBCCallProfile
 	relay_prack(true),
 	relay_reinvite(true),
 	allow_1xx_without_to_tag(false),
+	inv_srv_failover_timeout(0),
 	inv_tt(0)
   { }
 

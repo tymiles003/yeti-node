@@ -102,7 +102,6 @@ public:
 class sip_trans
 {
     trans_timer* timers[SIP_TRANS_TIMERS];
-
  public:
     /** Transaction type */
     unsigned int type;
@@ -147,6 +146,9 @@ class sip_trans
 
     /** message logging */
     msg_logger* logger;
+
+	/** hack to memorize timer_m override */
+	unsigned int timer_m;
 
     /**
      * Tells if a specific timer is set

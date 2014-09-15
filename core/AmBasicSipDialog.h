@@ -34,6 +34,8 @@
 #include <map>
 using std::string;
 
+#include <sip/sip_timers.h>
+
 // flags which may be used when sending request/reply
 #define SIP_FLAGS_VERBATIM     1 // send request verbatim, 
                                  // i.e. modify as little as possible
@@ -372,7 +374,7 @@ public:
 			  const AmMimeBody* body = NULL,
 			  const string& hdrs = "",
 			  int flags = 0,
-			  unsigned int trans_timeout = 0);
+			  sip_timers_override *timers_override = NULL);
 
   /**
    * Terminates pending UAS/UAC transactions

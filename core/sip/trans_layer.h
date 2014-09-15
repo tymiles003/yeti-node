@@ -32,6 +32,7 @@
 #include "cstring.h"
 #include "singleton.h"
 #include "atomic_types.h"
+#include "sip_timers.h"
 
 #include <list>
 using std::list;
@@ -164,7 +165,7 @@ public:
     int send_request(sip_msg* msg, trans_ticket* tt, const cstring& dialog_id,
 		     const cstring& _next_hop, int out_interface = -1,
 			 unsigned int flags=0, msg_logger* logger=NULL,
-			 unsigned int trans_timeout = 0);
+			 sip_timers_override *timers_override = NULL);
 
     /**
      * Cancels a request. 
@@ -261,7 +262,7 @@ protected:
      * @return transaction state if successfull
      */
     int update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* msg);
-	int update_uac_request(trans_bucket* bucket, sip_trans*& t, sip_msg* msg, unsigned int trans_timeout = 0);
+	int update_uac_request(trans_bucket* bucket, sip_trans*& t, sip_msg* msg, sip_timers_override *timers_override = NULL);
 
     /**
      * Implements the state changes for the UAS state machine
