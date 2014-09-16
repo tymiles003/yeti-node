@@ -245,7 +245,7 @@ struct SBCCallProfile
   int aleg_outbound_interface_value;
 
   int ringing_timeout;
-  unsigned int inv_tt;
+  unsigned int inv_transaction_timeout;
   unsigned int inv_srv_failover_timeout;
 
   string global_tag;
@@ -399,7 +399,7 @@ struct SBCCallProfile
 	relay_reinvite(true),
 	allow_1xx_without_to_tag(false),
 	inv_srv_failover_timeout(0),
-	inv_tt(0)
+	inv_transaction_timeout(0)
   { }
 
   bool readFromConfiguration(const string& name, const string profile_file_name);
