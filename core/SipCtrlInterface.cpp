@@ -688,7 +688,7 @@ void _SipCtrlInterface::handle_sip_request(const trans_ticket& tt, sip_msg* msg)
 	req.callid.c_str(), req.to_tag.c_str(), req.method.c_str());
 }
 
-void _SipCtrlInterface::handle_sip_reply(const string& dialog_id, sip_msg* msg)
+void _SipCtrlInterface::handle_sip_reply(const trans_ticket& tt, const string& dialog_id, sip_msg* msg)
 {
     assert(msg->from && msg->from->p);
     assert(msg->to && msg->to->p);
@@ -709,6 +709,8 @@ void _SipCtrlInterface::handle_sip_reply(const string& dialog_id, sip_msg* msg)
       AmSipDispatcher::instance()->handleSipMsg(dialog_id, reply);
       return;
     }
+
+    reply.tt = tt;
     
     DBG("Received reply: %i %s\n",reply.code,reply.reason.c_str());
     DBG_PARAM(reply.callid);

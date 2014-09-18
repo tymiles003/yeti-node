@@ -889,7 +889,7 @@ void _trans_layer::timeout(trans_bucket* bucket, sip_trans* t)
     }
     bucket->unlock();
 
-    ua->handle_sip_reply(dialog_id,&msg);
+    ua->handle_sip_reply(trans_ticket(t,bucket),dialog_id,&msg);
 }
 
 static int patch_ruri_with_remote_ip(string& n_uri, sip_msg* msg)
@@ -1118,7 +1118,7 @@ int _trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 
 		err.callid = msg->callid;
 
-		ua->handle_sip_reply(c2stlstr(dialog_id),&err);
+        ua->handle_sip_reply(trans_ticket(),c2stlstr(dialog_id),&err);
 		return 0;
 	    }
     
@@ -1563,7 +1563,7 @@ void _trans_layer::received_msg(sip_msg* msg)
 	    if (res) {
 		string dialog_id(t->dialog_id.s, t->dialog_id.len);
 		bucket->unlock();
-		ua->handle_sip_reply(dialog_id, msg);
+        ua->handle_sip_reply(trans_ticket(t,bucket), dialog_id, msg);
 		DROP_MSG;
 		//return; - part of DROP_MSG
 	    }
