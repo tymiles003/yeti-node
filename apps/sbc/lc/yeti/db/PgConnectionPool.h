@@ -37,6 +37,7 @@ struct PgConnectionPoolCfg {
 	unsigned int max_exceptions;
 	unsigned int check_interval;
 	unsigned int max_wait;
+    unsigned int statement_timeout;
 	PreparedQueriesT prepared_queries;
 	int cfg2PgCfg(AmConfigReader& cfg);
 };

@@ -40,6 +40,7 @@ int PgConnectionPoolCfg::cfg2PgCfg(AmConfigReader& cfg){
 	max_exceptions = cfg.getParameterInt(name+"_max_exceptions",0);
 	check_interval=cfg.getParameterInt(name+"_check_interval",25);
 	max_wait=cfg.getParameterInt(name+"_max_wait",125);
+    statement_timeout=cfg.getParameterInt(name+"_statement_timeout",0);
 	return 0;
 }
 
@@ -56,6 +57,7 @@ void PgConnectionPool::dump_config(){
 	INFO("PgCP:		 user/password: %s/%s",cfg.dbconfig.user.c_str(),cfg.dbconfig.pass.c_str());
 	INFO("PgCP:		 max_exceptions: %d",cfg.max_exceptions);
 	INFO("PgCP:		 check_interval: %d",cfg.check_interval);
+    INFO("PgCP:		 statement_timeout: %d",cfg.statement_timeout);
 	INFO("PgCP: Pool RUNTIME:");
 
 	connections_mut.lock();
@@ -420,10 +422,14 @@ void PgConnectionPool::getConfig(AmArg &arg){
 	arg["max_exceptions"] = (int)cfg.max_exceptions;
 	arg["check_interval"] = (int)cfg.check_interval;
 	arg["max_wait"] = (int)cfg.max_wait;
+    arg["stmt_timeout"] = (int)cfg.statement_timeout;
 }
 
 void PgConnectionPool::prepare_queries(PgConnection *c){
 	c->set_variable("search_path",Yeti::instance()->config.routing_schema+", public");
+    if(cfg.statement_timeout){
+        c->set_variable("statement_timeout",int2str(cfg.statement_timeout));
+    }
 
 	PreparedQueriesT::iterator it = cfg.prepared_queries.begin();
 	for(;it!=cfg.prepared_queries.end();++it){
