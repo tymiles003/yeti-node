@@ -596,6 +596,45 @@ const dns_handle& dns_handle::operator = (const dns_handle& rh)
     return *this;
 }
 
+void dns_handle::dump(AmArg &ret){
+	if(srv_e){
+		DBG("srv_e");
+		ret["type"] = "srv";
+		ret["port"] = port;
+		AmArg &entries = ret["entries"];
+
+		vector<dns_base_entry*> &v = srv_e->ip_vec;
+		for(int i = 0;i < (int)v.size();i++){
+			entries.push(AmArg());
+			AmArg &a = entries.back();
+
+			srv_entry *e = (srv_entry *)v[i];
+
+			a["priority"] = e->p;
+			a["weight"] = e->w;
+			a["port"] = e->port;
+			a["target"] = e->target;
+		}
+
+	} else if(ip_e){ //ip_e
+		char host[NI_MAXHOST] = "";
+		sockaddr_storage ss;
+
+		ret["type"] = "ip";
+		AmArg &entries = ret["entries"];
+		vector<dns_base_entry*> &v = ip_e->ip_vec;
+		for(int i = 0;i < (int)v.size();i++){
+			entries.push(AmArg());
+			AmArg &a = entries.back();
+
+			ip_entry *e = (ip_entry *)v[i];
+			e->to_sa(&ss);
+			a["addr"] = am_inet_ntop_sip(&ss,host,NI_MAXHOST);
+		}
+	} else {
+		ret["type"] = "unknown";
+	}
+}
 
 _resolver::_resolver()
     : cache(DNS_CACHE_SIZE)
@@ -737,6 +776,28 @@ int _resolver::str2ip(const char* name,
     }
 
     return 0;
+}
+
+void _resolver::clear_cache(){
+	int removed = 0;
+	for(unsigned long i=0; i<cache.get_size(); i++){
+		dns_bucket* bucket = cache.get_bucket(i);
+		bucket->lock();
+		for(dns_bucket::value_map::iterator it = bucket->elmts.begin();
+				it != bucket->elmts.end(); ++it){
+			dns_entry* dns_e = (dns_entry*)it->second;
+			dns_bucket::value_map::iterator tmp_it = it;
+			bool end_of_bucket = (++it == bucket->elmts.end());
+
+			bucket->elmts.erase(tmp_it);
+			dec_ref(dns_e);
+			removed++;
+
+			if(end_of_bucket) break;
+		}
+		bucket->unlock();
+	}
+	DBG("resolver::clear_cache() %d entries removed",removed);
 }
 
 void _resolver::run()

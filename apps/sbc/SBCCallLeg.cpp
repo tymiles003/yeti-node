@@ -31,7 +31,7 @@ using namespace std;
 
 // helper functions
 
-static const SdpPayload *findPayload(const std::vector<SdpPayload>& payloads, const SdpPayload &payload, int transport)
+/*static const SdpPayload *findPayload(const std::vector<SdpPayload>& payloads, const SdpPayload &payload, int transport)
 {
   string pname = payload.encoding_name;
   transform(pname.begin(), pname.end(), pname.begin(), ::tolower);
@@ -53,12 +53,12 @@ static const SdpPayload *findPayload(const std::vector<SdpPayload>& payloads, co
     return &(*p);
   }
   return NULL;
-}
+}*/
 
-static bool containsPayload(const std::vector<SdpPayload>& payloads, const SdpPayload &payload, int transport)
+/*static bool containsPayload(const std::vector<SdpPayload>& payloads, const SdpPayload &payload, int transport)
 {
   return findPayload(payloads, payload, transport) != NULL;
-}
+}*/
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 

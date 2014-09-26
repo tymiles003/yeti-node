@@ -4,6 +4,7 @@
 #include "codecs_bench.h"
 #include "alarms.h"
 
+#include "sip/resolver.h"
 #include "sip/transport.h"
 #include "AmPlugIn.h"
 
@@ -170,6 +171,11 @@ void Yeti::init_xmlrpc_cmds(){
 			/*reg_method_arg(request_resource,"state","",getResourceState,
 						   "","<type> <id>","get current state of resource");*/
 			reg_method(request_resource,"invalidate","invalidate all resources",requestResourcesInvalidate,"");
+
+		reg_leaf(request,request_resolver,"resolver","dns resolver instance");
+			reg_method(request_resolver,"clear","clear dns cache",requestResolverClear,"");
+			reg_method_arg(request_resolver,"get","",requestResolverGet,
+						   "","<name>","resolve dns name");
 	/* set */
 	reg_leaf(root,lset,"set","set");
 		reg_leaf(lset,set_system,"system","system commands");
@@ -1284,12 +1290,14 @@ void Yeti::getResourceState(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::showResources(const AmArg& args, AmArg& ret){
+	handler_log();
 	ret.push(200);
 	ret.push(AmArg());
 	rctl.showResources(ret.back());
 }
 
 void Yeti::showResourceByHandler(const AmArg& args, AmArg& ret){
+	handler_log();
 	if(!args.size()){
 		ret.push(500);
 		ret.push(AmArg("specify handler id"));
@@ -1299,6 +1307,7 @@ void Yeti::showResourceByHandler(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::showResourceByLocalTag(const AmArg& args, AmArg& ret){
+	handler_log();
 	if(!args.size()){
 		ret.push(500);
 		ret.push(AmArg("specify local_tag"));
@@ -1308,12 +1317,14 @@ void Yeti::showResourceByLocalTag(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::showResourceTypes(const AmArg& args, AmArg& ret){
+	handler_log();
 	ret.push(200);
 	ret.push(AmArg());
 	rctl.GetConfig(ret.back(),true);
 }
 
 void Yeti::requestResourcesInvalidate(const AmArg& args, AmArg& ret){
+	handler_log();
 	if(rctl.invalidate_resources()){
 		ret.push(200);
 		ret.push(AmArg("OK"));
@@ -1324,6 +1335,7 @@ void Yeti::requestResourcesInvalidate(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::showSessions(const AmArg& args, AmArg& ret){
+	handler_log();
 	ret.push(200);
 	ret.push(AmArg());
 	AmArg &info = ret.back();
@@ -1334,6 +1346,7 @@ void Yeti::showSessions(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::setSessionsLimit(const AmArg& args, AmArg& ret){
+	handler_log();
 	if(args.size()<3){
 		ret.push(500);
 		ret.push("missed parameter");
@@ -1361,4 +1374,36 @@ void Yeti::setSessionsLimit(const AmArg& args, AmArg& ret){
 	ret.push("OK");
 }
 
+
+void Yeti::requestResolverClear(const AmArg& args, AmArg& ret){
+	handler_log();
+	resolver::instance()->clear_cache();
+	ret.push(200);
+	ret.push("OK");
+}
+
+void Yeti::requestResolverGet(const AmArg& args, AmArg& ret){
+	handler_log();
+
+	if(!args.size()){
+		ret.push(500);
+		ret.push("missed parameter");
+	}
+	string dns_name = args.get(0).asCStr();
+	sockaddr_storage ss;
+	dns_handle dh;
+
+	int err = resolver::instance()->resolve_name(args.get(0).asCStr(),&dh,&ss,IPv4);
+	if(err == -1){
+		ret.push(500);
+		ret.push("can't resolve");
+	}
+
+	ret.push(200);
+	ret.push(AmArg());
+	AmArg &data = ret.back();
+	data["address"] = get_addr_str(&ss).c_str();
+
+	dh.dump(data["handler"]);
+}
 

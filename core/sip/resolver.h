@@ -35,6 +35,8 @@
 #include "parse_dns.h"
 #include "parse_next_hop.h"
 
+#include "AmArg.h"
+
 #include <string>
 #include <vector>
 using std::string;
@@ -152,7 +154,7 @@ struct dns_handle
 
     int next_ip(sockaddr_storage* sa);
     const dns_handle& operator = (const dns_handle& rh);
-
+	void dump(AmArg &ret);
 private:
     friend class _resolver;
     friend class dns_entry;
@@ -180,6 +182,9 @@ public:
     int str2ip(const char* name,
 	       sockaddr_storage* sa,
 	       const address_type types);
+
+
+	void clear_cache();
 
 protected:
     _resolver();
