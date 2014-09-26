@@ -117,7 +117,9 @@ bool UsedHeaderField::getValue(const AmSipRequest &req,string &val) const {
 							goto succ;
 						}
 					}
-					goto succ;
+					DBG("uri option '%s' not found in header '%s'",
+						param.c_str(),name.c_str());
+					return false;
 				}
                 default:
 				ERROR("unknown part type for header '%s'",
