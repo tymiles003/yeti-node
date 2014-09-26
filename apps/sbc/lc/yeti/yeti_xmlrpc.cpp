@@ -1397,6 +1397,7 @@ void Yeti::requestResolverGet(const AmArg& args, AmArg& ret){
 	if(err == -1){
 		ret.push(500);
 		ret.push("can't resolve");
+		return;
 	}
 
 	ret.push(200);
