@@ -115,7 +115,7 @@ public:
      * From sip_ua
      */
     void handle_sip_request(const trans_ticket& tt, sip_msg* msg);
-    void handle_sip_reply(const string& dialog_id, sip_msg* msg);
+    void handle_sip_reply(const trans_ticket& tt, const string& dialog_id, sip_msg* msg);
     void handle_reply_timeout(AmSipTimeoutEvent::EvType evt,
         sip_trans *tr, trans_bucket *buk=0);
 };
