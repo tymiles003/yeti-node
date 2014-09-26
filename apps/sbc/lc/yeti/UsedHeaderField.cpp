@@ -1,6 +1,7 @@
 #include "UsedHeaderField.h"
 
 #include "AmUtils.h"
+#include "sip/parse_common.h"
 #include "sip/parse_nameaddr.h"
 #include "sip/parse_uri.h"
 
@@ -19,6 +20,7 @@ void UsedHeaderField::readFromTuple(const pqxx::result::tuple &t){
     string format;
 
     name = t["varname"].c_str();
+	param = t["varparam"].c_str();
     hashkey = t["varhashkey"].as<bool>(false);
     format = t["varformat"].c_str();
 
@@ -36,6 +38,15 @@ void UsedHeaderField::readFromTuple(const pqxx::result::tuple &t){
     } else if(format=="uri_port"){
         type = Uri;
         part = uri_port;
+	} else if(format=="uri_param"){
+		if(param.empty()){
+			WARN("empty mandatory param for fromat '%s' for header field '%s'. use Raw",
+				format.c_str(),name.c_str());
+			type = Raw;
+		} else {
+			type = Uri;
+			part = uri_param;
+		}
     } else {
         WARN("unknown format '%s' for header field '%s'. use Raw",
             format.c_str(),name.c_str());
@@ -51,7 +62,7 @@ bool UsedHeaderField::getValue(const AmSipRequest &req,string &val) const {
 
     hdr = getHeader(req.hdrs,name);
     if(hdr.empty()){
-        DBG("UsedHeaderField::getValue('%s') no such header in SipRequest",name.c_str());
+		DBG("no header '%s' in SipRequest",name.c_str());
         return false;
     }
     switch(type){
@@ -66,10 +77,26 @@ bool UsedHeaderField::getValue(const AmSipRequest &req,string &val) const {
             if(parse_nameaddr(&na,&sptr,hdr.length()) < 0 ||
                parse_uri(&uri,na.addr.s,na.addr.len) < 0)
             {
-                ERROR("UsedHeaderField::getValue('%s') invalid uri '%s'",
-                    name.c_str(),hdr.c_str());
+				ERROR("invalid uri '%s' in header '%s'",
+					hdr.c_str(),name.c_str());
                 return false;
             }
+			/*DBG("uri.params = %li",uri.params.size());
+			for(list<sip_avp*>::const_iterator i = uri.params.begin();
+					i!=uri.params.end();++i){
+				const sip_avp &a = **i;
+				DBG("uri_param: %.*s = %.*s",
+					a.name.len,a.name.s,
+					a.value.len,a.value.s);
+			}
+			DBG("uri.hdrs = %li",uri.hdrs.size());
+			for(list<sip_avp*>::const_iterator i = uri.hdrs.begin();
+					i!=uri.hdrs.end();++i){
+				const sip_avp &a = **i;
+				DBG("uri_hdr: %.*s = %.*s",
+					a.name.len,a.name.s,
+					a.value.len,a.value.s);
+			}*/
             switch(part){
                 case uri_user:
                     val = c2stlstr(uri.user);
@@ -80,21 +107,33 @@ bool UsedHeaderField::getValue(const AmSipRequest &req,string &val) const {
                 case uri_port:
                     val = int2str(uri.port);
                     goto succ;
+				case uri_param: {
+					for(list<sip_avp*>::const_iterator i = uri.params.begin();
+							i!=uri.params.end();++i){
+						const cstring &s = (*i)->name;
+						if(param.length()==s.len &&
+								strncmp(s.s,param.c_str(),s.len)==0){
+							val = c2stlstr((*i)->value);
+							goto succ;
+						}
+					}
+					goto succ;
+				}
                 default:
-                ERROR("UsedHeaderField::getValue('%s') unknown part type",
+				ERROR("unknown part type for header '%s'",
                         name.c_str());
                     return false;
             }
         break;
 
         default:
-        ERROR("UsedHeaderField::getValue('%s') unknown value type",
+		ERROR("unknown value type for header '%s'",
                   name.c_str());
             return false;
     }
     return false;
 succ:
-    DBG("UsedHeaderField::getValue('%s') processed. return '%s'",
+	DBG("'%s' processed. got '%s'",
         name.c_str(),val.c_str());
     return true;
 }
@@ -104,8 +143,12 @@ void UsedHeaderField::getInfo(AmArg &arg) const{
     arg["name"] = name;
     arg["hashkey"] = hashkey;
     arg["type"] = type2str();
-    if(type!=Raw)
+	if(type!=Raw){
         arg["part"] = part2str();
+		if(part==uri_param){
+			arg["param"] = param;
+		}
+	}
 }
 
 const char* UsedHeaderField::type2str() const {
@@ -123,6 +166,7 @@ const char* UsedHeaderField::part2str() const {
         case uri_user: return "uri_user";
         case uri_domain: return "uri_domain";
         case uri_port: return "uri_port";
+		case uri_param: return "uri_param";
         default: return "unknown";
     }
 }

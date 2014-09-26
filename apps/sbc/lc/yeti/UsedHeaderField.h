@@ -13,7 +13,8 @@ class UsedHeaderField {
     enum NeededPart {
         uri_user,
         uri_domain,
-        uri_port
+		uri_port,
+		uri_param
     };
 
     enum ValueType {
@@ -22,6 +23,7 @@ class UsedHeaderField {
     };
 
     string name;        //SIP hdr name
+	string param;     //part options (e.g parameter name for uri_param)
     ValueType type;     //type of header value
     NeededPart part;    //needed part of parsed value
     bool hashkey;       //this header used in routing logic
