@@ -19,7 +19,7 @@ class UsedHeaderField {
 
     enum ValueType {
         Raw,
-        Uri
+		Uri
     };
 
     string name;        //SIP hdr name

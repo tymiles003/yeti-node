@@ -4,8 +4,25 @@
 #include "sip/parse_common.h"
 #include "sip/parse_nameaddr.h"
 #include "sip/parse_uri.h"
+#include "sip/defs.h"
 
 using std::string;
+
+static bool getInternalHeader(const AmSipRequest &req,const string &name, string &hdr){
+	switch(name[0]){
+	case 'F':
+		if(name==SIP_HDR_FROM) hdr = req.from;
+		break;
+	case 'T':
+		if(name==SIP_HDR_TO) hdr = req.to;
+		break;
+	case 'C':
+		if(name==SIP_HDR_CONTACT) hdr = req.contact;
+	default:
+		return false;
+	}
+	return true;
+}
 
 UsedHeaderField::UsedHeaderField(const string &hdr_name){
     name = hdr_name;
@@ -60,7 +77,10 @@ bool UsedHeaderField::getValue(const AmSipRequest &req,string &val) const {
     sip_nameaddr na;
     sip_uri uri;
 
-    hdr = getHeader(req.hdrs,name);
+	if(!getInternalHeader(req,name,hdr)){
+		hdr = getHeader(req.hdrs,name);
+	}
+
     if(hdr.empty()){
 		DBG("no header '%s' in SipRequest",name.c_str());
         return false;
@@ -135,8 +155,16 @@ bool UsedHeaderField::getValue(const AmSipRequest &req,string &val) const {
     }
     return false;
 succ:
-	DBG("'%s' processed. got '%s'",
-        name.c_str(),val.c_str());
+	if(val.empty()){
+		DBG("'%s':%s:%s:'%s' processed. got empty value. return null",
+			name.c_str(),
+			type2str(),part2str(),param.c_str());
+		return false;
+	}
+	DBG("'%s':%s:%s:'%s' processed. got '%s'",
+		name.c_str(),
+		type2str(),part2str(),param.c_str(),
+		val.c_str());
     return true;
 }
 
