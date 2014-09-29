@@ -392,8 +392,6 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 	int refuse_code;
 	int attempt = 0;
 
-	string resource_handler;
-
 	PROF_START(func);
 
 	cdr->update(Start);
@@ -408,7 +406,7 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 	do {
 		DBG("%s() check resources for profile. attempt %d",FUNC_NAME,attempt);
 		rctl_ret = rctl.get(ctx->getCurrentResourceList(),
-							resource_handler,
+							ctx->getCurrentProfile()->resource_handler,
 							call->getLocalTag(),
 							refuse_code,refuse_reason);
 
@@ -448,15 +446,8 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 	PROF_END(rchk);
 	PROF_PRINT("resources checking and grabbing",rchk);
 
-	if(attempt != 0){
-			//profile changed
-			//we must update profile for leg
-			DBG("%s() update call profile for leg",FUNC_NAME);
-			call->getCallProfile() = *profile;
-	}
-
 	SBCCallProfile &call_profile = call->getCallProfile();
-	call_profile.resource_handler = resource_handler;
+	call_profile = *ctx->getCurrentProfile();
 
 	//filterSDP
 	int res = negotiateRequestSdp(call_profile,

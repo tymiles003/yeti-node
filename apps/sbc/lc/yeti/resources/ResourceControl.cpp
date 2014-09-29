@@ -274,6 +274,9 @@ ResourceCtlResponse ResourceControl::get(ResourceList &rl,
 
 //void ResourceControl::put(ResourceList &rl){
 void ResourceControl::put(const string &handler){
+
+	DBG("ResourceControl::put(%s)",handler.c_str());
+
 	if(handler.empty()){
 		DBG("ResourceControl::put() empty handler");
 		return;
