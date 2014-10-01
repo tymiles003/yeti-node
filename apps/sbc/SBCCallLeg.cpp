@@ -1900,6 +1900,11 @@ void SBCCallLeg::computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &
 	/*TRACE("using %s\n", use_m1 ? "m1" : "m2");
 	if (use_m1) mask = m1;
 	else mask = m2;*/
+	if(call_profile.force_relay_CN){
+		mask.set(COMFORT_NOISE_PAYLOAD_TYPE);
+		TRACE("m1: marking payload 13 (CN) for relay\n");
+	}
+
 	mask = m1;
   }
   else {

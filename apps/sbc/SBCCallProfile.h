@@ -183,6 +183,7 @@ struct SBCCallProfile
   bool bleg_relay_options;
 
   bool filter_noaudio_streams;
+  bool force_relay_CN;
 
   string sst_enabled;
   bool sst_enabled_value;
@@ -399,6 +400,7 @@ struct SBCCallProfile
 	relay_reinvite(true),
 	allow_1xx_without_to_tag(false),
 	inv_srv_failover_timeout(0),
+	force_relay_CN(false),
 	inv_transaction_timeout(0)
   { }
 

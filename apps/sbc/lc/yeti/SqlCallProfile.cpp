@@ -305,6 +305,8 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 	assign_type_safe(inv_transaction_timeout,"invite_timeout",0,unsigned int,0);
 	assign_type_safe(inv_srv_failover_timeout,"srv_failover_timeout",0,unsigned int,0);
 
+	assign_bool_safe(force_relay_CN,"force_relay_CN",false,false);
+
 	DBG("Yeti: loaded SQL profile\n");
 
 	return true;

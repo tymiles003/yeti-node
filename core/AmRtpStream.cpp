@@ -1399,9 +1399,14 @@ void AmRtpStream::payloads_id2str(const std::vector<int> i, std::vector<string> 
 	for(;it!=i.end();++it){
 		std::string pname;
 		pname = getPayloadName(*it);
-		if(pname.empty())
-			pname = int2str(*it);
-		transform(pname.begin(), pname.end(), pname.begin(), ::tolower);
+		if(pname.empty()){
+			if(*it==COMFORT_NOISE_PAYLOAD_TYPE)
+				pname = "CN";
+			else
+				pname = int2str(*it);
+		} else {
+			transform(pname.begin(), pname.end(), pname.begin(), ::tolower);
+		}
 		s.push_back(pname);
 	}
 }
