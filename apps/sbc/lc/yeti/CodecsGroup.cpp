@@ -10,6 +10,8 @@
 #include <algorithm>
 #include <pqxx/pqxx>
 
+//#define ERROR_ON_UNKNOWN_CODECS
+
 CodecsGroups* CodecsGroups::_instance=0;
 
 static void replace(string& s, const string& from, const string& to){
@@ -75,7 +77,11 @@ bool CodecsGroupEntry::add_codec(string c, string sdp_params, int dyn_payload_id
 	if(!payload) {
 		ERROR("Ignoring unknown payload: %s/%i\n",
 			p.encoding_name.c_str(), p.clock_rate);
+#ifdef ERROR_ON_UNKNOWN_CODECS
 		return false;
+#else
+		return true;
+#endif
 	}
 
 	p.sdp_format_parameters = sdp_params;
