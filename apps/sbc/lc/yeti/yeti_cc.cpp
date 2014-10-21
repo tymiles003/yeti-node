@@ -447,7 +447,9 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 	PROF_PRINT("resources checking and grabbing",rchk);
 
 	SBCCallProfile &call_profile = call->getCallProfile();
-	call_profile = *ctx->getCurrentProfile();
+	profile = ctx->getCurrentProfile();
+	profile->global_tag = call_profile.global_tag; //save to old global_tag profile to new profile
+	call_profile = *profile; //replace leg call_profile
 
 	//filterSDP
 	int res = negotiateRequestSdp(call_profile,
