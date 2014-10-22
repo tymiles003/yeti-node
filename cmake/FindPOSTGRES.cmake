@@ -19,6 +19,7 @@ if ( NOT POSTGRES_INCLUDE_DIRECTORIES OR NOT POSTGRES_LIBRARIES OR NOT POSTGRES_
       /usr/local/pgsql/lib64
       /usr/local/lib64
       /usr/lib64
+      /usr/lib/x86_64-linux-gnu
       ${_POSTGRES_DIR}
       ${_POSTGRES_DIR}/lib
       ${CMAKE_INSTALL_PREFIX}/bin
