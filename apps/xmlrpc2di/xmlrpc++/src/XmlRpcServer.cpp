@@ -340,8 +340,16 @@ XmlRpcServer::executeRequest(std::string const& request)
 
   } catch (const XmlRpcException& fault) {
     XmlRpcUtil::log(2, "XmlRpcServer::executeRequest: fault %s.",
-                    fault.getMessage().c_str()); 
+					fault.getMessage().c_str());
     response = generateFaultResponse(fault.getMessage(), fault.getCode());
+  } catch(const std::bad_alloc &e) {
+	XmlRpcUtil::log(2, "XmlRpcServer::executeRequest: bad_alloc: %s",
+					e.what());
+	response = generateFaultResponse("memory allocate error", 500);
+  } catch(const std::exception &e){
+	  XmlRpcUtil::log(2, "XmlRpcServer::executeRequest: generic exception: %s",
+					  e.what());
+	response = generateFaultResponse("generic exception", 500);
   }
 
   return response;
