@@ -1017,8 +1017,14 @@ int AmRtpStream::nextPacket(AmRtpPacket*& p)
      (diff.tv_sec > 0) &&
 	 ((unsigned int)diff.tv_sec > dead_rtp_time)){
 	WARN("[%p] RTP Timeout detected. Last received packet is too old "
-	 "(diff.tv_sec = %i, limit = %i\n",this,(unsigned int)diff.tv_sec,dead_rtp_time);
-    receive_mut.unlock();
+	 "(diff.tv_sec = %i, limit = %i, "
+	 "remote_addr: %s:%i, "
+	 "local_ssrc: 0x%x, local_tag: %s]\n",
+		 this,
+		 (unsigned int)diff.tv_sec,dead_rtp_time,
+		 get_addr_str(&r_saddr).c_str(),am_get_port(&r_saddr),
+		 l_ssrc,session ? session->getLocalTag().c_str() : "no session");
+	receive_mut.unlock();
     return RTP_TIMEOUT;
   }
 
