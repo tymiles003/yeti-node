@@ -404,7 +404,16 @@ while(true){
 	queue_mut.unlock();
 
 	bool cdr_writed = false;
-
+#if 0 //used for tests
+	if(0!=writecdrtofile(cdr)){
+		ERROR("can't write CDR to file");
+	} else {
+		//succ writed to file
+		DBG("CDR was written into file");
+		cdr_writed = true;
+	}
+#endif
+//#if 0
 	if(0!=writecdr(masterconn,cdr)){
 		ERROR("Cant write CDR to master database");
 		db_err = true;
@@ -452,7 +461,7 @@ while(true){
 		cdr_writed = true;
 		closefile();
 	}
-
+//#endif
 	if(cdr_writed){
 		stats.writed_cdrs++;
 		DBG("CDR deleted from queue");
@@ -708,23 +717,44 @@ void CdrThread::closefile(){
 
 void CdrThread::write_header(){
 	ofstream &wf = *wfp.get();
+	TrustedHeaders &th = *TrustedHeaders::instance();
 		//write description header
 	wf << "#version: " << YETI_VERSION << endl;
 	wf << "#static_fields_count: " << WRITECDR_STATIC_FIELDS_COUNT << endl;
 	wf << "#dynamic_fields_count: " << config.dyn_fields.size() << endl;
+	wf << "#trusted_hdrs_count: " << th.count() << endl;
+
 		//static fields names
 	wf << "#fields_descr: ";
 	for(int i = 0;i<WRITECDR_STATIC_FIELDS_COUNT;i++){
 		if(i) wf << ",";
 		wf << "'" << cdr_static_fields[i].name << "'";
 	}
+
 		//dynamic fields names
 	DynFieldsT_iterator dit = config.dyn_fields.begin();
 	for(;dit!=config.dyn_fields.end();++dit){
 		wf << ",'"<< dit->first << "'";
 	}
+
+		//trusted headers names
+	th.print_csv(wf);
+
 	wf << endl;
 	wf.flush();
+}
+
+template<class T>
+static void join_csv(ofstream &s, const T &a){
+	if(!a.size())
+		return;
+
+	int n = a.size()-1;
+
+	s << ",";
+	for(int k = 0;k<n;k++)
+		s << "'" << AmArg::print(a[k]) << "',";
+	s << "'" << AmArg::print(a[n]) << "'";
 }
 
 int CdrThread::writecdrtofile(Cdr* cdr){
@@ -769,19 +799,10 @@ int CdrThread::writecdrtofile(Cdr* cdr){
 	wv(cdr->global_tag);
 
 		//dynamic fields
-	int n = cdr->dyn_fields.size()-1;
-	for(int k = 0;k<n;k++)
-		wf << wv(AmArg::print(cdr->dyn_fields[k]));
-	wf << "'" << AmArg::print(cdr->dyn_fields[n]) << "'";
-
+	join_csv(wf,cdr->dyn_fields);
 
 		//trusted fields
-	n = cdr->trusted_hdrs.size()-1;
-	if(n) wf << ",";
-
-	for(int k = 0;k<n;k++)
-		wf << wv(AmArg::print(cdr->trusted_hdrs[k]));
-	wf << "'" << AmArg::print(cdr->trusted_hdrs[n]) << "'";
+	join_csv(wf,cdr->trusted_hdrs);
 
 	wf << endl;
 	wf.flush();

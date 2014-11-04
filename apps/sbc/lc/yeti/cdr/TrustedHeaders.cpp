@@ -114,3 +114,9 @@ void _TrustedHeaders::print_hdrs(const vector<AmArg> &trusted_hdrs){
 		DBG("TrustedHeader: '%s' = %s",h.c_str(),a.print(a).c_str());
 	}
 }
+
+void _TrustedHeaders::print_csv(std::ofstream &s){
+	vector<string>::const_iterator hit = hdrs.begin();
+	for(;hit!=hdrs.end();++hit)
+		s << ",'"<< *hit << "'";
+}

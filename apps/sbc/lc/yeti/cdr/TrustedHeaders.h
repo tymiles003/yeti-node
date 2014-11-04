@@ -13,6 +13,8 @@
 
 #include "../db/DbConfig.h"
 
+#include <fstream>
+
 class _TrustedHeaders {
   private:
 	DbConfig dbc;
@@ -36,6 +38,7 @@ class _TrustedHeaders {
 	void invocate(pqxx::prepare::declaration &d);
 
 	void print_hdrs(const vector<AmArg> &trusted_hdrs);
+	void print_csv(std::ofstream &s);
 };
 
 typedef singleton <_TrustedHeaders> TrustedHeaders;
