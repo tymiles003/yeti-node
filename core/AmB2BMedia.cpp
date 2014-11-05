@@ -1187,6 +1187,18 @@ void AmB2BMedia::setRtpLogger(msg_logger* _logger)
   for (RelayStreamIterator j = relay_streams.begin(); j != relay_streams.end(); ++j) (*j)->setLogger(logger);
 }
 
+void AmB2BMedia::setRtpSensor(msg_sensor* _sensor)
+{
+  AmLock lock(mutex);
+  if(sensor) dec_ref(sensor);
+  sensor = _sensor;
+  if(sensor) inc_ref(sensor);
+
+  // walk through all the streams and apply sensor for them
+  for (AudioStreamIterator i = audio.begin(); i != audio.end(); ++i) i->setSensor(sensor);
+  for (RelayStreamIterator j = relay_streams.begin(); j != relay_streams.end(); ++j) (*j)->setSensor(sensor);
+}
+
 void AmB2BMedia::setRelayDTMFReceiving(bool enabled) {
   AmLock lock(mutex);
 

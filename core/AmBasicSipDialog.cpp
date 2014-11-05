@@ -24,7 +24,7 @@ const char* AmBasicSipDialog::status2str[AmBasicSipDialog::__max_Status] = {
 AmBasicSipDialog::AmBasicSipDialog(AmBasicSipEventHandler* h)
   : status(Disconnected),
     cseq(10),r_cseq_i(false),hdl(h),
-    logger(0),
+	logger(0),sensor(0),
     outbound_proxy(AmConfig::OutboundProxy),
     force_outbound_proxy(AmConfig::ForceOutboundProxy),
     next_hop(AmConfig::NextHop),
@@ -769,4 +769,11 @@ void AmBasicSipDialog::setMsgLogger(msg_logger* logger)
   }
 
   this->logger = logger;
+}
+
+void AmBasicSipDialog::setMsgSensor(msg_sensor* _sensor)
+{
+	if(sensor) dec_ref(sensor);
+	sensor = _sensor;
+	if(sensor) inc_ref(sensor);
 }

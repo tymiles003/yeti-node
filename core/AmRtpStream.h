@@ -35,6 +35,7 @@
 #include "AmRtpPacket.h"
 #include "AmEvent.h"
 #include "AmDtmfSender.h"
+#include "sip/msg_sensor.h"
 
 #include <netinet/in.h>
 
@@ -299,6 +300,7 @@ protected:
   AmSession*         session;
 
   msg_logger *logger;
+  msg_sensor *sensor;
 
   /** Payload provider */
   AmPayloadProvider* payload_provider;
@@ -338,6 +340,12 @@ protected:
   int getDefaultPT();
 
   void payloads_id2str(const std::vector<int> i, std::vector<string> &s);
+
+private:
+  void log_sent_rtp_packet(AmRtpPacket &p);
+  void log_rcvd_rtp_packet(AmRtpPacket &p);
+  void log_sent_rtcp_packet(const char *buffer, int len, struct sockaddr_storage &send_addr);
+  void log_rcvd_rtcp_packet(const char *buffer, int len, struct sockaddr_storage &recv_addr);
 
 public:
 
@@ -571,6 +579,7 @@ public:
 
   /** set destination for logging all received/sent RTP and RTCP packets */
   void setLogger(msg_logger *_logger);
+  void setSensor(msg_sensor *_sensor);
 
   void debug();
   void getInfo(AmArg &ret);

@@ -252,7 +252,8 @@ int AmRtpStream::ping()
     ERROR("while sending RTP packet.\n");
     return -1;
   }
-  if (logger) rp.logSent(logger, &l_saddr);
+  //if (logger) rp.logSent(logger, &l_saddr);
+  log_sent_rtp_packet(rp);
 
   return 2;
 }
@@ -305,7 +306,8 @@ int AmRtpStream::compile_and_send(const int payload, bool marker, unsigned int t
 
   add_if_no_exist(outgoing_payloads,rp.payload);
   outgoing_bytes+=rp.getDataSize();
-  if (logger) rp.logSent(logger, &l_saddr);
+  //if (logger) rp.logSent(logger, &l_saddr);
+  log_sent_rtp_packet(rp);
  
   return size;
 }
@@ -345,7 +347,8 @@ int AmRtpStream::send_raw( char* packet, unsigned int length )
     return -1;
   }
 
-  if (logger) rp.logSent(logger, &l_saddr);
+  //if (logger) rp.logSent(logger, &l_saddr);
+  log_sent_rtp_packet(rp);
 
   return length;
 }
@@ -411,6 +414,7 @@ AmRtpStream::AmRtpStream(AmSession* _s, int _if)
     r_ssrc_i(false),
     session(_s),
     logger(NULL),
+	sensor(NULL),
     passive(false),
     passive_rtcp(false),
     offer_answer_used(true),
@@ -1082,7 +1086,8 @@ void AmRtpStream::recvPacket(int fd)
   if(p->recv(l_sd) > 0){
     int parse_res = 0;
 
-    if (logger) p->logReceived(logger, &l_saddr);
+	//if (logger) p->logReceived(logger, &l_saddr);
+	log_rcvd_rtp_packet(*p);
     incoming_bytes += p->getBufferSize();
 
     gettimeofday(&p->recv_time,NULL);
@@ -1128,9 +1133,10 @@ void AmRtpStream::recvRtcpPacket()
   else
     if(!recved_bytes) return;
 
-  static const cstring empty;
-  if (logger)
-    logger->log((const char *)buffer, recved_bytes, &recv_addr, &l_rtcp_saddr, empty);
+  //static const cstring empty;
+  log_sent_rtcp_packet((const char *)buffer, recved_bytes,recv_addr);
+  /*if (logger)
+	logger->log((const char *)buffer, recved_bytes, &recv_addr, &l_rtcp_saddr, empty);*/
 
   // clear RTP timer
   clearRTPTimeout();
@@ -1169,8 +1175,9 @@ void AmRtpStream::recvRtcpPacket()
     return;
   }
 
-  if (logger)
-    logger->log((const char *)buffer, recved_bytes, &relay_stream->l_rtcp_saddr, &rtcp_raddr, empty);
+  log_sent_rtcp_packet((const char *)buffer, recved_bytes, rtcp_raddr);
+  /*if (logger)
+	logger->log((const char *)buffer, recved_bytes, &relay_stream->l_rtcp_saddr, &rtcp_raddr, empty);*/
 
 }
 
@@ -1253,7 +1260,8 @@ void AmRtpStream::relay(AmRtpPacket* p, bool is_dtmf_packet, bool process_dtmf_q
 	  get_addr_str(&r_saddr).c_str(),am_get_port(&r_saddr));
   }
   else {
-    if (logger) p->logSent(logger, &l_saddr);
+	//if (logger) p->logSent(logger, &l_saddr);
+	log_sent_rtp_packet(*p);
 	if(session) session->onAfterRTPRelay(p,&r_saddr);
 	add_if_no_exist(outgoing_relayed_payloads,p->payload);
 	outgoing_bytes += p->getBufferSize();
@@ -1421,6 +1429,29 @@ void AmRtpStream::payloads_id2str(const std::vector<int> i, std::vector<string> 
 	}
 }
 
+void AmRtpStream::log_sent_rtp_packet(AmRtpPacket &p){
+	if(logger)
+		p.logSent(logger, &l_saddr);
+}
+
+void AmRtpStream::log_rcvd_rtp_packet(AmRtpPacket &p){
+	if(logger)
+		p.logReceived(logger, &l_saddr);
+}
+
+void AmRtpStream::log_sent_rtcp_packet(const char *buffer, int len, struct sockaddr_storage &send_addr){
+	static const cstring empty;
+	if (logger)
+		logger->log((const char *)buffer, len, &relay_stream->l_rtcp_saddr, &send_addr, empty);
+}
+
+void AmRtpStream::log_rcvd_rtcp_packet(const char *buffer, int len, struct sockaddr_storage &recv_addr){
+	static const cstring empty;
+	if (logger)
+		logger->log(buffer, len, &recv_addr, &l_rtcp_saddr, empty);
+}
+
+
 void AmRtpStream::getPayloadsHistory(PayloadsHistory &ph){
 	payloads_id2str(incoming_payloads,ph.incoming);
 	payloads_id2str(incoming_relayed_payloads,ph.incoming_relayed);
@@ -1479,6 +1510,13 @@ void AmRtpStream::setLogger(msg_logger* _logger)
   if (logger) dec_ref(logger);
   logger = _logger;
   if (logger) inc_ref(logger);
+}
+
+void AmRtpStream::setSensor(msg_sensor *_sensor)
+{
+	if(sensor) dec_ref(sensor);
+	sensor = _sensor;
+	if(sensor) inc_ref(sensor);
 }
 
 void AmRtpStream::debug()

@@ -28,6 +28,7 @@
 #define _AmBasicSipDialog_h_
 
 #include "AmSipMsg.h"
+#include "sip/msg_sensor.h"
 
 #include <string>
 #include <vector>
@@ -133,6 +134,7 @@ protected:
    * Message logger
    */
   msg_logger* logger;
+  msg_sensor* sensor;
 
   /**
    * Executed for replies sent by a local UA,
@@ -405,6 +407,7 @@ public:
    * Enable or disable message logger
    */
   void setMsgLogger(msg_logger* logger);
+  void setMsgSensor(msg_sensor* _sensor);
 
   /**
    * Get message logger

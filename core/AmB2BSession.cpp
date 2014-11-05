@@ -326,7 +326,7 @@ static bool parseSdp(AmSdp &dst, const AmMimeBody *body)
   return false;
 }
 
-static bool parseSdp(AmSdp &dst, const AmSipRequest &req)
+/*static bool parseSdp(AmSdp &dst, const AmSipRequest &req)
 {
   if (req.method == SIP_METH_INVITE || 
       req.method == SIP_METH_UPDATE ||
@@ -347,7 +347,7 @@ static bool parseSdp(AmSdp &dst, const AmSipReply &reply)
     return parseSdp(dst, reply.body.hasContentType(SIP_APPLICATION_SDP));
   }
   return false;
-}
+}*/
 
 bool AmB2BSession::getMappedReferID(unsigned int refer_id, 
 				    unsigned int& mapped_id) const
