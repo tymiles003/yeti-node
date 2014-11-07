@@ -1874,7 +1874,7 @@ void SBCCallLeg::setLogger(msg_logger *_logger)
 }
 
 void SBCCallLeg::setSensor(msg_sensor *_sensor){
-	INFO("SBCCallLeg[%p]: %cleg. change sensor to %p",this,a_leg?'A':'B',_sensor);
+	DBG("SBCCallLeg[%p]: %cleg. change sensor to %p",this,a_leg?'A':'B',_sensor);
 	if (sensor) dec_ref(sensor);
 	sensor = _sensor;
 	if (sensor) inc_ref(sensor);

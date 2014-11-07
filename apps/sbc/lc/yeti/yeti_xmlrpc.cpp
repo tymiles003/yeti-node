@@ -15,7 +15,7 @@ static timeval last_shutdown_time;
 
 typedef void (Yeti::*YetiRpcHandler)(const AmArg& args, AmArg& ret);
 
-#define handler_log() INFO("execute handler: %s(%s)",FUNC_NAME,args.print(args).c_str());
+#define handler_log() DBG("execute handler: %s(%s)",FUNC_NAME,args.print(args).c_str());
 
 struct xmlrpc_entry: public AmObject {
   YetiRpcHandler handler;
@@ -83,8 +83,9 @@ void Yeti::init_xmlrpc_cmds(){
 
 			reg_method(show_resource,"types","show resources types",showResourceTypes,"");
 
-		reg_leaf(show,show_sensors,"sensors","sensors related functions");
-			reg_method(show_sensors,"state","show active sensors configuration",showSensorsState,"");
+		reg_method(show,"sensors","show active sensors configuration",showSensorsState,"");
+		/*reg_leaf(show,show_sensors,"sensors","sensors related functions");
+			reg_method(show_sensors,"state","show active sensors configuration",showSensorsState,"");*/
 
 		reg_leaf(show,show_router,"router","active router instance");
 			reg_method(show_router,"cache","show callprofile's cache state",ShowCache,"");

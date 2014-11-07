@@ -244,7 +244,7 @@ string AmSipRequest::print() const
 
 void AmSipRequest::log(msg_logger *logger,msg_sensor *sensor) const
 {
-  INFO("AmSipRequest::log(logger = %p,sensor = %p)",logger,sensor);
+  DBG("AmSipRequest::log(logger = %p,sensor = %p)",logger,sensor);
   tt.lock_bucket();
   const sip_trans* t = tt.get_trans();
   if (t) {

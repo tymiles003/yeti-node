@@ -206,7 +206,7 @@ static inline void upd_ipip_hdr(struct ip &iph, unsigned int len){
 
 ipip_msg_sensor::~ipip_msg_sensor()
 {
-	DBG("ipip_msg_sensor::~ipip_msg_sensor[%p]()",this);
+	INFO("destroyed ipip_msg_sensor[%p] raw socket %d",this,s);
 	if(s!=-1) close(s);
 }
 

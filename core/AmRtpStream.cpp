@@ -1521,7 +1521,7 @@ void AmRtpStream::setLogger(msg_logger* _logger)
 
 void AmRtpStream::setSensor(msg_sensor *_sensor)
 {
-	INFO("AmRtpStream: change sensor to %p",_sensor);
+	DBG("AmRtpStream: change sensor to %p",_sensor);
 
 	if(sensor) dec_ref(sensor);
 	sensor = _sensor;
