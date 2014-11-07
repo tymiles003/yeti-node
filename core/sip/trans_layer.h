@@ -33,6 +33,7 @@
 #include "singleton.h"
 #include "atomic_types.h"
 #include "sip_timers.h"
+#include "msg_sensor.h"
 
 #include <list>
 using std::list;
@@ -153,7 +154,7 @@ public:
 		   int reply_code, const cstring& reason,
 		   const cstring& to_tag, const cstring& hdrs, 
 		   const cstring& body,
-		   msg_logger* logger=NULL);
+		   msg_logger* logger=NULL, msg_sensor *sensor=NULL);
 
     /**
      * Sends a UAC request.
@@ -164,7 +165,7 @@ public:
      */
     int send_request(sip_msg* msg, trans_ticket* tt, const cstring& dialog_id,
 		     const cstring& _next_hop, int out_interface = -1,
-			 unsigned int flags=0, msg_logger* logger=NULL,
+			 unsigned int flags=0, msg_logger* logger=NULL,msg_sensor *sensor=NULL,
 			 sip_timers_override *timers_override = NULL);
 
     /**

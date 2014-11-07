@@ -99,6 +99,7 @@ SBCCallLeg::SBCCallLeg(const SBCCallProfile& call_profile, AmSipDialog* p_dlg,
     ext_cc_timer_id(SBC_TIMER_ID_CALL_TIMERS_END + 1),
     cc_started(false),
     logger(NULL),
+	sensor(NULL),
 	LogicData(NULL)
 {
   set_sip_relay_only(false);
@@ -127,6 +128,7 @@ SBCCallLeg::SBCCallLeg(SBCCallLeg* caller, AmSipDialog* p_dlg,
     ext_cc_timer_id(SBC_TIMER_ID_CALL_TIMERS_END + 1),
     cc_started(false),
     logger(NULL),
+	sensor(NULL),
 	LogicData(caller->getLogicData())
 {
   // FIXME: do we want to inherit cc_vars from caller?
@@ -164,6 +166,7 @@ SBCCallLeg::SBCCallLeg(SBCCallLeg* caller, AmSipDialog* p_dlg,
   }
 
   setLogger(caller->getLogger());
+  //setSensor(caller->getSensor());
 }
 
 SBCCallLeg::SBCCallLeg(AmSipDialog* p_dlg, AmSipSubscription* p_subs)
@@ -172,7 +175,8 @@ SBCCallLeg::SBCCallLeg(AmSipDialog* p_dlg, AmSipSubscription* p_subs)
     auth(NULL),
     cc_timer_id(SBC_TIMER_ID_CALL_TIMERS_START),
     cc_started(false),
-    logger(NULL)
+	logger(NULL),
+	sensor(NULL)
 {
   memset(&call_start_ts, 0, sizeof(struct timeval));
   memset(&call_connect_ts, 0, sizeof(struct timeval));
@@ -445,6 +449,7 @@ SBCCallLeg::~SBCCallLeg()
   if (auth)
     delete auth;
   if (logger) dec_ref(logger);
+  if(sensor) dec_ref(sensor);
 }
 
 void SBCCallLeg::onBeforeDestroy()
@@ -818,17 +823,24 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
 
   if (!logger &&
 	  !call_profile.get_logger_path().empty() &&
-	  (call_profile.log_sip || call_profile.log_rtp)) {
+	  (call_profile.log_sip || call_profile.log_rtp))
+  {
 	// open the logger if not already opened
 	ParamReplacerCtx ctx(&call_profile);
 	string log_path = ctx.replaceParameters(call_profile.get_logger_path(),
 						"msg_logger_path",req);
-	if(openLogger(log_path)){
-		if(call_profile.log_sip){
-			req.log(getLogger());
-		}
+	if(!openLogger(log_path)){
+		WARN("can't open msg_logger_path: '%s'",log_path.c_str());
 	}
+	/*if(openLogger(log_path)){
+		if(call_profile.log_sip || call_profile.aleg_sensor_level_id&LOG_SIP_MASK){
+			req.log(getLogger(),getSensor());
+		}
+	}*/
   }
+
+	req.log(call_profile.log_sip?getLogger():NULL,
+			call_profile.aleg_sensor_level_id&LOG_SIP_MASK?getSensor():NULL);
 
   string ruri, to, from;
   AmSipRequest uac_req(req);
@@ -1813,9 +1825,14 @@ void SBCCallLeg::createHoldRequest(AmSdp &sdp)
 
 void SBCCallLeg::setMediaSession(AmB2BMedia *new_session)
 {
-  if (new_session) {
-    if (call_profile.log_rtp) new_session->setRtpLogger(logger);
-    else new_session->setRtpLogger(NULL);
+	if (new_session) {
+		if (call_profile.log_rtp) new_session->setRtpLogger(logger);
+		else new_session->setRtpLogger(NULL);
+
+		if((a_leg && (call_profile.aleg_sensor_level_id&LOG_RTP_MASK)) ||
+			(!a_leg && (call_profile.bleg_sensor_level_id&LOG_RTP_MASK)))
+		new_session->setRtpSensor(sensor);
+		else new_session->setRtpSensor(NULL);
   }
   CallLeg::setMediaSession(new_session);
 }
@@ -1849,6 +1866,26 @@ void SBCCallLeg::setLogger(msg_logger *_logger)
     if (call_profile.log_rtp) m->setRtpLogger(logger);
     else m->setRtpLogger(NULL);
   }
+}
+
+void SBCCallLeg::setSensor(msg_sensor *_sensor){
+	INFO("SBCCallLeg: change sensor to %p",_sensor);
+	if (sensor) dec_ref(sensor);
+	sensor = _sensor;
+	if (sensor) inc_ref(sensor);
+
+	if((a_leg && (call_profile.aleg_sensor_level_id&LOG_SIP_MASK)) ||
+		(!a_leg && (call_profile.bleg_sensor_level_id&LOG_SIP_MASK)))
+	dlg->setMsgSensor(sensor);
+	else dlg->setMsgSensor(NULL);
+
+	AmB2BMedia *m = getMediaSession();
+	if(m) {
+		if((a_leg && (call_profile.aleg_sensor_level_id&LOG_RTP_MASK)) ||
+			(!a_leg && (call_profile.bleg_sensor_level_id&LOG_RTP_MASK)))
+		m->setRtpSensor(sensor);
+		else m->setRtpSensor(NULL);
+	} else DBG("SBCCallLeg: no media session");
 }
 
 void SBCCallLeg::computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &mask)

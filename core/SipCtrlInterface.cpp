@@ -181,7 +181,7 @@ int _SipCtrlInterface::cancel(trans_ticket* tt, const string& hdrs)
 
 int _SipCtrlInterface::send(AmSipRequest &req, const string& dialog_id,
 			    const string& next_hop, int out_interface,
-				unsigned int flags, msg_logger* logger,
+				unsigned int flags, msg_logger* logger, msg_sensor *sensor,
 				sip_timers_override *timers_override)
 {
     if(req.method == "CANCEL")
@@ -284,7 +284,7 @@ int _SipCtrlInterface::send(AmSipRequest &req, const string& dialog_id,
 						    stl2cstr(dialog_id),
 						    stl2cstr(next_hop),
 						    out_interface,
-							flags,logger,timers_override);
+							flags,logger,sensor,timers_override);
     delete msg;
 
     return res;
@@ -346,7 +346,7 @@ void _SipCtrlInterface::cleanup()
 }
 
 int _SipCtrlInterface::send(const AmSipReply &rep, const string& dialog_id,
-			   msg_logger* logger)
+			   msg_logger* logger, msg_sensor* sensor)
 {
     sip_msg msg;
 
@@ -404,7 +404,7 @@ int _SipCtrlInterface::send(const AmSipReply &rep, const string& dialog_id,
 					    rep.code,stl2cstr(rep.reason),
 					    stl2cstr(rep.to_tag),
 					    cstring(hdrs_buf,hdrs_len), 
-					    stl2cstr(body),logger);
+						stl2cstr(body),logger,sensor);
 
     delete [] hdrs_buf;
 

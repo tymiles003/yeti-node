@@ -24,7 +24,7 @@ const char* AmBasicSipDialog::status2str[AmBasicSipDialog::__max_Status] = {
 AmBasicSipDialog::AmBasicSipDialog(AmBasicSipEventHandler* h)
   : status(Disconnected),
     cseq(10),r_cseq_i(false),hdl(h),
-	logger(0),sensor(0),
+	logger(NULL),sensor(NULL),
     outbound_proxy(AmConfig::OutboundProxy),
     force_outbound_proxy(AmConfig::ForceOutboundProxy),
     next_hop(AmConfig::NextHop),
@@ -43,6 +43,7 @@ AmBasicSipDialog::~AmBasicSipDialog()
   termUasTrans();
   termUacTrans();
   if (logger) dec_ref(logger);
+  if (sensor) dec_ref(sensor);
   dump();
 }
 
@@ -307,10 +308,12 @@ void AmBasicSipDialog::onRxRequest(const AmSipRequest& req)
 {
   DBG("AmBasicSipDialog::onRxRequest(req = %s)\n", req.method.c_str());
 
-  if(logger && (req.method != SIP_METH_ACK)) {
+  if(req.method != SIP_METH_ACK) {
     // log only non-initial received requests, the initial one is already logged
     // or will be logged at application level (problem with SBCSimpleRelay)
-    if (!callid.empty()) req.log(logger);
+	if (!callid.empty()) {
+		req.log(logger,sensor);
+	}
   }
 
   if(!onRxReqSanity(req))
@@ -619,7 +622,7 @@ int AmBasicSipDialog::reply(const AmSipRequest& req,
     reply.contact = getContactHdr();
   }
 
-  int ret = SipCtrlInterface::send(reply,local_tag,logger);
+  int ret = SipCtrlInterface::send(reply,local_tag,logger,sensor);
   if(ret){
     ERROR("Could not send reply: code=%i; reason='%s'; method=%s;"
 	  " call-id=%s; cseq=%i\n",
@@ -639,7 +642,7 @@ int AmBasicSipDialog::reply(const AmSipRequest& req,
 /* static */
 int AmBasicSipDialog::reply_error(const AmSipRequest& req, unsigned int code, 
 				  const string& reason, const string& hdrs,
-				  msg_logger* logger)
+				  msg_logger* logger, msg_sensor *sensor)
 {
   AmSipReply reply;
 
@@ -655,7 +658,7 @@ int AmBasicSipDialog::reply_error(const AmSipRequest& req, unsigned int code,
   // add transcoder statistics into reply headers
   //addTranscoderStats(reply.hdrs);
 
-  int ret = SipCtrlInterface::send(reply,string(""),logger);
+  int ret = SipCtrlInterface::send(reply,string(""),logger,sensor);
   if(ret){
     ERROR("Could not send reply: code=%i; reason='%s';"
 	  " method=%s; call-id=%s; cseq=%i\n",
@@ -725,7 +728,7 @@ int AmBasicSipDialog::sendRequest(const string& method,
 				   remote_tag.empty() || !next_hop_1st_req ?
 				   next_hop : "",
 				   outbound_interface,
-				   send_flags,logger,timers_override);
+				   send_flags,logger,sensor,timers_override);
   if(res) {
     ERROR("Could not send request: method=%s; call-id=%s; cseq=%i\n",
 	  req.method.c_str(),req.callid.c_str(),req.cseq);

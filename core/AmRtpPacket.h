@@ -86,6 +86,10 @@ public:
 
   void logReceived(msg_logger *logger, struct sockaddr_storage *laddr);
   void logSent(msg_logger *logger, struct sockaddr_storage *laddr);
+
+  void mirrorReceived(msg_sensor *sensor, struct sockaddr_storage *laddr);
+  void mirrorSent(msg_sensor *sensor, struct sockaddr_storage *laddr);
+
 };
 
 #endif

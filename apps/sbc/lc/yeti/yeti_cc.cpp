@@ -164,11 +164,15 @@ bool Yeti::init(SBCCallLeg *call, const map<string, string> &values) {
 			profile.global_tag = call->getLocalTag();
 
 		cdr->update_sbc(profile);
+
+		call->setSensor(Sensors::instance()->getSensor(profile.aleg_sensor_id));
+
 	} else {
 		if(!profile.callid.empty()){
 			string id = AmSession::getNewId();
 			replace(profile.callid,"%uuid",id);
 		}
+		call->setSensor(Sensors::instance()->getSensor(profile.bleg_sensor_id));
 	}
 	cdr->update(*call);
 	return true;

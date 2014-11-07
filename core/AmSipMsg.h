@@ -7,6 +7,7 @@
 using std::string;
 
 #include "sip/trans_layer.h"
+#include "sip/msg_sensor.h"
 
 /* enforce common naming in Req&Rpl */
 class _AmSipMsgInDlg
@@ -104,7 +105,7 @@ class AmSipRequest : public _AmSipMsgInDlg
   ~AmSipRequest() { }
   
   string print() const;
-  void log(msg_logger *logger) const;
+  void log(msg_logger *logger,msg_sensor *sensor) const;
 };
 
 string getHeader(const string& hdrs,const string& hdr_name, bool single = false);

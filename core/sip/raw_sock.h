@@ -29,6 +29,9 @@
 #ifndef _raw_sock_h
 #define _raw_sock_h
 
+#include <sys/socket.h>
+
+int raw_socket(int proto, sockaddr_storage* ip, int iphdr_incl);
 int raw_udp_socket(int iphdr_incl);
 
 int raw_udp4_send(int rsock, char* buf, unsigned int len,

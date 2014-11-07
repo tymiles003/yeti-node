@@ -14,6 +14,12 @@ string DbConfig::conn_str()
   return ret;
 }
 
+string DbConfig::info_str(){
+	string ret;
+	ret = user +"@" + host+":"+ int2str(port) + "/" + name;
+	return ret;
+}
+
 int DbConfig::cfg2dbcfg(AmConfigReader& cfg, string& prefix)
 {
   string var;

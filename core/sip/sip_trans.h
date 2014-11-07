@@ -35,9 +35,12 @@
 
 #include <sys/socket.h>
 
+#include "msg_sensor.h"
+
 struct sip_msg;
 class trsp_socket;
 class msg_logger;
+
 
 /**
  * Transaction types
@@ -146,6 +149,7 @@ class sip_trans
 
     /** message logging */
     msg_logger* logger;
+	msg_sensor* sensor;
 
 	/** hack to memorize timer_m override */
 	unsigned int timer_m;

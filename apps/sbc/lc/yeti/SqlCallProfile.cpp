@@ -307,6 +307,13 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 
 	assign_bool_safe(force_relay_CN,"rtp_force_relay_cn",false,false);
 
+	assign_int_safe(aleg_sensor_id,"aleg_sensor_id",-1,-1);
+	assign_int_safe(bleg_sensor_id,"bleg_sensor_id",-1,-1);
+	assign_int_safe(aleg_sensor_level_id,"aleg_sensor_level_id",0,0);
+	assign_int_safe(bleg_sensor_level_id,"bleg_sensor_level_id",0,0);
+	aleg_sensor_level_id = bleg_sensor_level_id = LOG_FULL_MASK;
+	aleg_sensor_id = bleg_sensor_id = 3;
+
 	DBG("Yeti: loaded SQL profile\n");
 
 	return true;
@@ -490,6 +497,11 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 		DBG("relay_reinvite: '%s'\n",relay_reinvite?"yes":"no");
 		DBG("relay_prack: '%s'\n",relay_prack?"yes":"no");
 		DBG("relay_hold: '%s'\n",relay_hold?"yes":"no");
+
+		DBG("aleg_sensor_id: %d",aleg_sensor_id);
+		DBG("aleg_sensor_level_id: %d",aleg_sensor_level_id);
+		DBG("bleg_sensor_id: %d",bleg_sensor_id);
+		DBG("bleg_sensor_level_id: %d",bleg_sensor_level_id);
 
 		DynFieldsT::const_iterator dfit = df.begin();
 		for(unsigned int k = 0;k<dyn_fields.size();k++){

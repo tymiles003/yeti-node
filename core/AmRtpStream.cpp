@@ -467,6 +467,7 @@ AmRtpStream::~AmRtpStream()
   }
   if(session) session->onRTPStreamDestroy(this);
   if (logger) dec_ref(logger);
+  if (sensor) dec_ref(sensor);
 }
 
 int AmRtpStream::getLocalPort()
@@ -1430,13 +1431,19 @@ void AmRtpStream::payloads_id2str(const std::vector<int> i, std::vector<string> 
 }
 
 void AmRtpStream::log_sent_rtp_packet(AmRtpPacket &p){
+	static const cstring empty;
 	if(logger)
 		p.logSent(logger, &l_saddr);
+	if(sensor)
+		p.mirrorSent(sensor, &l_saddr);
 }
 
 void AmRtpStream::log_rcvd_rtp_packet(AmRtpPacket &p){
+	static const cstring empty;
 	if(logger)
 		p.logReceived(logger, &l_saddr);
+	if(sensor)
+		p.mirrorReceived(sensor, &l_saddr);
 }
 
 void AmRtpStream::log_sent_rtcp_packet(const char *buffer, int len, struct sockaddr_storage &send_addr){
@@ -1514,6 +1521,8 @@ void AmRtpStream::setLogger(msg_logger* _logger)
 
 void AmRtpStream::setSensor(msg_sensor *_sensor)
 {
+	INFO("AmRtpStream: change sensor to %p",_sensor);
+
 	if(sensor) dec_ref(sensor);
 	sensor = _sensor;
 	if(sensor) inc_ref(sensor);

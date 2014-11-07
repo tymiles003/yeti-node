@@ -99,7 +99,7 @@ int _trans_layer::send_reply(const trans_ticket* tt, const cstring& dialog_id,
 			     int reply_code, const cstring& reason,
 			     const cstring& to_tag, const cstring& hdrs,
 			     const cstring& body,
-			     msg_logger* logger)
+				 msg_logger* logger, msg_sensor *sensor)
 {
     // Ref.: RFC 3261 8.2.6, 12.1.1
     //
@@ -482,16 +482,25 @@ int _trans_layer::send_reply(const trans_ticket* tt, const cstring& dialog_id,
 
     update_uas_reply(bucket,t,reply_code);
 
-    if(logger) {
-	sockaddr_storage src_ip;
-	local_socket->copy_addr_to(&src_ip);
-	logger->log(reply_buf,reply_len,&src_ip,&remote_ip,
-		    req->u.request->method_str,reply_code);
-
-	if(!t->logger){
-	    t->logger = logger;
-	    inc_ref(logger);
-	}
+	if(logger || sensor) {
+		sockaddr_storage src_ip;
+		local_socket->copy_addr_to(&src_ip);
+		if(logger){
+			logger->log(reply_buf,reply_len,&src_ip,&remote_ip,
+				req->u.request->method_str,reply_code);
+			if(!t->logger){
+				t->logger = logger;
+				inc_ref(logger);
+			}
+		}
+		if(sensor){
+			sensor->feed(reply_buf,reply_len,&src_ip,&remote_ip,
+				req->u.request->method_str,reply_code);
+			if(!t->sensor){
+				t->sensor = sensor;
+				inc_ref(sensor);
+			}
+		}
     }
 
     if(dialog_id.len && !(t->dialog_id.len)) {
@@ -1012,7 +1021,7 @@ int _trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 			       const cstring& dialog_id,
 			       const cstring& _next_hop, 
 			       int out_interface, unsigned int flags,
-				   msg_logger* logger,
+				   msg_logger* logger,msg_sensor *sensor,
 				   sip_timers_override *timers_override)
 {
     // Request-URI
@@ -1211,8 +1220,9 @@ int _trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 	tt->_t->flags = flags;
 
 	DBG("logger = %p\n",logger);
+	DBG("sensor = %p\n",sensor);
 
-	if(logger) {
+	if(logger || sensor) {
 	    sockaddr_storage src_ip;
 	    msg->local_socket->copy_addr_to(&src_ip);
 
@@ -1229,15 +1239,26 @@ int _trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 		msg_buffer = p_msg->buf;
 		msg_len = p_msg->len;
 	    }
+		if(logger){
+			logger->log(msg_buffer,msg_len,
+				&src_ip,&msg->remote_ip,
+				method_str);
 
-	    logger->log(msg_buffer,msg_len,
-			&src_ip,&msg->remote_ip,
-			method_str);
+			if(!tt->_t->logger) {
+				tt->_t->logger = logger;
+				inc_ref(logger);
+			}
+		}
+		if(sensor){
+			sensor->feed(msg_buffer,msg_len,
+				&src_ip,&msg->remote_ip,
+				method_str);
 
-	    if(!tt->_t->logger) {
-		tt->_t->logger = logger;
-		inc_ref(logger);
-	    }
+			if(!tt->_t->sensor) {
+				tt->_t->sensor = sensor;
+				inc_ref(sensor);
+			}
+		}
 	}
 
 	if(dialog_id.len && !(tt->_t->dialog_id.len)) {
@@ -1383,16 +1404,27 @@ int _trans_layer::cancel(trans_ticket* tt, const cstring& hdrs)
 	    DBG("Could not update state for UAC transaction\n");
 	    delete p_msg;
 	}
-	else if(t->logger) {
+	else if(t->logger || t->sensor) {
 	    sockaddr_storage src_ip;
 	    p_msg->local_socket->copy_addr_to(&src_ip);
-	    t->logger->log(p_msg->buf,p_msg->len,&src_ip,
-			   &p_msg->remote_ip,cancel_str);
+		if(t->logger){
+			t->logger->log(p_msg->buf,p_msg->len,&src_ip,
+						   &p_msg->remote_ip,cancel_str);
 
-	    if(!cancel_t->logger) {
-		cancel_t->logger = t->logger;
-		inc_ref(t->logger);
-	    }
+			if(!cancel_t->logger) {
+				cancel_t->logger = t->logger;
+				inc_ref(t->logger);
+			}
+		}
+		if(t->sensor){
+			t->sensor->feed(p_msg->buf,p_msg->len,&src_ip,
+						   &p_msg->remote_ip,cancel_str);
+
+			if(!cancel_t->sensor) {
+				cancel_t->sensor = t->sensor;
+				inc_ref(t->sensor);
+			}
+		}
 	}
     }
 
@@ -1447,9 +1479,13 @@ void _trans_layer::received_msg(sip_msg* msg)
 	if((t = bucket->match_request(msg,TT_UAS)) != NULL){
 
 	    if(t->logger) {
-		t->logger->log(msg->buf,msg->len,&msg->remote_ip,
-			       &msg->local_ip,msg->u.request->method_str);
+			t->logger->log(msg->buf,msg->len,&msg->remote_ip,
+						   &msg->local_ip,msg->u.request->method_str);
 	    }
+		if(t->sensor) {
+			t->sensor->feed(msg->buf,msg->len,&msg->remote_ip,
+							&msg->local_ip,msg->u.request->method_str);
+		}
 
 	    if(msg->u.request->method != t->msg->u.request->method){
 		
@@ -1550,10 +1586,15 @@ void _trans_layer::received_msg(sip_msg* msg)
 	    DBG("Reply matched an existing transaction\n");
 
 	    if(t->logger) {
-		t->logger->log(msg->buf,msg->len,&msg->remote_ip,
-			       &msg->local_ip,get_cseq(msg)->method_str,
-			       msg->u.reply->code);
+			t->logger->log(msg->buf,msg->len,&msg->remote_ip,
+						   &msg->local_ip,get_cseq(msg)->method_str,
+						   msg->u.reply->code);
 	    }
+		if(t->sensor) {
+			t->sensor->feed(msg->buf,msg->len,&msg->remote_ip,
+							&msg->local_ip,get_cseq(msg)->method_str,
+							msg->u.reply->code);
+		}
 
 	    int res = update_uac_reply(bucket,t,msg);
 	    if(res < 0){
@@ -2081,10 +2122,15 @@ void _trans_layer::send_non_200_ack(sip_msg* reply, sip_trans* t)
     }
     else stats.inc_sent_requests();
     
-    if(t->logger) {
-	sockaddr_storage src_ip;
-	inv->local_socket->copy_addr_to(&src_ip);
-	t->logger->log(ack_buf,ack_len,&src_ip,&inv->remote_ip,method);
+	if(t->logger || t->sensor) {
+		sockaddr_storage src_ip;
+		inv->local_socket->copy_addr_to(&src_ip);
+		if(t->logger){
+			t->logger->log(ack_buf,ack_len,&src_ip,&inv->remote_ip,method);
+		}
+		if(t->sensor){
+			t->sensor->feed(ack_buf,ack_len,&src_ip,&inv->remote_ip,method);
+		}
     }
 
     delete[] ack_buf;
@@ -2105,11 +2151,17 @@ void _trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
 	tr->msg->send();
         stats.inc_sent_request_retrans();
 	
-	if(tr->logger) {
+	if(tr->logger || tr->sensor) {
 	    sockaddr_storage src_ip;
 	    tr->msg->local_socket->copy_addr_to(&src_ip);
-	    tr->logger->log(tr->msg->buf,tr->msg->len,&src_ip,&tr->msg->remote_ip,
-			    tr->msg->u.request->method_str);
+		if(tr->logger){
+			tr->logger->log(tr->msg->buf,tr->msg->len,&src_ip,&tr->msg->remote_ip,
+					tr->msg->u.request->method_str);
+		}
+		if(tr->sensor){
+			tr->sensor->feed(tr->msg->buf,tr->msg->len,&src_ip,&tr->msg->remote_ip,
+					tr->msg->u.request->method_str);
+		}
 	}
 
 	tr->reset_timer((n<<16) | type, A_TIMER<<n, bucket->get_id());
@@ -2260,12 +2312,19 @@ void _trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
 	    tr->msg->send();
             stats.inc_sent_request_retrans();
 
-	    if(tr->logger) {
-		sockaddr_storage src_ip;
-		tr->msg->local_socket->copy_addr_to(&src_ip);
-		tr->logger->log(tr->msg->buf,tr->msg->len,
-				&src_ip,&tr->msg->remote_ip,
-				tr->msg->u.request->method_str);
+		if(tr->logger || tr->sensor) {
+			sockaddr_storage src_ip;
+			tr->msg->local_socket->copy_addr_to(&src_ip);
+			if(tr->logger){
+				tr->logger->log(tr->msg->buf,tr->msg->len,
+								&src_ip,&tr->msg->remote_ip,
+								tr->msg->u.request->method_str);
+			}
+			if(tr->sensor){
+				tr->sensor->feed(tr->msg->buf,tr->msg->len,
+								 &src_ip,&tr->msg->remote_ip,
+								 tr->msg->u.request->method_str);
+			}
 	    }
 	}
 
@@ -2401,6 +2460,10 @@ sip_trans* _trans_layer::copy_uac_trans(sip_trans* tr)
 	n_tr->logger = tr->logger;
 	inc_ref(n_tr->logger);
     }
+	if(tr->sensor) {
+		n_tr->sensor = tr->sensor;
+		inc_ref(n_tr->sensor);
+	}
 
     return n_tr;
 }
@@ -2513,12 +2576,19 @@ int _trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr,
     // and re-send
     tr->msg->send();
     
-    if(tr->logger) {
-	sockaddr_storage src_ip;
-	tr->msg->local_socket->copy_addr_to(&src_ip);
-	tr->logger->log(tr->msg->buf,tr->msg->len,
-			&src_ip,&tr->msg->remote_ip,
-			tr->msg->u.request->method_str);
+	if(tr->logger || tr->sensor) {
+		sockaddr_storage src_ip;
+		tr->msg->local_socket->copy_addr_to(&src_ip);
+		if(tr->logger){
+			tr->logger->log(tr->msg->buf,tr->msg->len,
+							&src_ip,&tr->msg->remote_ip,
+							tr->msg->u.request->method_str);
+		}
+		if(tr->sensor){
+			tr->sensor->feed(tr->msg->buf,tr->msg->len,
+							&src_ip,&tr->msg->remote_ip,
+							tr->msg->u.request->method_str);
+		}
     }
 
     if(tr->msg->u.request->method == sip_request::INVITE) {

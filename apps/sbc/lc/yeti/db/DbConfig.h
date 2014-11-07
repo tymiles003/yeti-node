@@ -12,6 +12,7 @@ public:
   unsigned int port;
   unsigned int timeout;
   string conn_str();
+  string info_str();
   int cfg2dbcfg(AmConfigReader& cfg,string& prefix);
 };
 

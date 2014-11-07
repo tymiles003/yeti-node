@@ -3,15 +3,21 @@
 
 #include "atomic_types.h"
 #include "AmThread.h"
+#include "AmArg.h"
 #include "cstring.h"
 
+#include "ip_util.h"
+
 #include "sys/socket.h"
+#ifndef __USE_BSD
+#define __USE_BSD  /* on linux use bsd version of iphdr (more portable) */
+#endif /* __USE_BSD */
+#include <netinet/ip.h>
 
 #include <set>
 #include <string>
 using std::set;
 using std::string;
-
 
 struct sockaddr_storage;
 
@@ -25,6 +31,7 @@ public:
 		  sockaddr_storage* src_ip,
 		  sockaddr_storage* dst_ip,
 		  cstring method, int reply_code=0)=0;
+  virtual void getInfo(AmArg &ret)=0;
 };
 
 class ipip_msg_sensor
@@ -33,15 +40,20 @@ class ipip_msg_sensor
 	//fields to create upper IPIP header
 	sockaddr_storage sensor_src_ip;
 	sockaddr_storage sensor_dst_ip;
+	struct ip ipip_hdr;
 
-//protected:
+	int s; //raw socket handler
 
 public:
+	~ipip_msg_sensor();
 
+	int init(const char *src_addr, const char *dst_addr, const char *iface);
 	int feed(const char* buf, int len,
-		sockaddr_storage* src_ip,
-		sockaddr_storage* dst_ip,
+		sockaddr_storage* from,
+		sockaddr_storage* to,
 		cstring method, int reply_code=0);
+
+	void getInfo(AmArg &ret);
 };
 
 #endif

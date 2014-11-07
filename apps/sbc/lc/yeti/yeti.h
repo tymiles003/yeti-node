@@ -5,6 +5,7 @@
 #include "SBCCallProfile.h"
 #include "SBCLogicInterface.h"
 #include "SBCCallLeg.h"
+#include "sip/msg_sensor.h"
 
 #include "SBCCallControlAPI.h"
 #include "ExtendedCCInterface.h"
@@ -19,6 +20,7 @@
 #include "CallCtx.h"
 #include "CodesTranslator.h"
 #include "CodecsGroup.h"
+#include "Sensors.h"
 
 #include <ctime>
 
@@ -159,6 +161,9 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
 
   xmlrpc_handler requestResolverClear;
   xmlrpc_handler requestResolverGet;
+
+  xmlrpc_handler requestReloadSensors;
+  xmlrpc_handler showSensorsState;
 
   bool reload_config(AmArg &ret);
   bool check_event_id(int event_id, AmArg &ret);

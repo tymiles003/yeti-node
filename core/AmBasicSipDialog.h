@@ -398,7 +398,7 @@ public:
 			 unsigned int  code,
 			 const string& reason,
 			 const string& hdrs = "",
-			 msg_logger* logger = NULL);
+			 msg_logger* logger = NULL, msg_sensor *sensor = NULL);
 
   /* dump transaction information (DBG) */
   void dump();

@@ -191,6 +191,7 @@ public:
 class atomic_ref_cnt;
 void inc_ref(atomic_ref_cnt* rc);
 void dec_ref(atomic_ref_cnt* rc);
+unsigned int get_ref(atomic_ref_cnt* rc);
 
 class atomic_ref_cnt
 {
@@ -201,12 +202,14 @@ protected:
 
   void _inc_ref() { ref_cnt.inc(); }
   bool _dec_ref() { return ref_cnt.dec_and_test(); }
+  unsigned int _get_ref() { return ref_cnt.get(); }
 
   virtual ~atomic_ref_cnt() {}
   virtual void on_destroy() {}
 
   friend void inc_ref(atomic_ref_cnt* rc);
   friend void dec_ref(atomic_ref_cnt* rc);
+  friend unsigned int get_ref(atomic_ref_cnt* rc);
 };
 
 inline void inc_ref(atomic_ref_cnt* rc)
@@ -224,5 +227,10 @@ inline void dec_ref(atomic_ref_cnt* rc)
   }
 }
 
+inline unsigned int get_ref(atomic_ref_cnt* rc)
+{
+  assert(rc);
+  return rc->_get_ref();
+}
 
 #endif

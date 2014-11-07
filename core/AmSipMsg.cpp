@@ -242,18 +242,22 @@ string AmSipRequest::print() const
 }
 
 
-void AmSipRequest::log(msg_logger *logger) const
+void AmSipRequest::log(msg_logger *logger,msg_sensor *sensor) const
 {
+  INFO("AmSipRequest::log(logger = %p,sensor = %p)",logger,sensor);
   tt.lock_bucket();
   const sip_trans* t = tt.get_trans();
   if (t) {
     sip_msg* msg = t->msg;
-    logger->log(msg->buf,msg->len,&msg->remote_ip,
-        &msg->local_ip,msg->u.request->method_str);
+	if(logger)
+		logger->log(msg->buf,msg->len,&msg->remote_ip,
+			&msg->local_ip,msg->u.request->method_str);
+	if(sensor)
+		sensor->feed(msg->buf,msg->len,&msg->remote_ip,
+					 &msg->local_ip,msg->u.request->method_str);
   }
   tt.unlock_bucket();
 }
-
 
 string AmSipReply::print() const
 {

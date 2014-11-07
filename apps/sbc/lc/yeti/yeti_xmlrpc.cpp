@@ -83,6 +83,9 @@ void Yeti::init_xmlrpc_cmds(){
 
 			reg_method(show_resource,"types","show resources types",showResourceTypes,"");
 
+		reg_leaf(show,show_sensors,"sensors","sensors related functions");
+			reg_method(show_sensors,"state","show active sensors configuration",showSensorsState,"");
+
 		reg_leaf(show,show_router,"router","active router instance");
 			reg_method(show_router,"cache","show callprofile's cache state",ShowCache,"");
 
@@ -115,6 +118,9 @@ void Yeti::init_xmlrpc_cmds(){
 
 	/* request */
 	reg_leaf(root,request,"request","modify commands");
+
+		reg_leaf(request,request_sensors,"sensors","sensors");
+			reg_method(request_sensors,"reload","reload sensors",requestReloadSensors,"");
 
 		reg_leaf(request,request_router,"router","active router instance");
 
@@ -980,6 +986,28 @@ void Yeti::reloadRouter(const AmArg& args, AmArg& ret){
 	INFO("SqlRouter reload successfull");
 	ret.push(200);
 	ret.push("OK");
+}
+
+void Yeti::requestReloadSensors(const AmArg& args, AmArg& ret){
+	handler_log();
+	if(!assert_event_id(args,ret))
+		return;
+	Sensors::instance()->configure_db(cfg);
+	if(Sensors::instance()->reload()){
+		ret.push(200);
+		ret.push("OK");
+	} else {
+		ret.push(500);
+		ret.push("errors during sensors reload. leave old state");
+	}
+}
+
+void Yeti::showSensorsState(const AmArg& args, AmArg& ret){
+	handler_log();
+
+	ret.push(200);
+	ret.push(AmArg());
+	Sensors::instance()->GetConfig(ret.back());
 }
 
 void Yeti::closeCdrFiles(const AmArg& args, AmArg& ret){

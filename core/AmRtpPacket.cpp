@@ -300,3 +300,13 @@ void AmRtpPacket::logSent(msg_logger *logger, struct sockaddr_storage *laddr)
   logger->log((const char *)buffer, b_size, laddr, &addr, empty);
 }
 
+void AmRtpPacket::mirrorReceived(msg_sensor *sensor, struct sockaddr_storage *laddr){
+	static const cstring empty;
+	sensor->feed((const char *)buffer, b_size, &addr, laddr, empty);
+}
+
+void AmRtpPacket::mirrorSent(msg_sensor *sensor, struct sockaddr_storage *laddr){
+	static const cstring empty;
+	sensor->feed((const char *)buffer, b_size, laddr, &addr, empty);
+}
+

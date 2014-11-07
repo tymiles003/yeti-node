@@ -60,6 +60,7 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
 
   /** common logger for RTP/RTCP and SIP packets */
   msg_logger *logger;
+  msg_sensor *sensor;
 
   void setLogger(msg_logger *_logger);
 
@@ -190,6 +191,8 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
   virtual void computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &mask);
   virtual void processLocalReInvite(AmSipRequest &req);
 
+  void setSensor(msg_sensor *_sensor);
+
  protected:
   /** set to true once CCStart passed to call CCEnd implicitly (from onStop)
    * only when CCStart was called */
@@ -241,6 +244,7 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
 
   bool openLogger(const std::string &path);
   msg_logger *getLogger() { return logger; }
+  msg_sensor *getSensor() { return sensor; }
 };
 
 #endif

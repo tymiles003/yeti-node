@@ -47,6 +47,10 @@ typedef map<string, AmArg>   SBCVarMapT;
 typedef SBCVarMapT::iterator SBCVarMapIteratorT;
 typedef SBCVarMapT::const_iterator SBCVarMapConstIteratorT;
 
+#define LOG_SIP_MASK	0x1
+#define LOG_RTP_MASK	0x2
+#define LOG_FULL_MASK	(LOG_SIP_MASK|LOG_RTP_MASK)
+
 struct CCInterface {
   string cc_name;
   string cc_module;
@@ -156,6 +160,9 @@ struct SBCCallProfile
   unsigned int dead_rtp_time;
 
   bool allow_1xx_without_to_tag;
+
+  int aleg_sensor_id, bleg_sensor_id;
+  int aleg_sensor_level_id, bleg_sensor_level_id;
 
   vector<FilterEntry> headerfilter;
   vector<FilterEntry> messagefilter;
@@ -401,7 +408,9 @@ struct SBCCallProfile
 	allow_1xx_without_to_tag(false),
 	inv_srv_failover_timeout(0),
 	force_relay_CN(false),
-	inv_transaction_timeout(0)
+	inv_transaction_timeout(0),
+	aleg_sensor_id(-1), bleg_sensor_id(-1),
+	aleg_sensor_level_id(0), bleg_sensor_level_id(0)
   { }
 
   bool readFromConfiguration(const string& name, const string profile_file_name);

@@ -92,7 +92,7 @@ public:
      */
     static int send(AmSipRequest &req, const string& dialog_id,
 		    const string& next_hop = "", int outbound_interface = -1,
-			unsigned int flags = 0, msg_logger* logger = NULL,
+			unsigned int flags = 0, msg_logger* logger = NULL, msg_sensor *sensor = NULL,
 			sip_timers_override *timers_override = NULL);
 
     /**
@@ -102,7 +102,7 @@ public:
      *            ticket included in the SIP request.
      */
     static int send(const AmSipReply &rep, const string& dialog_id,
-		    msg_logger* logger = NULL);
+			msg_logger* logger = NULL, msg_sensor* sensor = NULL);
 
     /**
      * CANCELs an INVITE transaction.

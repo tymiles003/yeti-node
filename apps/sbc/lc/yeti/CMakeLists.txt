@@ -10,6 +10,7 @@ set (yeti_SRCS
 	SqlCallProfile.cpp
 	CallCtx.cpp
 	CodesTranslator.cpp
+	Sensors.cpp
 	Registration.cpp
 	UsedHeaderField.cpp
 	CodecsGroup.cpp

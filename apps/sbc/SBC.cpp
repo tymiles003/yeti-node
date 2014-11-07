@@ -355,7 +355,7 @@ void SBCFactory::onOoDRequest(const AmSipRequest& req)
   SBCCallProfile& call_profile = logic->getCallProfile(req,ctx);
 
   msg_logger* logger = call_profile.get_logger(req);
-  if (logger && call_profile.log_sip) req.log(logger);
+  if (logger && call_profile.log_sip) req.log(logger, NULL);
 
   ctx.call_profile = &call_profile;
   call_profile.eval_cc_list(ctx,req);
@@ -414,7 +414,7 @@ void SBCFactory::onOoDRequest(const AmSipRequest& req)
 
   if(SBCSimpleRelay::start(relay,req,call_profile)) {
     AmSipDialog::reply_error(req, 500, SIP_REPLY_SERVER_INTERNAL_ERROR, 
-			     "", call_profile.log_sip ? call_profile.get_logger(req): NULL);
+				 "", call_profile.log_sip ? call_profile.get_logger(req): NULL);
     delete relay.first;
     delete relay.second;
   }

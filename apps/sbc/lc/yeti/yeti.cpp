@@ -156,6 +156,11 @@ int Yeti::onLoad() {
 		return -1;
 	}
 
+	if(Sensors::instance()->configure(cfg)){
+		ERROR("Sensors configure failed");
+		return -1;
+	}
+
 	if (router->configure(cfg)){
 		ERROR("SqlRouter confgiure failed");
 		return -1;

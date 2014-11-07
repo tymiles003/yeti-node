@@ -72,6 +72,7 @@ sip_trans::sip_trans()
       retr_len(0),
       last_rseq(0),
 	  logger(NULL),
+	  sensor(NULL),
 	  timer_m(0)
 {
     memset(timers,0,SIP_TRANS_TIMERS*sizeof(void*));
@@ -94,6 +95,7 @@ sip_trans::~sip_trans()
     if(logger) {
 	dec_ref(logger);
     }
+	if(sensor) dec_ref(sensor);
 }
 
 /**
@@ -112,13 +114,21 @@ void sip_trans::retransmit()
 	ERROR("Error from transport layer\n");
     }
 
-    if(logger) {
-	sockaddr_storage src_ip;
-	retr_socket->copy_addr_to(&src_ip);
-	logger->log(retr_buf,retr_len,
-		    &src_ip,&retr_addr,
-		    msg->u.request->method_str,
-		    reply_status);
+	if(logger || sensor) {
+		sockaddr_storage src_ip;
+		retr_socket->copy_addr_to(&src_ip);
+		if(logger) {
+			logger->log(retr_buf,retr_len,
+					&src_ip,&retr_addr,
+					msg->u.request->method_str,
+					reply_status);
+		}
+		if(sensor) {
+			sensor->feed(retr_buf,retr_len,
+					&src_ip,&retr_addr,
+					msg->u.request->method_str,
+					reply_status);
+		}
     }
 
 }

@@ -313,7 +313,7 @@ void AmB2BSession::onB2BEvent(B2BEvent* ev)
   //ERROR("unknown event caught\n");
 }
 
-static bool parseSdp(AmSdp &dst, const AmMimeBody *body)
+/*static bool parseSdp(AmSdp &dst, const AmMimeBody *body)
 {
   if (body) {
     int res = dst.parse((const char *)body->getPayload());
@@ -324,7 +324,7 @@ static bool parseSdp(AmSdp &dst, const AmMimeBody *body)
     return true;
   }
   return false;
-}
+}*/
 
 /*static bool parseSdp(AmSdp &dst, const AmSipRequest &req)
 {
