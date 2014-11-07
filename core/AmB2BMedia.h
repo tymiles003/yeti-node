@@ -300,7 +300,8 @@ class AmB2BMedia: public AmMediaSession
       int media_idx;
       AudioStreamPair(AmB2BSession *_a, AmB2BSession *_b, int _media_idx): a(_a), b(_b), media_idx(_media_idx) { }
       void setLogger(msg_logger *logger) { a.setLogger(logger); b.setLogger(logger); }
-	  void setSensor(msg_sensor *sensor) { a.setSensor(sensor); b.setSensor(sensor); }
+	  void setASensor(msg_sensor *sensor) { a.setSensor(sensor); }
+	  void setBSensor(msg_sensor *sensor) { b.setSensor(sensor); }
       bool requiresProcessing() { return a.getInput() || b.getInput(); }
     };
 
@@ -308,7 +309,8 @@ class AmB2BMedia: public AmMediaSession
       AmRtpStream a, b;
       RelayStreamPair(AmB2BSession *_a, AmB2BSession *_b);
       void setLogger(msg_logger *logger) { a.setLogger(logger); b.setLogger(logger); }
-	  void setSensor(msg_sensor *sensor) { a.setSensor(sensor); b.setSensor(sensor); }
+	  void setASensor(msg_sensor *sensor) { a.setSensor(sensor); }
+	  void setBSensor(msg_sensor *sensor) { b.setSensor(sensor); }
     };
 
     typedef std::vector<AudioStreamPair>::iterator AudioStreamIterator;
@@ -361,7 +363,8 @@ class AmB2BMedia: public AmMediaSession
     void changeSessionUnsafe(bool a_leg, AmB2BSession *new_session);
 
     msg_logger* logger; // log RTP traffic
-	msg_sensor* sensor; // RTP traffic mirroring
+	msg_sensor* asensor; // RTP traffic mirroring
+	msg_sensor* bsensor;
 
     virtual ~AmB2BMedia();
 
@@ -478,7 +481,8 @@ class AmB2BMedia: public AmMediaSession
     void createHoldAnswer(bool a_leg, const AmSdp &offer, AmSdp &answer, bool use_zero_con);
 
     void setRtpLogger(msg_logger* _logger);
-	void setRtpSensor(msg_sensor* _sensor);
+	void setRtpASensor(msg_sensor* _sensor);
+	void setRtpBSensor(msg_sensor* _sensor);
 
     /** enable or disable DTMF receiving on relay streams */
     void setRelayDTMFReceiving(bool enabled);

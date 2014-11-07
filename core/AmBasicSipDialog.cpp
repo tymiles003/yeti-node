@@ -776,6 +776,7 @@ void AmBasicSipDialog::setMsgLogger(msg_logger* logger)
 
 void AmBasicSipDialog::setMsgSensor(msg_sensor* _sensor)
 {
+	DBG("AmBasicSipDialog[%p]: change sensor to %p",this,_sensor);
 	if(sensor) dec_ref(sensor);
 	sensor = _sensor;
 	if(sensor) inc_ref(sensor);

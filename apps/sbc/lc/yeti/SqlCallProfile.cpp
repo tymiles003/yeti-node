@@ -311,8 +311,8 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 	assign_int_safe(bleg_sensor_id,"bleg_sensor_id",-1,-1);
 	assign_int_safe(aleg_sensor_level_id,"aleg_sensor_level_id",0,0);
 	assign_int_safe(bleg_sensor_level_id,"bleg_sensor_level_id",0,0);
-	aleg_sensor_level_id = bleg_sensor_level_id = LOG_FULL_MASK;
-	aleg_sensor_id = bleg_sensor_id = 3;
+	/*aleg_sensor_level_id = bleg_sensor_level_id = LOG_FULL_MASK;
+	aleg_sensor_id = bleg_sensor_id = 3;*/
 
 	DBG("Yeti: loaded SQL profile\n");
 

@@ -516,7 +516,8 @@ AmB2BMedia::AmB2BMedia(AmB2BSession *_a, AmB2BSession *_b):
   a_leg_muted(false), b_leg_muted(false),
   relay_paused(false),
   logger(NULL),
-  sensor(NULL)
+  asensor(NULL),
+  bsensor(NULL)
 {
   DBG("AmB2BMedia(%p,%p) this = %p",_a,_b,this);
 }
@@ -525,7 +526,8 @@ AmB2BMedia::~AmB2BMedia()
 {
   DBG("~AmB2BMedia() this = %p",this);
   if (logger) dec_ref(logger);
-  if (sensor) dec_ref(sensor);
+  if (asensor) dec_ref(asensor);
+  if (bsensor) dec_ref(bsensor);
 }
 
 void AmB2BMedia::addToMediaProcessor() {
@@ -589,7 +591,8 @@ void AmB2BMedia::changeSessionUnsafe(bool a_leg, AmB2BSession *new_session)
 
     // reset logger (needed if a stream changes)
     i->setLogger(logger);
-	i->setSensor(sensor);
+	i->setASensor(asensor);
+	i->setBSensor(bsensor);
 
     // return back for processing if needed
     i->a.resumeStreamProcessing();
@@ -724,7 +727,8 @@ void AmB2BMedia::createStreams(const AmSdp &sdp)
         pair.b.mute(b_leg_muted);
         audio.push_back(pair);
         audio.back().setLogger(logger);
-		audio.back().setSensor(sensor);
+		audio.back().setASensor(asensor);
+		audio.back().setBSensor(bsensor);
       }
       else if (++astreams == audio.end()) create_audio = true; // we went through the last audio stream
     }
@@ -736,7 +740,8 @@ void AmB2BMedia::createStreams(const AmSdp &sdp)
 	relay_streams.push_back(new RelayStreamPair(a, b));
 		RelayStreamPair*& streams_pair = relay_streams.back();
 		streams_pair->setLogger(logger);
-		streams_pair->setSensor(sensor);
+		streams_pair->setASensor(asensor);
+		streams_pair->setBSensor(bsensor);
       }
       else if (++rstreams == relay_streams.end()) create_relay = true; // we went through the last relay stream
     }
@@ -1193,20 +1198,36 @@ void AmB2BMedia::setRtpLogger(msg_logger* _logger)
   for (RelayStreamIterator j = relay_streams.begin(); j != relay_streams.end(); ++j) (*j)->setLogger(logger);
 }
 
-void AmB2BMedia::setRtpSensor(msg_sensor* _sensor)
+void AmB2BMedia::setRtpASensor(msg_sensor* _sensor)
 {
-  INFO("AmB2BMedia: change sensor to %p",_sensor);
+  DBG("AmB2BMedia: change B sensors to %p",_sensor);
 
   AmLock lock(mutex);
-  if(sensor) dec_ref(sensor);
-  sensor = _sensor;
-  if(sensor) inc_ref(sensor);
+  if(asensor) dec_ref(asensor);
+  asensor = _sensor;
+  if(asensor) inc_ref(asensor);
 
   // walk through all the streams and apply sensor for them
   for (AudioStreamIterator i = audio.begin(); i != audio.end(); ++i)
-	  i->setSensor(sensor);
+	  i->setASensor(asensor);
   for (RelayStreamIterator j = relay_streams.begin(); j != relay_streams.end(); ++j)
-	  (*j)->setSensor(sensor);
+	  (*j)->setASensor(asensor);
+}
+
+void AmB2BMedia::setRtpBSensor(msg_sensor* _sensor)
+{
+  DBG("AmB2BMedia: change B sensors to %p",_sensor);
+
+  AmLock lock(mutex);
+  if(bsensor) dec_ref(bsensor);
+  bsensor = _sensor;
+  if(bsensor) inc_ref(bsensor);
+
+  // walk through all the streams and apply sensor for them
+  for (AudioStreamIterator i = audio.begin(); i != audio.end(); ++i)
+	  i->setBSensor(bsensor);
+  for (RelayStreamIterator j = relay_streams.begin(); j != relay_streams.end(); ++j)
+	  (*j)->setBSensor(bsensor);
 }
 
 void AmB2BMedia::setRelayDTMFReceiving(bool enabled) {

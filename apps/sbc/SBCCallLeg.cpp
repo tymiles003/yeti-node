@@ -1829,10 +1829,15 @@ void SBCCallLeg::setMediaSession(AmB2BMedia *new_session)
 		if (call_profile.log_rtp) new_session->setRtpLogger(logger);
 		else new_session->setRtpLogger(NULL);
 
-		if((a_leg && (call_profile.aleg_sensor_level_id&LOG_RTP_MASK)) ||
-			(!a_leg && (call_profile.bleg_sensor_level_id&LOG_RTP_MASK)))
-		new_session->setRtpSensor(sensor);
-		else new_session->setRtpSensor(NULL);
+		if(a_leg) {
+			if(call_profile.aleg_sensor_level_id&LOG_RTP_MASK)
+			new_session->setRtpASensor(sensor);
+			else new_session->setRtpASensor(NULL);
+		} else {
+			if(call_profile.bleg_sensor_level_id&LOG_RTP_MASK)
+			new_session->setRtpBSensor(sensor);
+			else new_session->setRtpBSensor(NULL);
+		}
   }
   CallLeg::setMediaSession(new_session);
 }
@@ -1869,7 +1874,7 @@ void SBCCallLeg::setLogger(msg_logger *_logger)
 }
 
 void SBCCallLeg::setSensor(msg_sensor *_sensor){
-	INFO("SBCCallLeg: change sensor to %p",_sensor);
+	INFO("SBCCallLeg[%p]: %cleg. change sensor to %p",this,a_leg?'A':'B',_sensor);
 	if (sensor) dec_ref(sensor);
 	sensor = _sensor;
 	if (sensor) inc_ref(sensor);
@@ -1881,10 +1886,15 @@ void SBCCallLeg::setSensor(msg_sensor *_sensor){
 
 	AmB2BMedia *m = getMediaSession();
 	if(m) {
-		if((a_leg && (call_profile.aleg_sensor_level_id&LOG_RTP_MASK)) ||
-			(!a_leg && (call_profile.bleg_sensor_level_id&LOG_RTP_MASK)))
-		m->setRtpSensor(sensor);
-		else m->setRtpSensor(NULL);
+		if(a_leg) {
+			if(call_profile.aleg_sensor_level_id&LOG_RTP_MASK)
+			m->setRtpASensor(sensor);
+			else m->setRtpASensor(NULL);
+		} else {
+			if(call_profile.bleg_sensor_level_id&LOG_RTP_MASK)
+			m->setRtpBSensor(sensor);
+			else m->setRtpBSensor(NULL);
+		}
 	} else DBG("SBCCallLeg: no media session");
 }
 
