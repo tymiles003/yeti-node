@@ -317,6 +317,7 @@ while(true){
 			try {
 				pqxx::work t(*masterconn);
 				t.commit();
+				db_err = false;
 			} catch (const pqxx::pqxx_exception &e) {
 				delete masterconn;
 				if(!_connectdb(&masterconn,config.masterdb.conn_str(),true)){
@@ -353,6 +354,7 @@ while(true){
 			try {
 				pqxx::work t(*slaveconn);
 				t.commit();
+				db_err = false;
 			} catch (const pqxx::pqxx_exception &e) {
 				delete slaveconn;
 				if(!_connectdb(&slaveconn,config.slavedb.conn_str(),false)){
