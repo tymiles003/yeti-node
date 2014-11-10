@@ -116,10 +116,14 @@ msg_sensor *_Sensors::getSensor(int id){
 void _Sensors::GetConfig(AmArg& ret){
 	//ret["db"] = dbc.info_str()+"#"+db_schema;
 	lock.lock();
-	AmArg &ss = ret["sensors"];
-	ss.assertArray();
-	for(sensors_container::const_iterator i = _sensors.begin();i!=_sensors.end();++i){
-		i->second.getConfig(ss[int2str(i->first)]);
+	try {
+		AmArg &ss = ret["sensors"];
+		ss.assertStruct();
+		for(sensors_container::const_iterator i = _sensors.begin();i!=_sensors.end();++i){
+			i->second.getConfig(ss[int2str(i->first)]);
+		}
+	} catch(...){
+		ERROR("Sensors::GetConfig() error");
 	}
 	lock.unlock();
 }
