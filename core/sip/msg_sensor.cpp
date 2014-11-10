@@ -49,6 +49,30 @@
 
 /* most of helper function is from core/sip/raw_sock.cpp */
 
+
+static uint16_t ipv4_chksum(uint32_t sum)
+{
+  while (sum >> 16) { sum = (sum >> 16) + (sum & 0xFFFF); }
+
+  uint16_t res = sum;
+  res = ~res;
+  if (res == 0) res = ~res;
+
+  return res;
+}
+
+static uint32_t sum(const void *_data, unsigned _len)
+{
+  const uint16_t *data = (const uint16_t *)_data;
+  unsigned len = _len >> 1;
+
+  uint32_t r = 0;
+  for (unsigned i = 0; i < len; i++) r += data[i];
+  if (_len & 1) r += (unsigned)((const char*)_data)[_len - 1];
+
+  return r;
+}
+
 /** udp checksum helper: compute the pseudo-header 16-bit "sum".
  * Computes the partial checksum (no complement) of the pseudo-header.
  * It is meant to be used by udpv4_chksum().
@@ -177,6 +201,7 @@ inline static int mk_ip_hdr(struct ip* iph, struct in_addr* from,
 	iph->ip_src = *from;
 	iph->ip_dst = *to;
 	iph->ip_sum = 0;
+	iph->ip_sum = ipv4_chksum(sum(iph, sizeof(struct ip)));
 
 	return 0;
 }
@@ -193,11 +218,12 @@ static inline void mk_ipip_hdr(struct ip &iph, sockaddr_storage *src, sockaddr_s
 	iph.ip_p = IPPROTO_IPIP;
 	iph.ip_src = SAv4(src)->sin_addr;
 	iph.ip_dst = SAv4(dst)->sin_addr;
-	iph.ip_sum = 0;
+	iph.ip_sum = 0; //will be filled by upd_ipip_hdr
 }
 
 static inline void upd_ipip_hdr(struct ip &iph, unsigned int len){
 	iph.ip_len = RAW_IPHDR_IP_LEN(len);
+	iph.ip_sum = ipv4_chksum(sum(&iph, sizeof(struct ip)));
 }
 
 
@@ -212,8 +238,8 @@ ipip_msg_sensor::~ipip_msg_sensor()
 
 int ipip_msg_sensor::init(const char *src_addr, const char *dst_addr,const char *iface)
 {
-	int ret;
-	struct ifreq ifr;
+	/*int ret;
+	struct ifreq ifr;*/
 
 	//DBG("ipip_msg_sensor::init[%p](%s,%s)",this,src_addr,dst_addr);
 
