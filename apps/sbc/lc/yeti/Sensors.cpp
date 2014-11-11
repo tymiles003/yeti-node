@@ -118,9 +118,10 @@ void _Sensors::GetConfig(AmArg& ret){
 	lock.lock();
 	try {
 		AmArg &ss = ret["sensors"];
-		ss.assertStruct();
-		for(sensors_container::const_iterator i = _sensors.begin();i!=_sensors.end();++i){
-			i->second.getConfig(ss[int2str(i->first)]);
+		if(!_sensors.empty()){
+			ss.assertStruct();
+			for(sensors_container::const_iterator i = _sensors.begin();i!=_sensors.end();++i)
+				i->second.getConfig(ss[int2str(i->first)]);
 		}
 	} catch(...){
 		ERROR("Sensors::GetConfig() error");
