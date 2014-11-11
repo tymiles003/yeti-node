@@ -1135,7 +1135,7 @@ void AmRtpStream::recvRtcpPacket()
     if(!recved_bytes) return;
 
   //static const cstring empty;
-  log_sent_rtcp_packet((const char *)buffer, recved_bytes,recv_addr);
+  log_rcvd_rtcp_packet((const char *)buffer, recved_bytes,recv_addr);
   /*if (logger)
 	logger->log((const char *)buffer, recved_bytes, &recv_addr, &l_rtcp_saddr, empty);*/
 
