@@ -13,6 +13,8 @@
 #define __USE_BSD  /* on linux use bsd version of iphdr (more portable) */
 #endif /* __USE_BSD */
 #include <netinet/ip.h>
+#include <netpacket/packet.h>
+#include <netinet/ether.h>
 
 #include <set>
 #include <string>
@@ -31,7 +33,7 @@ public:
 		  sockaddr_storage* src_ip,
 		  sockaddr_storage* dst_ip,
 		  cstring method, int reply_code=0)=0;
-  virtual void getInfo(AmArg &ret)=0;
+  virtual void getInfo(AmArg &ret);
 };
 
 class ipip_msg_sensor
@@ -48,6 +50,30 @@ public:
 	~ipip_msg_sensor();
 
 	int init(const char *src_addr, const char *dst_addr, const char *iface);
+	int feed(const char* buf, int len,
+		sockaddr_storage* from,
+		sockaddr_storage* to,
+		cstring method, int reply_code=0);
+
+	void getInfo(AmArg &ret);
+};
+
+class ethernet_msg_sensor
+  : public msg_sensor
+{
+	string iface_name;
+	int iface_index;
+	string sensor_dst_mac;
+	string sensor_src_mac;
+	struct sockaddr_ll addr;
+	struct ether_header eth_hdr;
+
+	int s; //raw socket handler
+
+public:
+	~ethernet_msg_sensor();
+
+	int init(const char *ifname, const char *dst_mac);
 	int feed(const char* buf, int len,
 		sockaddr_storage* from,
 		sockaddr_storage* to,

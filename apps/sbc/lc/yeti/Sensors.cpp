@@ -13,6 +13,13 @@ void sensor::getConfig(AmArg& ret) const {
 			if(s) s->getInfo(ret);
 		}
 	} break;
+	case SENS_TYPE_ETHERNET: {
+		ret["mode"] = "Ethernet encapsulation";
+		if(_sensor){
+			ethernet_msg_sensor *s = dynamic_cast<ethernet_msg_sensor *>(_sensor);
+			if(s) s->getInfo(ret);
+		}
+	} break;
 	default:
 		ret["mode"] = "uknown";
 	}
@@ -82,6 +89,21 @@ int _Sensors::load_sensors_config(){
 				}
 				sensors.insert(make_pair(id,sensor(sensor::SENS_TYPE_IPIP,ipip_sensor)));
 			} break;
+
+			case sensor::SENS_TYPE_ETHERNET: {
+				DBG("load Ethernet sensor params");
+				string dst_mac = row["o_target_mac"].c_str();
+				string iface = row["o_source_interface"].c_str();
+
+				ethernet_msg_sensor *ethernet_sensor = new ethernet_msg_sensor();
+				if(ethernet_sensor->init(iface.c_str(),dst_mac.c_str())){
+					ERROR("can't init ETHERNET sensor %d",id);
+					delete ethernet_sensor;
+					continue;
+				}
+				sensors.insert(make_pair(id,sensor(sensor::SENS_TYPE_ETHERNET,ethernet_sensor)));
+			} break;
+
 			default:
 				ERROR("uknown sensor mode: %d. skip this sensor",mode);
 				continue;

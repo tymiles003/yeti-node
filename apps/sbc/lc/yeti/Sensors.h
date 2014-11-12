@@ -17,7 +17,7 @@ class sensor {
 public:
 	typedef enum {
 		SENS_TYPE_IPIP = 1,
-		//SENS_TYPE_ETHERNET = 2
+		SENS_TYPE_ETHERNET = 2,
 		SENS_TYPE_MAX
 	} sensor_mode;
 

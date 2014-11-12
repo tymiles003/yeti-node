@@ -12,8 +12,12 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
+#include <sys/ioctl.h>
+#include <linux/sockios.h>
 #include <net/if.h>
 #include <arpa/inet.h>
+#include <netpacket/packet.h>
+#include <netinet/ether.h>
 #ifndef __USE_BSD
 #define __USE_BSD  /* on linux use bsd version of iphdr (more portable) */
 #endif /* __USE_BSD */
@@ -227,6 +231,10 @@ static inline void upd_ipip_hdr(struct ip &iph, unsigned int len){
 }
 
 
+void msg_sensor::getInfo(AmArg &ret){
+	ret["references"] = (long int)get_ref(this);
+}
+
 /*ipip_msg_sensor::ipip_msg_sensor()
 {}*/
 
@@ -238,9 +246,8 @@ ipip_msg_sensor::~ipip_msg_sensor()
 
 int ipip_msg_sensor::init(const char *src_addr, const char *dst_addr,const char *iface)
 {
-	/*int ret;
-	struct ifreq ifr;*/
-
+	//struct ifreq ifr;
+	//int ret,raw_input_buf_len = 0;
 	//DBG("ipip_msg_sensor::init[%p](%s,%s)",this,src_addr,dst_addr);
 
 	//process parameters
@@ -338,5 +345,162 @@ void ipip_msg_sensor::getInfo(AmArg &ret){
 	ret["sensor_dst_ip"] = addr;
 
 	ret["socket"] = s;
-	ret["references"] = (long int)get_ref(this);
+
+	msg_sensor::getInfo(ret);
+}
+
+ethernet_msg_sensor::~ethernet_msg_sensor()
+{
+	INFO("destroyed ethernet_msg_sensor[%p] raw socket %d",this,s);
+	if(s!=-1) close(s);
+}
+
+int ethernet_msg_sensor::init(const char *ifname, const char *dst_mac)
+{
+	struct ifreq ifr;
+	struct ether_addr eaddr;
+	int ret,raw_input_buf_len = 0;
+
+	if(NULL==ifname){
+		ERROR("no interface name\n");
+		return 1;
+	}
+	iface_name = ifname;
+	if(NULL==dst_mac){
+		ERROR("no destination mac address\n");
+		return 1;
+	}
+	sensor_dst_mac = dst_mac;
+
+	DBG("ethernet_msg_sensor::init[%p](%s,%s)\n",this,ifname,dst_mac);
+
+	iface_name = ifname;
+	if(iface_name.empty()){
+		ERROR("empty interface name\n");
+		return 1;
+	}
+	if(iface_name.size()>sizeof(ifr.ifr_name)){
+		ERROR("interface name is too long\n");
+		return 1;
+	}
+
+	//open raw socket
+	s = socket(AF_PACKET, SOCK_RAW, ETH_P_IP);
+	if(-1==s){
+		ERROR("can't create raw socket for ipip sensor. errno: %d\n",errno);
+		goto error;
+	}
+	ret = setsockopt(s, SOL_SOCKET, SO_RCVBUF, &raw_input_buf_len, sizeof(raw_input_buf_len));
+	if(-1==ret){
+		WARN("can't set empty receive buffer for raw socket %d with error: %d\n",s,errno);
+	}
+
+	memset(&ifr, 0, sizeof(struct ifreq));
+	strncpy(ifr.ifr_name,iface_name.c_str(),iface_name.size());
+	ret = ioctl(s, SIOCGIFINDEX, &ifr);
+	if(-1==ret){
+		ERROR("can't resolve interface name '%s' to index. error: %d\n",
+			  iface_name.c_str(),errno);
+		goto error;
+	}
+	iface_index = ifr.ifr_ifindex;
+	DBG("index for interface '%s' is %d\n",iface_name.c_str(),iface_index);
+
+	memset(&ifr, 0, sizeof(struct ifreq));
+	strncpy(ifr.ifr_name,iface_name.c_str(),iface_name.size());
+	ret = ioctl(s, SIOCGIFHWADDR, &ifr);
+	if(-1==ret){
+		ERROR("can't get hw address of interface '%s'. error: %d\n",
+			  iface_name.c_str(),errno);
+		goto error;
+	}
+
+	sensor_src_mac = ether_ntoa((struct ether_addr *)ifr.ifr_hwaddr.sa_data);
+	DBG("hw address for '%s' is '%s'\n",
+		iface_name.c_str(),sensor_src_mac.c_str());
+
+	if(NULL==ether_aton_r(sensor_dst_mac.c_str(),&eaddr)){
+		ERROR("invalid sensor destination mac address '%s'\n",sensor_dst_mac.c_str());
+		goto error;
+	}
+
+	//fill sll address structure
+	memset(&addr,0,sizeof(struct sockaddr_ll));
+	addr.sll_family=AF_PACKET;
+	addr.sll_protocol=htons(ETH_P_IP);
+	addr.sll_ifindex = iface_index;
+	addr.sll_halen=ETHER_ADDR_LEN;
+	memcpy(addr.sll_addr,&eaddr,ETHER_ADDR_LEN);
+
+	//fill ethernet header structure
+	memcpy(eth_hdr.ether_dhost,&eaddr,ETHER_ADDR_LEN);
+	memcpy(eth_hdr.ether_shost,ifr.ifr_hwaddr.sa_data,ETHER_ADDR_LEN);
+	eth_hdr.ether_type = htons(ETH_P_IP);
+
+	return 0;
+error:
+	if(s!=-1) close(s);
+	return 1;
+}
+
+int ethernet_msg_sensor::feed(const char* buf, int len,
+			 sockaddr_storage* from,
+			 sockaddr_storage* to,
+			 cstring method, int reply_code)
+{
+	//int ret;
+	struct msghdr snd_msg;
+	struct iovec iov[3];
+	struct ether_ip_udp_hdr {
+		//struct ether_header eth;
+		struct ip ip;
+		struct udphdr udp;
+	} __attribute__ ((__packed__)) hdr;
+
+	/*INFO("ethernet_msg_sensor::feed(%p,%d,from,to,method,reply_code)",
+		buf,len);*/
+
+	//memcpy(&hdr.eth,&eth_hdr,sizeof(struct ether_header));
+
+	//init msg
+	memset(&snd_msg, 0, sizeof(snd_msg));
+	snd_msg.msg_name=&addr;
+	snd_msg.msg_namelen=sizeof(struct sockaddr_ll);
+	snd_msg.msg_iov=&iov[0];
+	snd_msg.msg_iovlen=3;
+	snd_msg.msg_control=0;
+	snd_msg.msg_controllen=0;
+	snd_msg.msg_flags=0;
+
+	//hdr
+	mk_udp_hdr(&hdr.udp, from, to, (unsigned char*)buf, len, 1);
+	mk_ip_hdr(&hdr.ip, &SAv4(from)->sin_addr, &SAv4(to)->sin_addr,
+		  len + sizeof(hdr.udp), IPPROTO_UDP);
+	//upd_ipip_hdr(hdr.ipip,hdr.ip.ip_len + sizeof(struct ip));
+
+	//ethernet header
+	iov[0].iov_base=(char*)&eth_hdr;
+	iov[0].iov_len=sizeof(eth_hdr);
+
+	//ip+udp headers
+	iov[1].iov_base=(char*)&hdr;
+	iov[1].iov_len=sizeof(hdr);
+
+	//payload
+	iov[2].iov_base=(void*)buf;
+	iov[2].iov_len=len;
+
+	/*ret = */sendmsg(s, &snd_msg, 0);
+	//DBG("ethernet_msg_sensor::feed() sendmsg = %d, error: %d",ret,errno);
+	return 0;
+}
+
+void ethernet_msg_sensor::getInfo(AmArg &ret){
+	ret["interface_name"] = iface_name;
+	ret["interface_index"] = iface_index;
+	ret["sensor_dst_mac"] = sensor_dst_mac;
+	ret["sensor_src_mac"] = sensor_src_mac;
+	ret["socket"] = s;
+
+	msg_sensor::getInfo(ret);
 }
