@@ -108,7 +108,8 @@ void Yeti::init_xmlrpc_cmds(){
 
 		reg_method(show,"interfaces","show network interfaces configuration",showInterfaces,"");
 
-		reg_leaf_method(show,show_registrations,"registrations","uac registrations",GetRegistrations,"show configured uac registrations");
+		reg_leaf_method_arg(show,show_registrations,"registrations","uac registrations",GetRegistrations,"show configured uac registrations",
+							"<id>","get registration by id");
 			reg_method(show_registrations,"count","active registrations count",GetRegistrationsCount,"");
 
 		reg_leaf(show,show_system,"system","system cmds");
@@ -602,6 +603,11 @@ void Yeti::RenewRegistration(const AmArg& args, AmArg& ret){
 void Yeti::GetRegistrations(const AmArg& args, AmArg& ret){
 	AmArg regs;
 	handler_log();
+
+	if(args.size()){
+		GetRegistration(args,ret);
+		return;
+	}
 	Registration::instance()->list_registrations(regs);
 
 	ret.push(200);
