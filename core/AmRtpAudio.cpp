@@ -210,7 +210,11 @@ int AmRtpAudio::receive(unsigned long long system_ts)
 
 	int decoded_size = decode(size);
 	if(decoded_size <= 0){
-	  ERROR("decode() returned %i\n",decoded_size);
+	  ERROR("AmAudio:decode(%d) returned %i. "
+			"remote_addr: %s:%i, local_ssrc: 0x%x, local_tag: %s\n",
+			size,decoded_size,
+			get_addr_str(&r_saddr).c_str(),am_get_port(&r_saddr),
+			l_ssrc,session ? session->getLocalTag().c_str() : "no session");
       return -1;
     }
 
