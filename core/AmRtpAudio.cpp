@@ -209,7 +209,7 @@ int AmRtpAudio::receive(unsigned long long system_ts)
     }
 
 	int decoded_size = decode(size);
-	if(decoded_size <= 0){
+	if(decoded_size < 0){
 	  ERROR("AmAudio:decode(%d) returned %i. "
 			"remote_addr: %s:%i, local_ssrc: 0x%x, local_tag: %s\n",
 			size,decoded_size,
