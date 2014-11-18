@@ -21,6 +21,7 @@ PgConnectionPool::PgConnectionPool():
 	total_connections(0),
 	failed_connections(0),
 	have_active_connection(false),
+	reconnect_failed_alarm(false),
 	exceptions_count(0),
 	try_connect(true),
 	stopped(false),
