@@ -45,6 +45,12 @@ const static_field cdr_static_fields[] = {
 	{ "legA_tx_bytes", "integer" },
 	{ "legB_rx_bytes", "integer" },
 	{ "legB_tx_bytes", "integer" },
+	{ "legA_rx_decode_errors", "integer" },
+	{ "legA_rx_no_buffer_errors", "integer" },
+	{ "legA_rx_rtp_parse_errors", "integer" },
+	{ "legB_rx_decode_errors", "integer" },
+	{ "legB_rx_no_buffer_errors", "integer" },
+	{ "legB_rx_rtp_parse_errors", "integer" },
 	{ "global_tag", "varchar" },
 };
 
@@ -493,7 +499,8 @@ void CdrThread::prepare_queries(pqxx::connection *c){
 		pqxx::prepare::declaration d = c->prepare(it->first,it->second.first);
 		//static fields
 		for(int i = 0;i<WRITECDR_STATIC_FIELDS_COUNT;i++){
-			d("varchar",pqxx::prepare::treat_direct);
+			//d("varchar",pqxx::prepare::treat_direct);
+			d(cdr_static_fields[i].type,pqxx::prepare::treat_direct);
 		}
 		//dynamic fields
 		dit = config.dyn_fields.begin();
@@ -648,6 +655,14 @@ int CdrThread::writecdr(cdr_writer_connection* conn, Cdr* cdr){
 		invoc_field(cdr->legA_bytes_sent);
 		invoc_field(cdr->legB_bytes_recvd);
 		invoc_field(cdr->legB_bytes_sent);
+
+		invoc_field(cdr->legA_stream_errors.decode_errors);
+		invoc_field(cdr->legA_stream_errors.out_of_buffer_errors);
+		invoc_field(cdr->legA_stream_errors.rtp_parse_errors);
+		invoc_field(cdr->legB_stream_errors.decode_errors);
+		invoc_field(cdr->legB_stream_errors.out_of_buffer_errors);
+		invoc_field(cdr->legB_stream_errors.rtp_parse_errors);
+
 		invoc_field(cdr->global_tag);
 
 		/* invocate dynamic fields  */
@@ -798,6 +813,12 @@ int CdrThread::writecdrtofile(Cdr* cdr){
 						cdr->legB_payloads.outgoing_relayed,",")) <<
 	wv(cdr->legA_bytes_recvd) << wv(cdr->legA_bytes_sent) <<
 	wv(cdr->legB_bytes_recvd) << wv(cdr->legB_bytes_sent) <<
+	wv(cdr->legA_stream_errors.decode_errors) <<
+	wv(cdr->legA_stream_errors.out_of_buffer_errors) <<
+	wv(cdr->legA_stream_errors.rtp_parse_errors) <<
+	wv(cdr->legB_stream_errors.decode_errors) <<
+	wv(cdr->legB_stream_errors.out_of_buffer_errors) <<
+	wv(cdr->legB_stream_errors.rtp_parse_errors) <<
 	wv(cdr->global_tag);
 
 		//dynamic fields

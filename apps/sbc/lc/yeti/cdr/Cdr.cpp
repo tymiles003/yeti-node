@@ -37,11 +37,18 @@ void Cdr::replace(string& s, const string& from, const string& to){
 	}
 }
 
+/*static AmRtpStream::ErrorsStats& operator +=(AmRtpStream::ErrorsStats lhs,const AmRtpStream::ErrorsStats &rhs){
+	lhs.decode_errors+=rhs.decode_errors;
+	lhs.out_of_buffer_errors+=rhs.out_of_buffer_errors;
+	lhs.rtp_parse_errors+=rhs.rtp_parse_errors;
+	return lhs;
+}*/
+
 void Cdr::init(){
     //initital values
-    bzero(&start_time,sizeof(struct timeval));
-    bzero(&connect_time,sizeof(struct timeval));
-    bzero(&end_time,sizeof(struct timeval));
+	timerclear(&start_time);
+	timerclear(&connect_time);
+	timerclear(&end_time);
 
     gettimeofday(&cdr_born_time, NULL);
 
@@ -109,16 +116,20 @@ void Cdr::update(const AmSipRequest &req){
 }
 
 void Cdr::update(SBCCallLeg *call,AmRtpStream *stream){
+	//AmRtpStream::ErrorsStats err_stats;
 	DBG("Cdr::%s(SBCCallLeg [%p], AmRtpStream [%p])",FUNC_NAME,
 		call,stream);
 	if(writed) return;
 	lock();
+	//stream->getErrorsStats(err_stats);
 	if(call->isALeg()){
 		stream->getPayloadsHistory(legA_payloads);
+		stream->getErrorsStats(legA_stream_errors);
 		legA_bytes_recvd = stream->getRcvdBytes();
 		legA_bytes_sent = stream->getSentBytes();
 	} else {
 		stream->getPayloadsHistory(legB_payloads);
+		stream->getErrorsStats(legB_stream_errors);
 		legB_bytes_recvd = stream->getRcvdBytes();
 		legB_bytes_sent = stream->getSentBytes();
 	}

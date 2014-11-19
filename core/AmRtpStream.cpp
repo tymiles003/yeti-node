@@ -439,6 +439,9 @@ AmRtpStream::AmRtpStream(AmSession* _s, int _if)
 	dead_rtp_time(AmConfig::DeadRtpTime),
     incoming_bytes(0),
 	outgoing_bytes(0),
+	decode_errors(0),
+	rtp_parse_errors(0),
+	out_of_buffer_errors(0),
 	ts_adjust(0),
 	last_sent_ts(0),
 	last_sent_ts_diff(0)
@@ -1076,6 +1079,7 @@ void AmRtpStream::recvPacket(int fd)
   AmRtpPacket* p = mem.newPacket();
   if (!p) p = reuseBufferedPacket();
   if (!p) {
+	out_of_buffer_errors++;
     DBG("out of buffers for RTP packets, dropping (stream [%p])\n",
 	this);
     // drop received data
@@ -1097,6 +1101,7 @@ void AmRtpStream::recvPacket(int fd)
       parse_res = p->parse();
  
     if (parse_res == -1) {
+	  rtp_parse_errors++;
 	  ERROR("error while parsing RTP packet. "
 			"(remote_addr: %s:%i, "
 			"local_ssrc: 0x%x, local_tag: %s)\n",
@@ -1464,6 +1469,12 @@ void AmRtpStream::getPayloadsHistory(PayloadsHistory &ph){
 	payloads_id2str(incoming_relayed_payloads,ph.incoming_relayed);
 	payloads_id2str(outgoing_payloads,ph.outgoing);
 	payloads_id2str(outgoing_relayed_payloads,ph.outgoing_relayed);
+}
+
+void AmRtpStream::getErrorsStats(ErrorsStats &es){
+	es.decode_errors = decode_errors;
+	es.rtp_parse_errors = rtp_parse_errors;
+	es.out_of_buffer_errors = out_of_buffer_errors;
 }
 
 PacketMem::PacketMem()

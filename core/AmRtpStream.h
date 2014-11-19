@@ -165,6 +165,9 @@ protected:
   std::vector<int> outgoing_relayed_payloads;
   unsigned long incoming_bytes;
   unsigned long outgoing_bytes;
+  unsigned long decode_errors;
+  unsigned long rtp_parse_errors;
+  unsigned long out_of_buffer_errors;
 
   unsigned int dead_rtp_time;
 
@@ -467,6 +470,14 @@ public:
 						  outgoing,outgoing_relayed;
   };
   void getPayloadsHistory(PayloadsHistory &ph);
+
+  struct ErrorsStats {
+	  unsigned long decode_errors;
+	  unsigned long rtp_parse_errors;
+	  unsigned long out_of_buffer_errors;
+	  ErrorsStats(): decode_errors(0), rtp_parse_errors(0), out_of_buffer_errors(0) {}
+  };
+  void getErrorsStats(ErrorsStats &es);
 
   unsigned long getRcvdBytes() { return incoming_bytes; }
   unsigned long getSentBytes() { return outgoing_bytes; }
