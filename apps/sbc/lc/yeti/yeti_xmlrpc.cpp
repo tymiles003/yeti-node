@@ -80,6 +80,9 @@ void Yeti::init_xmlrpc_cmds(){
 						   "<handler_id>","find resource by handler id");
 			reg_method_arg(show_resource_state_used,"owner_tag","find resource by onwer local_tag",showResourceByLocalTag,"",
 						   "<onwer_local_tag>","find resource by onwer local_tag");
+			reg_method_arg(show_resource_state_used,"resource_id","find handlers which manage resources with ceration id",showResourcesById,"",
+						   "<resource_id>","find handlers which manage resources with ceration id");
+
 
 			reg_method(show_resource,"types","show resources types",showResourceTypes,"");
 
@@ -1349,6 +1352,23 @@ void Yeti::showResourceByLocalTag(const AmArg& args, AmArg& ret){
 		return;
 	}
 	rctl.showResourceByLocalTag(args.get(0).asCStr(),ret);
+}
+
+void Yeti::showResourcesById(const AmArg& args, AmArg& ret){
+	handler_log();
+
+	int id;
+	if(!args.size()){
+		ret.push(500);
+		ret.push(AmArg("specify resource id"));
+		return;
+	}
+	if(!str2int(args.get(0).asCStr(),id)){
+		ret.push(500);
+		ret.push(AmArg("invalid resource id"));
+		return;
+	}
+	rctl.showResourcesById(id,ret);
 }
 
 void Yeti::showResourceTypes(const AmArg& args, AmArg& ret){

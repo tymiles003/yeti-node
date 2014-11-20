@@ -157,6 +157,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   xmlrpc_handler showResourceTypes;
   xmlrpc_handler showResourceByHandler;
   xmlrpc_handler showResourceByLocalTag;
+  xmlrpc_handler showResourcesById;
   xmlrpc_handler requestResourcesInvalidate;
 
   xmlrpc_handler requestResolverClear;

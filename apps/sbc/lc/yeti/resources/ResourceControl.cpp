@@ -416,3 +416,34 @@ void ResourceControl::showResourceByLocalTag(const string &tag, AmArg &ret){
 
 	handlers_lock.unlock();
 }
+
+void ResourceControl::showResourcesById(int id, AmArg &ret){
+	AmArg v;
+
+	handlers_lock.lock();
+
+	v.assertArray();
+
+	HandlersIt i = handlers.begin();
+	for(;i!=handlers.end();++i){
+		const handlers_entry &e = i->second;
+		ResourceList::const_iterator j = e.resources.begin();
+		for(;j!=e.resources.end();j++){
+			const Resource &r = *j;
+			if(r.id==id){
+				handler_info(i,v);
+				break; //loop over resources
+			}
+		}
+	}
+
+	if(v.size()){
+		ret.push(200);
+		ret.push(v);
+	} else {
+		ret.push(404);
+		ret.push(AmArg("no handlers which manage resources with such id"));
+	}
+
+	handlers_lock.unlock();
+}

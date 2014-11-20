@@ -127,6 +127,7 @@ public:
 	void showResources(AmArg &ret);
 	void showResourceByHandler(const string &h, AmArg &ret);
 	void showResourceByLocalTag(const string &tag, AmArg &ret);
+	void showResourcesById(int id, AmArg &ret);
 };
 
 #endif // RESOURCECONTROL_H
