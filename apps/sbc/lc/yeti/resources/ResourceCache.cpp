@@ -103,6 +103,15 @@ void ResourceCache::run(){
 	while(!tostop){
 		data_ready.wait_for();
 
+		write_ctx = write_pool.getConnection();
+		while(write_ctx==NULL){
+			DBG("get connection can't get connection from write redis pool. retry every 5s");
+			sleep(5);
+			if(tostop)
+				return;
+			write_ctx = write_pool.getConnection();
+		}
+
 		queues_mutex.lock();
 			put.swap(put_resources_queue);
 			get.swap(get_resources_queue);
@@ -116,15 +125,6 @@ void ResourceCache::run(){
 		if(!filtered_put.size()&&!get.size()){
 			data_ready.set(false);
 			continue;
-		}
-
-		write_ctx = write_pool.getConnection();
-		while(write_ctx==NULL){
-			DBG("get connection can't get connection from write redis pool. retry every 5s");
-			sleep(5);
-			if(tostop)
-				return;
-			write_ctx = write_pool.getConnection();
 		}
 
 		try {
@@ -284,16 +284,25 @@ bool ResourceCache::init_resources(bool initial){
 	list <int> desired_response;
 	int node_id = Yeti::instance()->config.node_id;
 
+	queues_mutex.lock();
+
+	put_resources_queue.clear();
+	get_resources_queue.clear();
+
 	try {
 		write_ctx = write_pool.getConnection();
 		while(write_ctx==NULL){
 			if(!initial) {
 				ERROR("get connection can't get connection from write redis pool");
+				queues_mutex.unlock();
 				return false;
 			}
 			ERROR("get connection can't get connection from write redis pool. retry every 1s");
 			sleep(1);
-			if(tostop) return false;
+			if(tostop) {
+				queues_mutex.unlock();
+				return false;
+			}
 			write_ctx = write_pool.getConnection();
 		}
 
@@ -309,6 +318,7 @@ bool ResourceCache::init_resources(bool initial){
 			if(reply->type==REDIS_REPLY_NIL){
 				INFO("empty database. skip resources initialization");
 				write_pool.putConnection(write_ctx,RedisConnPool::CONN_STATE_OK);
+				queues_mutex.unlock();
 				return true;
 			}
 		}
@@ -343,6 +353,7 @@ bool ResourceCache::init_resources(bool initial){
 		INFO("resources initialized");
 
 		write_pool.putConnection(write_ctx,RedisConnPool::CONN_STATE_OK);
+		queues_mutex.unlock();
 		return true;
 	} catch(GetReplyException &e){
 		ERROR("GetReplyException: %s, status: %d",e.what.c_str(),e.status);
@@ -355,6 +366,7 @@ bool ResourceCache::init_resources(bool initial){
 	}
 
 	write_pool.putConnection(write_ctx,RedisConnPool::CONN_STATE_ERR);
+	queues_mutex.unlock();
 	return false;
 }
 
