@@ -103,15 +103,6 @@ void ResourceCache::run(){
 	while(!tostop){
 		data_ready.wait_for();
 
-		write_ctx = write_pool.getConnection();
-		while(write_ctx==NULL){
-			DBG("get connection can't get connection from write redis pool. retry every 5s");
-			sleep(5);
-			if(tostop)
-				return;
-			write_ctx = write_pool.getConnection();
-		}
-
 		queues_mutex.lock();
 			put.swap(put_resources_queue);
 			get.swap(get_resources_queue);
@@ -125,6 +116,15 @@ void ResourceCache::run(){
 		if(!filtered_put.size()&&!get.size()){
 			data_ready.set(false);
 			continue;
+		}
+
+		write_ctx = write_pool.getConnection();
+		while(write_ctx==NULL){
+			DBG("get connection can't get connection from write redis pool. retry every 5s");
+			sleep(5);
+			if(tostop)
+				return;
+			write_ctx = write_pool.getConnection();
 		}
 
 		try {
