@@ -431,7 +431,8 @@ void ResourceControl::showResourcesById(int id, AmArg &ret){
 		for(;j!=e.resources.end();j++){
 			const Resource &r = *j;
 			if(r.id==id){
-				handler_info(i,v);
+				v.push(AmArg());
+				handler_info(i,v.back());
 				break; //loop over resources
 			}
 		}
