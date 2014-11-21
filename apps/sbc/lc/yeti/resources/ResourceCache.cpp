@@ -101,22 +101,10 @@ void ResourceCache::run(){
 	}
 
 	while(!tostop){
+		INFO("ResrouceCache::run() before data_ready");
 		data_ready.wait_for();
 
-		queues_mutex.lock();
-			put.swap(put_resources_queue);
-			get.swap(get_resources_queue);
-		queues_mutex.unlock();
-
-
-		for(ResourceList::const_iterator rit = put.begin();rit!=put.end();++rit)
-			if((*rit).taken)
-				filtered_put.push_back(*rit);
-
-		if(!filtered_put.size()&&!get.size()){
-			data_ready.set(false);
-			continue;
-		}
+		INFO("ResrouceCache::run() before getConnection");
 
 		write_ctx = write_pool.getConnection();
 		while(write_ctx==NULL){
@@ -125,6 +113,25 @@ void ResourceCache::run(){
 			if(tostop)
 				return;
 			write_ctx = write_pool.getConnection();
+		}
+
+		INFO("ResrouceCache::run() got Connection");
+
+		queues_mutex.lock();
+			put.swap(put_resources_queue);
+			get.swap(get_resources_queue);
+		queues_mutex.unlock();
+
+		INFO("ResrouceCache::run() got queues");
+
+		for(ResourceList::const_iterator rit = put.begin();rit!=put.end();++rit)
+			if((*rit).taken)
+				filtered_put.push_back(*rit);
+
+		if(!filtered_put.size()&&!get.size()){
+			data_ready.set(false);
+			write_pool.putConnection(write_ctx,RedisConnPool::CONN_STATE_OK);
+			continue;
 		}
 
 		try {
@@ -284,27 +291,26 @@ bool ResourceCache::init_resources(bool initial){
 	list <int> desired_response;
 	int node_id = Yeti::instance()->config.node_id;
 
-	queues_mutex.lock();
-
-	put_resources_queue.clear();
-	get_resources_queue.clear();
-
 	try {
 		write_ctx = write_pool.getConnection();
 		while(write_ctx==NULL){
 			if(!initial) {
 				ERROR("get connection can't get connection from write redis pool");
-				queues_mutex.unlock();
 				return false;
 			}
 			ERROR("get connection can't get connection from write redis pool. retry every 1s");
 			sleep(1);
 			if(tostop) {
-				queues_mutex.unlock();
 				return false;
 			}
 			write_ctx = write_pool.getConnection();
 		}
+
+		queues_mutex.lock();
+
+		put_resources_queue.clear();
+		get_resources_queue.clear();
+
 
 		redisAppendCommand(write_ctx,"KEYS *");
 
