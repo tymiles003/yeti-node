@@ -77,6 +77,7 @@ void WorkerThread::postEvent(AmEvent* ev) {
 }
 
 void WorkerThread::on_stop() {
+	wakeup();
 }
 
 MultithreadXmlRpcServer::MultithreadXmlRpcServer()
