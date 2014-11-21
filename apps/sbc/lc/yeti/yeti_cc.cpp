@@ -434,6 +434,14 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 			}
 
 			DBG("%s() choosed next profile",FUNC_NAME);
+
+			/* show resource disconnect reason instead of
+			 * refuse_profile if refuse_profile follows failed resource with
+			 * failover to next */
+			if(profile->disconnect_code_id==0){
+				throw AmSession::Exception(refuse_code,refuse_reason);
+			}
+
 			ParamReplacerCtx rctx(profile);
 			if(check_and_refuse(profile,cdr,req,rctx)){
 				throw AmSession::Exception(cdr->disconnect_rewrited_code,
@@ -1275,6 +1283,14 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 			//write old cdr here
 			ctx->router->write_cdr(cdr,true);
 			cdr = getCdr(ctx);
+
+			if(profile->disconnect_code_id!=0){
+				/* use code and reason from resource check
+				 * instead of refuse code of profile
+				 * if we see refuse_profile after failed resource check with
+				 * failover to next */
+				break;
+			}
 		}
 	} while(rctl_ret != RES_CTL_OK);
 
