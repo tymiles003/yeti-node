@@ -310,3 +310,92 @@ Cdr::Cdr(const SqlCallProfile &profile)
 	update_sql(profile);
 }
 
+static string join_str_vector2(const vector<string> &v1,
+                               const vector<string> &v2,
+                               const string &delim){
+    std::stringstream ss;
+    for(vector<string>::const_iterator i = v1.begin();i!=v1.end();++i){
+        if(i != v1.begin())
+            ss << delim;
+        ss << *i;
+    }
+    //if(!(v1.empty()||v2.empty()))
+        ss << "/";
+    for(vector<string>::const_iterator i = v2.begin();i!=v2.end();++i){
+        if(i != v2.begin())
+            ss << delim;
+        ss << *i;
+    }
+    return string(ss.str());
+}
+
+char *Cdr::serialize_rtp_stats(){
+#define field_name fields[i++]
+    int i = 0;
+    cJSON *j;
+    char *s;
+    static const char *fields[] = {
+        "lega_rx_payloads",
+        "lega_tx_payloads",
+        "legb_rx_payloads",
+        "legb_tx_payloads",
+        "lega_rx_bytes",
+        "lega_tx_bytes",
+        "legb_rx_bytes",
+        "legb_tx_bytes",
+        "lega_rx_decode_errs",
+        "lega_rx_no_buf_errs",
+        "lega_rx_parse_errs",
+        "legb_rx_decode_errs",
+        "legb_rx_no_buf_errs",
+        "legb_rx_parse_errs",
+    };
+
+    j = cJSON_CreateObject();
+
+    //tx/rx uploads
+    cJSON_AddStringToObject(j,field_name,
+                                join_str_vector2(
+                                    legA_payloads.incoming,
+                                    legA_payloads.incoming_relayed,","
+                                ).c_str()
+                            );
+
+    cJSON_AddStringToObject(j,field_name,
+                                join_str_vector2(
+                                    legA_payloads.outgoing,
+                                    legA_payloads.outgoing_relayed,","
+                                ).c_str()
+                            );
+    cJSON_AddStringToObject(j,field_name,
+                                join_str_vector2(
+                                    legB_payloads.incoming,
+                                    legB_payloads.incoming_relayed,","
+                                ).c_str()
+                            );
+    cJSON_AddStringToObject(j,field_name,
+                                join_str_vector2(
+                                    legB_payloads.outgoing,
+                                    legB_payloads.outgoing_relayed,","
+                                ).c_str()
+                            );
+
+    //tx/rx bytes
+    cJSON_AddNumberToObject(j,field_name,legA_bytes_recvd);
+    cJSON_AddNumberToObject(j,field_name,legA_bytes_sent);
+    cJSON_AddNumberToObject(j,field_name,legB_bytes_recvd);
+    cJSON_AddNumberToObject(j,field_name,legB_bytes_sent);
+
+    //tx/rx rtp errors
+    cJSON_AddNumberToObject(j,field_name,legA_stream_errors.decode_errors);
+    cJSON_AddNumberToObject(j,field_name,legA_stream_errors.out_of_buffer_errors);
+    cJSON_AddNumberToObject(j,field_name,legA_stream_errors.rtp_parse_errors);
+    cJSON_AddNumberToObject(j,field_name,legB_stream_errors.decode_errors);
+    cJSON_AddNumberToObject(j,field_name,legB_stream_errors.out_of_buffer_errors);
+    cJSON_AddNumberToObject(j,field_name,legB_stream_errors.rtp_parse_errors);
+
+    s = cJSON_Print(j);
+    cJSON_Delete(j);
+    return s;
+#undef field_name
+}

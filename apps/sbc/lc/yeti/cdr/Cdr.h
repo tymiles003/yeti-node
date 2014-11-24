@@ -6,6 +6,7 @@
 #include "SBCCallLeg.h"
 #include "../resources/Resource.h"
 #include "AmRtpStream.h"
+#include "cJSON.h"
 
 enum UpdateAction {
     Start,
@@ -98,6 +99,9 @@ struct Cdr: public
 	void replace(string& s, const string& from, const string& to);
     void refuse(const SBCCallProfile &profile);
 	void refuse(int code, string reason);
+
+    //serializators
+    char *serialize_rtp_stats();
 };
 
 #endif // CDR_H

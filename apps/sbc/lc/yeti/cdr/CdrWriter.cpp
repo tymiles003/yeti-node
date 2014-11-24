@@ -17,8 +17,8 @@ const static_field cdr_static_fields[] = {
 	{ "legA_local_ip", "inet" },
 	{ "legA_local_port", "integer" },
 	{ "legA_remote_ip", "inet" },
-	{ "legA_remote_port", "integer" },
-	{ "legB_local_ip", "inet" },
+    { "legA_remote_port", "integer" },
+    { "legB_local_ip", "inet" }, //10
 	{ "legB_local_port", "integer" },
 	{ "legB_remote_ip", "inet" },
 	{ "legB_remote_port", "integer" },
@@ -27,8 +27,8 @@ const static_field cdr_static_fields[] = {
 	{ "end_time", "bigint" },
 	{ "disconnect_code", "integer" },
 	{ "disconnect_reason", "varchar" },
-	{ "disconnect_initiator", "integer" },
-	{ "disconnect_intermediate_code", "integer" },
+    { "disconnect_initiator", "integer" },
+    { "disconnect_intermediate_code", "integer" }, //20
 	{ "disconnect_intermediate_reason", "varchar" },
 	{ "disconnect_rewrited_code", "integer" },
 	{ "disconnect_rewrited_reason", "varchar" },
@@ -37,51 +37,24 @@ const static_field cdr_static_fields[] = {
 	{ "local_tag", "varchar" },
 	{ "msg_logger_path", "varchar" },
 	{ "dump_level_id", "integer" },
-	{ "legA_rx_payloads", "varchar" },
-	{ "legA_tx_payloads", "varchar" },
-	{ "legB_rx_payloads", "varchar" },
-	{ "legB_tx_payloads", "varchar" },
-	{ "legA_rx_bytes", "integer" },
-	{ "legA_tx_bytes", "integer" },
-	{ "legB_rx_bytes", "integer" },
-	{ "legB_tx_bytes", "integer" },
-	{ "legA_rx_decode_errors", "integer" },
-	{ "legA_rx_no_buffer_errors", "integer" },
-	{ "legA_rx_rtp_parse_errors", "integer" },
-	{ "legB_rx_decode_errors", "integer" },
-	{ "legB_rx_no_buffer_errors", "integer" },
-	{ "legB_rx_rtp_parse_errors", "integer" },
-	{ "global_tag", "varchar" },
+    /*{ "lega_rx_payloads", "varchar" }, //29
+    { "lega_tx_payloads", "varchar" },
+    { "legb_rx_payloads", "varchar" },
+    { "legb_tx_payloads", "varchar" },
+    { "lega_rx_bytes", "integer" },
+    { "lega_tx_bytes", "integer" },
+    { "legb_rx_bytes", "integer" },
+    { "legb_tx_bytes", "integer" },
+    { "lega_rx_decode_errs", "integer" },
+    { "lega_rx_no_buf_errs", "integer" },
+    { "lega_rx_parse_errs", "integer" },
+    { "legb_rx_decode_errs", "integer" },
+    { "legb_rx_no_buf_errs", "integer" },
+    { "legb_rx_parse_errs", "integer" },*/
+    { "rtp_stats", "json" }, //stats variables serialized to json
+    { "global_tag", "varchar" },
 };
 
-/*static string join_str_vector(const vector<string> &v,const string &delim){
-	std::stringstream ss;
-	for(vector<string>::const_iterator i = v.begin();i!=v.end();++i){
-		if(i != v.begin())
-			ss << delim;
-		ss << *i;
-	}
-	return string(ss.str());
-}*/
-
-static string join_str_vector2(const vector<string> &v1,
-							   const vector<string> &v2,
-							   const string &delim){
-	std::stringstream ss;
-	for(vector<string>::const_iterator i = v1.begin();i!=v1.end();++i){
-		if(i != v1.begin())
-			ss << delim;
-		ss << *i;
-	}
-	//if(!(v1.empty()||v2.empty()))
-		ss << "/";
-	for(vector<string>::const_iterator i = v2.begin();i!=v2.end();++i){
-		if(i != v2.begin())
-			ss << delim;
-		ss << *i;
-	}
-	return string(ss.str());
-}
 
 CdrWriter::CdrWriter()
 {
@@ -584,6 +557,8 @@ int CdrThread::writecdr(cdr_writer_connection* conn, Cdr* cdr){
 
 	DBG("%s[%p](conn = %p,cdr = %p)",FUNC_NAME,this,conn,cdr);
 	int ret = 1;
+    char *rtp_stats;
+
 	Yeti::global_config &gc = Yeti::instance()->config;
 	AmArg fields_values;
 
@@ -642,14 +617,18 @@ int CdrThread::writecdr(cdr_writer_connection* conn, Cdr* cdr){
 		invoc_field(cdr->msg_logger_path);
 		invoc_field(cdr->dump_level_id);
 
-		invoc_field(join_str_vector2(cdr->legA_payloads.incoming,
+        rtp_stats = cdr->serialize_rtp_stats();
+        invoc_field(rtp_stats);
+        free(rtp_stats);
+
+        /*invoc_field(join_str_vector2(cdr->legA_payloads.incoming,
 									 cdr->legA_payloads.incoming_relayed,","));
 		invoc_field(join_str_vector2(cdr->legA_payloads.outgoing,
 									cdr->legA_payloads.outgoing_relayed,","));
 		invoc_field(join_str_vector2(cdr->legB_payloads.incoming,
 									cdr->legB_payloads.incoming_relayed,","));
 		invoc_field(join_str_vector2(cdr->legB_payloads.outgoing,
-									 cdr->legB_payloads.outgoing_relayed,","));
+                                     cdr->legB_payloads.outgoing_relayed,","));
 
 		invoc_field(cdr->legA_bytes_recvd);
 		invoc_field(cdr->legA_bytes_sent);
@@ -661,7 +640,7 @@ int CdrThread::writecdr(cdr_writer_connection* conn, Cdr* cdr){
 		invoc_field(cdr->legA_stream_errors.rtp_parse_errors);
 		invoc_field(cdr->legB_stream_errors.decode_errors);
 		invoc_field(cdr->legB_stream_errors.out_of_buffer_errors);
-		invoc_field(cdr->legB_stream_errors.rtp_parse_errors);
+        invoc_field(cdr->legB_stream_errors.rtp_parse_errors);*/
 
 		invoc_field(cdr->global_tag);
 
@@ -802,8 +781,13 @@ int CdrThread::writecdrtofile(Cdr* cdr){
 	}
 	wf << wv(cdr->orig_call_id) << wv(cdr->term_call_id) <<
 	wv(cdr->local_tag) << wv(cdr->msg_logger_path) <<
-	wv(cdr->dump_level_id) <<
-	wv(join_str_vector2(cdr->legA_payloads.incoming,
+    wv(cdr->dump_level_id);
+
+    char *rtp_stats = cdr->serialize_rtp_stats();
+    wf << wv(rtp_stats);
+    free(rtp_stats);
+
+    /*wv(join_str_vector2(cdr->legA_payloads.incoming,
 						cdr->legA_payloads.incoming_relayed,",")) <<
 	wv(join_str_vector2(cdr->legA_payloads.outgoing,
 						cdr->legA_payloads.outgoing_relayed,",")) <<
@@ -818,8 +802,8 @@ int CdrThread::writecdrtofile(Cdr* cdr){
 	wv(cdr->legA_stream_errors.rtp_parse_errors) <<
 	wv(cdr->legB_stream_errors.decode_errors) <<
 	wv(cdr->legB_stream_errors.out_of_buffer_errors) <<
-	wv(cdr->legB_stream_errors.rtp_parse_errors) <<
-	wv(cdr->global_tag);
+    wv(cdr->legB_stream_errors.rtp_parse_errors) <<*/
+    wf << wv(cdr->global_tag);
 
 		//dynamic fields
 	join_csv(wf,cdr->dyn_fields);
@@ -843,7 +827,7 @@ bool CdrThread::invoc_AmArg(pqxx::prepare::invocation &invoc,const AmArg &arg){
 	case AmArg::CStr:     { invoc(arg.asCStr()); } break;
 	case AmArg::Undef:    { invoc(); } break;
 	default: {
-		WARN("invoc_AmArg. unhandled AmArg type %s",a.t2str(type));
+        ERROR("invoc_AmArg. unhandled AmArg type %s",a.t2str(type));
 		invoc();
 	}
 	}
