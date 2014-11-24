@@ -101,10 +101,10 @@ void ResourceCache::run(){
 	}
 
 	while(!tostop){
-		INFO("ResrouceCache::run() before data_ready");
+        //INFO("ResrouceCache::run() before data_ready");
 		data_ready.wait_for();
 
-		INFO("ResrouceCache::run() before getConnection");
+        //INFO("ResrouceCache::run() before getConnection");
 
 		write_ctx = write_pool.getConnection();
 		while(write_ctx==NULL){
@@ -115,14 +115,14 @@ void ResourceCache::run(){
 			write_ctx = write_pool.getConnection();
 		}
 
-		INFO("ResrouceCache::run() got Connection");
+        //INFO("ResrouceCache::run() got Connection");
 
 		queues_mutex.lock();
 			put.swap(put_resources_queue);
 			get.swap(get_resources_queue);
 		queues_mutex.unlock();
 
-		INFO("ResrouceCache::run() got queues");
+        //INFO("ResrouceCache::run() got queues");
 
 		for(ResourceList::const_iterator rit = put.begin();rit!=put.end();++rit)
 			if((*rit).taken)
