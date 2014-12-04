@@ -102,6 +102,7 @@ void Yeti::init_xmlrpc_cmds(){
 		reg_leaf_method_arg(show,show_calls,"calls","active calls",GetCalls,"show current active calls",
 						"<LOCAL-TAG>","retreive call by local_tag");
 			reg_method(show_calls,"count","active calls count",GetCallsCount,"");
+			reg_method(show_calls,"fields","show available call fields",showCallsFields,"");
 			reg_method_arg(show_calls,"filtered","active calls. specify desired fields",GetCallsFields,"",
 						"<field1> <field2> ...","active calls. send only certain fields");
 
@@ -484,14 +485,9 @@ bool Yeti::assert_event_id(const AmArg &args,AmArg &ret){
  ****************************************/
 
 void Yeti::GetCallsCount(const AmArg& args, AmArg& ret) {
-	string r;
-	std::stringstream ss;
 	handler_log();
-	ss << cdr_list.get_count();
-	r = ss.str();
-
 	ret.push(200);
-	ret.push(AmArg(r));
+	ret.push((long int)cdr_list.get_count());
 }
 
 void Yeti::GetCall(const AmArg& args, AmArg& ret) {
@@ -533,8 +529,6 @@ void Yeti::GetCalls(const AmArg& args, AmArg& ret) {
 }
 
 void Yeti::GetCallsFields(const AmArg &args, AmArg &ret){
-	AmArg calls;
-
 	handler_log();
 
 	if(!args.size()){
@@ -543,11 +537,28 @@ void Yeti::GetCallsFields(const AmArg &args, AmArg &ret){
 		return;
 	}
 
-	calls.assertArray();
-	cdr_list.getCallsFields(calls,calls_show_limit,router,args);
+	AmArg failed_fields;
+	vector<string> str_fields = args.asStringVector();
+	if(!cdr_list.validate_fields(str_fields,router,failed_fields)){
+		ret.push(500);
+		ret.push(AmArg());
+		AmArg &body = ret.back();
+		body["reason"] = "passed one or more non existent fields";
+		body["invalid_fields"] = failed_fields;
+		return;
+	}
 
 	ret.push(200);
-	ret.push(calls);
+	ret.push(AmArg());
+	AmArg &calls = ret.back();
+	calls.assertArray();
+	cdr_list.getCallsFields(calls,calls_show_limit,router,str_fields);
+}
+
+void Yeti::showCallsFields(const AmArg &args, AmArg &ret){
+	ret.push(200);
+	ret.push(AmArg());
+	cdr_list.getFields(ret.back(),router);
 }
 
 void Yeti::GetRegistration(const AmArg& args, AmArg& ret){

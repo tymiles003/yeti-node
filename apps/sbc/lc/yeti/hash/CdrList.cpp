@@ -1,6 +1,29 @@
 #include "CdrList.h"
 #include "log.h"
 
+static const char *static_call_fields[] = {
+	"local_time",
+	"cdr_born_time",
+	"start_time",
+	"connect_time",
+	"end_time",
+	"legB_remote_port",
+	"legB_local_port",
+	"legA_remote_port",
+	"legA_local_port",
+	"legB_remote_ip",
+	"legB_local_ip",
+	"legA_remote_ip",
+	"legA_local_ip",
+	"orig_call_id",
+	"term_call_id",
+	"local_tag",
+	"global_tag",
+	"time_limit",
+	"dump_level_id"
+};
+static unsigned int static_call_fields_count = 19;
+
 CdrList::CdrList(unsigned long buckets):MurmurHash<string,string,Cdr>(buckets){
 	//DBG("CdrList()");
 }
@@ -93,47 +116,36 @@ int CdrList::getCall(const string &local_tag,AmArg &call,const SqlRouter *router
 void CdrList::getCalls(AmArg &calls,int limit,const SqlRouter *router){
 	AmArg call;
 	entry *e;
-	Cdr *cdr;
 	int i = limit;
+	calls.assertArray();
 	lock();
 		e = first;
 		while(e&&i--){
-			cdr = e->data;
-			//cdr->lock();
-				cdr2arg(cdr,router,call);
-			//cdr->unlock();
-			calls.push(call);
+			calls.push(AmArg());
+			cdr2arg(e->data,router,calls.back());
 			e = e->list_next;
 		}
 	unlock();
 }
 
-void CdrList::getCallsFields(AmArg &calls,int limit,const SqlRouter *router,const AmArg &fields){
-	vector<string> str_fields;
+void CdrList::getCallsFields(AmArg &calls,int limit,const SqlRouter *router,const vector<string> &fields){
 	AmArg call;
 	entry *e;
-	Cdr *cdr;
 
 	//convert AmArg array to vector of strings
-	assertArgArray(fields);
-	for(unsigned int k = 0;k < fields.size(); k++)
-		str_fields.push_back(fields.get(k).asCStr());
-
+	calls.assertArray();
 	int i = limit;
 	lock();
 		e = first;
 		while(e&&i--){
-			cdr = e->data;
-			//cdr->lock();
-				cdr2arg(cdr,router,call,str_fields);
-			//cdr->unlock();
-			calls.push(call);
+			calls.push(AmArg());
+			cdr2arg(e->data,router,calls.back(),fields);
 			e = e->list_next;
 		}
 	unlock();
 }
 
-void CdrList::cdr2arg(const Cdr *cdr,const SqlRouter *router, AmArg& arg){
+void CdrList:: cdr2arg(const Cdr *cdr,const SqlRouter *router, AmArg& arg){
 	#define add_field(val)\
 		arg[#val] = cdr->val;
 	#define add_timeval_field(val)\
@@ -231,3 +243,34 @@ void CdrList::cdr2arg(const Cdr *cdr,const SqlRouter *router, AmArg& arg, const 
 	#undef add_timeval_field
 	#undef filter
 }
+
+void CdrList::getFields(AmArg &ret,SqlRouter *r){
+	ret.assertArray();
+
+	for(unsigned int k = 0; k < static_call_fields_count;k++)
+		ret.push(static_call_fields[k]);
+
+	const DynFieldsT &router_dyn_fields = r->getDynFields();
+	for(DynFieldsT::const_iterator it = router_dyn_fields.begin();
+			it!=router_dyn_fields.end();++it)
+		ret.push(it->first);
+}
+
+bool CdrList::validate_fields(const vector<string> &wanted_fields, SqlRouter *router, AmArg &failed_fields){
+	bool ret = true;
+	for(vector<string>::const_iterator i = wanted_fields.begin();
+			i!=wanted_fields.end();++i){
+		const string &f = *i;
+		int k = static_call_fields_count-1;
+		for(;k>0;k--){
+			if(f==static_call_fields[k])
+				break;
+		}
+		if(k==0){
+			ret = false;
+			failed_fields.push(f);
+		}
+	}
+	return ret;
+}
+

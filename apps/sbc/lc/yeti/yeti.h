@@ -135,6 +135,7 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   xmlrpc_handler showPayloads;
   xmlrpc_handler showInterfaces;
   xmlrpc_handler showRouterCdrWriterOpenedFiles;
+  xmlrpc_handler showCallsFields;
   xmlrpc_handler requestSystemLogDump;
 
   xmlrpc_handler showSystemLogLevel;
