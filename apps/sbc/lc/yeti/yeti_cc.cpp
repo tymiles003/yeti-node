@@ -317,12 +317,10 @@ void Yeti::onDestroyLeg(SBCCallLeg *call){
 
 void Yeti::onLastLegDestroy(CallCtx *ctx,SBCCallLeg *call){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
-	if(!ctx->cdr_processed){
-		Cdr *cdr = getCdr(ctx);
-		// remove from active calls
+	Cdr *cdr = ctx->getCdrSafe<true>();
+	if(cdr){
 		cdr_list.erase(cdr);
-		//write cdr (Cdr class will be deleted by CdrWriter)
-		ctx->router->write_cdr(cdr,true);
+		ctx->write_cdr(cdr,true);
 	}
 }
 
@@ -849,12 +847,13 @@ CCChainProcessing Yeti::onOtherBye(SBCCallLeg *call, const AmSipRequest &req){
 		if(call->getCallStatus()!=CallLeg::Connected){
 			//avoid considering of bye in not connected state as succ call
 			ERROR("received OtherBye in not connected state");
-			Cdr *cdr = getCdr(ctx);
-			cdr->update_internal_reason(DisconnectByDST,"EarlyBye",500);
-			cdr->update_aleg_reason("Request terminated",487);
-			cdr_list.erase(cdr);
-			ctx->cdr_processed = true;
-			router->write_cdr(cdr,true);
+			Cdr *cdr = ctx->getCdrSafe<true>();
+			if(cdr){
+				cdr->update_internal_reason(DisconnectByDST,"EarlyBye",500);
+				cdr->update_aleg_reason("Request terminated",487);
+				cdr_list.erase(cdr);
+				ctx->write_cdr(cdr,true);
+			}
 		}
 	}
 	return ContinueProcessing;
@@ -1237,7 +1236,7 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 
 	//write cdr and replace ctx pointer with new
 	cdr_list.erase(cdr);
-	ctx->router->write_cdr(cdr,false);
+	ctx->write_cdr(cdr,false);
 	cdr = getCdr(ctx);
 
 	do {
@@ -1281,7 +1280,7 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 
 			profile = ctx->getNextProfile(false);
 			//write old cdr here
-			ctx->router->write_cdr(cdr,true);
+			ctx->write_cdr(cdr,true);
 			cdr = getCdr(ctx);
 
 			if(profile->disconnect_code_id!=0){

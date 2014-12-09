@@ -3,6 +3,8 @@
 
 #include <list>
 
+#include "AmThread.h"
+
 #include "cdr/Cdr.h"
 #include "SqlCallProfile.h"
 #include "resources/Resource.h"
@@ -13,7 +15,6 @@ struct CallCtx: public
 	atomic_int, AmMutex
 {
 	Cdr *cdr;
-	bool cdr_processed;
 	list<SqlCallProfile *> profiles;
 	list<SqlCallProfile *>::iterator current_profile;
 	int attempt_num;
@@ -22,6 +23,7 @@ struct CallCtx: public
 	vector<SdpMedia> bleg_negotiated_media;
 	SqlRouter *router;
 	bool SQLexception;
+	bool on_hold;
 
 	SqlCallProfile *getFirstProfile();
 	SqlCallProfile *getNextProfile(bool early_state);
@@ -29,8 +31,9 @@ struct CallCtx: public
 	SqlRouter *getRouter();
 	ResourceList &getCurrentResourceList();
 	int getOverrideId(bool aleg = true);
-	void setCdrProcessed();
-	bool on_hold;
+	void write_cdr(Cdr *cdr,bool last);
+
+	template <bool for_write> Cdr *getCdrSafe();
 
 	CallCtx(SqlRouter *router);
 	~CallCtx();
