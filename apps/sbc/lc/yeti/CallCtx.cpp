@@ -69,12 +69,45 @@ ResourceList &CallCtx::getCurrentResourceList(){
 	return (*current_profile)->rl;
 }
 
+void CallCtx::write_cdr(Cdr *cdr,bool last){
+	router->write_cdr(cdr,last);
+}
+
+template <>
+//safe cdr getter for write (clear reference to Cdr in CallCtx)
+Cdr *CallCtx::getCdrSafe<true>(){
+	Cdr *ret;
+	lock();
+	if(!cdr){
+		unlock();
+		return NULL;
+	}
+	ret = cdr;
+	cdr = NULL;
+	unlock();
+	return ret;
+}
+
+template <>
+//safe cdr getter for read
+Cdr *CallCtx::getCdrSafe<false>(){
+	Cdr *ret;
+	lock();
+	if(!cdr){
+		unlock();
+		return NULL;
+	}
+	ret = cdr;
+	unlock();
+	return ret;
+}
+
+
 CallCtx::CallCtx(SqlRouter *router):
 	initial_invite(NULL),
 	cdr(NULL),
 	router(router),
 	SQLexception(false),
-	cdr_processed(false),
 	on_hold(false)
 {
 	router->inc();
