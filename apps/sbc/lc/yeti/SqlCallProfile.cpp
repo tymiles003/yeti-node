@@ -498,6 +498,9 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 		DBG("relay_prack: '%s'\n",relay_prack?"yes":"no");
 		DBG("relay_hold: '%s'\n",relay_hold?"yes":"no");
 
+		DBG("log_sip: '%s'",log_sip?"yes":"no");
+		DBG("log_rtp: '%s'",log_rtp?"yes":"no");
+
 		DBG("aleg_sensor_id: %d",aleg_sensor_id);
 		DBG("aleg_sensor_level_id: %d",aleg_sensor_level_id);
 		DBG("bleg_sensor_id: %d",bleg_sensor_id);
