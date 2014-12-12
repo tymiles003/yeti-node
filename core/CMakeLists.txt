@@ -2,6 +2,11 @@ INCLUDE(${CMAKE_SOURCE_DIR}/cmake/audio.rules.txt)
 
 FILE (GLOB sems_SRCS "*.cpp" "sip/*.cpp" "*.c")
 
+SET(sems_common_SRCS ${sems_SRCS})
+LIST(REMOVE_ITEM sems_common_SRCS ${CMAKE_SOURCE_DIR}/core/sems.cpp)
+
+SET(aux_binaries decode_test)
+
 set (audio_files
 beep.wav
 default_en.wav
@@ -11,8 +16,12 @@ codecs_bench.wav
 INCLUDE_DIRECTORIES (ampi)
 INCLUDE_DIRECTORIES (amci)
 
+SET(common_LIBS stdc++ resolv)
+
 ADD_EXECUTABLE (sems ${sems_SRCS})
-TARGET_LINK_LIBRARIES(sems ${CMAKE_DL_LIBS} stdc++ resolv)
+FOREACH(aux_binary IN LISTS aux_binaries)
+	ADD_EXECUTABLE (sems_${aux_binary} aux/${aux_binary}.cpp ${sems_common_SRCS})
+ENDFOREACH(aux_binary)
 
 IF(NOT MAX_RTP_SESSIONS)
 	SET(MAX_RTP_SESSIONS 2048)
@@ -22,17 +31,23 @@ ENDIF(NOT MAX_RTP_SESSIONS)
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMAX_RTP_SESSIONS=${MAX_RTP_SESSIONS}")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMAX_RTP_SESSIONS=${MAX_RTP_SESSIONS}")
 
+
 IF(SPANDSP_FOUND)
-	TARGET_LINK_LIBRARIES(sems ${CMAKE_DL_LIBS} spandsp)
+	LIST(APPEND common_LIBS spandsp)
 ENDIF(SPANDSP_FOUND)
 
 IF(LIBSAMPLERATE_FOUND)
-	TARGET_LINK_LIBRARIES(sems ${CMAKE_DL_LIBS} samplerate)
+	LIST(APPEND common_LIBS samplerate)
 ENDIF(LIBSAMPLERATE_FOUND)
 
 IF(LIBZRTP_FOUND)
-	TARGET_LINK_LIBRARIES(sems ${CMAKE_DL_LIBS} zrtp)
+	LIST(APPEND common_LIBS zrtp)
 ENDIF(LIBZRTP_FOUND)
+
+TARGET_LINK_LIBRARIES(sems ${CMAKE_DL_LIBS} ${common_LIBS})
+FOREACH(aux_binary IN LISTS aux_binaries)
+	TARGET_LINK_LIBRARIES(sems_${aux_binary} ${CMAKE_DL_LIBS} ${common_LIBS})
+ENDFOREACH(aux_binary)
 
 ADD_SUBDIRECTORY(plug-in)
 
@@ -42,6 +57,10 @@ CONFIGURE_FILE (${CMAKE_SOURCE_DIR}/core/etc/sems.conf.cmake ${CMAKE_SOURCE_DIR}
 
 # Installation of main SEMS executable
 INSTALL(TARGETS sems RUNTIME DESTINATION ${SEMS_EXEC_PREFIX}/sbin)
+FOREACH(aux_binary IN LISTS aux_binaries)
+	INSTALL(TARGETS sems_${aux_binary} RUNTIME DESTINATION ${SEMS_EXEC_PREFIX}/sbin)
+ENDFOREACH(aux_binary)
+
 
 # Installation of config-files
 INSTALL(FILES ./etc/sems.conf.dist DESTINATION ${SEMS_CFG_PREFIX}/etc/sems/)
