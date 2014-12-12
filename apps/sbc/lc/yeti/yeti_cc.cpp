@@ -1240,11 +1240,6 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 	cdr = getCdr(ctx);
 
 	do {
-		if(NULL==profile){
-			DBG("%s() there are no profiles more",FUNC_NAME);
-			break;
-		}
-
 		DBG("%s() choosed next profile. check it for refuse",FUNC_NAME);
 
 		ParamReplacerCtx rctx(profile);
@@ -1282,6 +1277,11 @@ bool Yeti::chooseNextProfile(SBCCallLeg *call){
 			//write old cdr here
 			ctx->write_cdr(cdr,true);
 			cdr = getCdr(ctx);
+
+			if(NULL==profile){
+				DBG("%s() there are no profiles more",FUNC_NAME);
+				break;
+			}
 
 			if(profile->disconnect_code_id!=0){
 				/* use code and reason from resource check
