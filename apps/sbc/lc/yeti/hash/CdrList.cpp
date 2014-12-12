@@ -264,11 +264,11 @@ bool CdrList::validate_fields(const vector<string> &wanted_fields, SqlRouter *ro
 			i!=wanted_fields.end();++i){
 		const string &f = *i;
 		int k = static_call_fields_count-1;
-		for(;k>0;k--){
+		for(;k>=0;k--){
 			if(f==static_call_fields[k])
 				break;
 		}
-		if(k==0){
+		if(k<0){
 			//not present in static fields. search in dynamic
 			DynFieldsT::const_iterator it = df.begin();
 			for(;it!=df.end();++it)
