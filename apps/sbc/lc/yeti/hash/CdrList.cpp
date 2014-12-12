@@ -256,8 +256,10 @@ void CdrList::getFields(AmArg &ret,SqlRouter *r){
 		ret.push(it->first);
 }
 
+
 bool CdrList::validate_fields(const vector<string> &wanted_fields, SqlRouter *router, AmArg &failed_fields){
 	bool ret = true;
+	const DynFieldsT &df = router->getDynFields();
 	for(vector<string>::const_iterator i = wanted_fields.begin();
 			i!=wanted_fields.end();++i){
 		const string &f = *i;
@@ -267,8 +269,15 @@ bool CdrList::validate_fields(const vector<string> &wanted_fields, SqlRouter *ro
 				break;
 		}
 		if(k==0){
-			ret = false;
-			failed_fields.push(f);
+			//not present in static fields. search in dynamic
+			DynFieldsT::const_iterator it = df.begin();
+			for(;it!=df.end();++it)
+				if(f==it->first)
+					break;
+			if(it==df.end()){ //not found in dynamic fields too
+				ret = false;
+				failed_fields.push(f);
+			}
 		}
 	}
 	return ret;
