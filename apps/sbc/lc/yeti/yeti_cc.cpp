@@ -10,7 +10,7 @@
 #include "RegisterDialog.h"
 #include "AmSipMsg.h"
 
-#define getCtx_void()\
+#define getCtx_void \
 	CallCtx *ctx = getCtx(call);\
 	if(NULL==ctx){\
 		ERROR("CallCtx = nullptr ");\
@@ -18,7 +18,7 @@
 		return;\
 	}
 
-#define getCtx_chained()\
+#define getCtx_chained \
 	CallCtx *ctx = getCtx(call);\
 	if(NULL==ctx){\
 		ERROR("CallCtx = nullptr ");\
@@ -56,6 +56,15 @@ static const char *callStatus2str(const CallLeg::CallStatus state)
 
 	return unknown;
 }
+
+#define with_cdr_for_read \
+    Cdr *cdr = ctx->getCdrSafe<false>();\
+    if(cdr)
+
+#define with_cdr_for_write \
+    Cdr *cdr = ctx->getCdrSafe<true>();\
+    if(cdr)
+
 
 /****************************************
  *				CC handlers				*
@@ -182,23 +191,12 @@ void Yeti::onSendRequest(SBCCallLeg *call,AmSipRequest& req, int &flags){
 	bool aleg = call->isALeg();
 	DBG("Yeti::onSendRequest(%p|%s) a_leg = %d",
 		call,call->getLocalTag().c_str(),aleg);
-
-	/*if(call->getCallStatus()!=CallLeg::Disconnected)
-		return;*/
-
-	/*Cdr *cdr = getCdr(call);
-	if(aleg){
-		cdr->update_aleg_reason(req.method,0);
-	} else {
-		cdr->update_bleg_reason(req.method);
-	}*/
 }
 
 void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cause){
 	string reason;
-	getCtx_void();
+    getCtx_void
 	SBCCallLeg::CallStatus status = call->getCallStatus();
-	Cdr *cdr = getCdr(ctx);
 	bool aleg = call->isALeg();
 	int internal_disconnect_code = 0;
 
@@ -286,7 +284,9 @@ void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cau
 			internal_code,internal_reason,
 			response_code,response_reason,
 			ctx->getOverrideId());
-		cdr->update_internal_reason(DisconnectByTS,internal_reason,internal_code);
+        with_cdr_for_read {
+            cdr->update_internal_reason(DisconnectByTS,internal_reason,internal_code);
+        }
 	}
 
 	DBG("%s(%p,leg%s,state = %s, cause = %s)",FUNC_NAME,call,aleg?"A":"B",
@@ -298,7 +298,7 @@ void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cau
 void Yeti::onDestroyLeg(SBCCallLeg *call){
 	DBG("%s(%p|%s,leg%s)",FUNC_NAME,
 		call,call->getLocalTag().c_str(),call->isALeg()?"A":"B");
-	getCtx_void();
+    getCtx_void
 	ctx->lock();
 	call->setLogicData(NULL);
 	if(ctx->dec_and_test()){
@@ -326,7 +326,7 @@ void Yeti::onLastLegDestroy(CallCtx *ctx,SBCCallLeg *call){
 
 CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, AmSipReply& reply) {
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
-	getCtx_chained();
+    getCtx_chained
 	Cdr* cdr = getCdr(ctx);
 	CodesTranslator *ct = CodesTranslator::instance();
 	unsigned int intermediate_code;
@@ -525,8 +525,8 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 void Yeti::onInviteException(SBCCallLeg *call,int code,string reason,bool no_reply){
 	DBG("%s(%p,leg%s) %d:'%s' no_reply = %d",FUNC_NAME,call,call->isALeg()?"A":"B",
 		code,reason.c_str(),no_reply);
-	getCtx_void();
-	Cdr *cdr = getCdr(ctx);
+    getCtx_void
+    Cdr *cdr = getCdr(ctx);
 	cdr->lock();
 	cdr->disconnect_initiator = DisconnectByTS;
 	if(cdr->disconnect_internal_code==0){ //update only if not previously was setted
@@ -559,7 +559,7 @@ CCChainProcessing Yeti::onInDialogRequest(SBCCallLeg *call, const AmSipRequest &
 		return StopProcessing;
 	} else if(req.method == SIP_METH_INVITE && !p.relay_reinvite){
 		DBG("INVITE method matched. try to process locally");
-		getCtx_chained();
+        getCtx_chained
 
 		//check for hold/unhold request to pass them transparentlyAmSdp sdp;
 		AmSdp sdp;
@@ -617,7 +617,10 @@ CCChainProcessing Yeti::onInDialogRequest(SBCCallLeg *call, const AmSipRequest &
 
 	if(aleg){
 		if(req.method==SIP_METH_CANCEL){
-			getCdr(call)->update_internal_reason(DisconnectByORG,"Request terminated (Cancel)",487);
+            getCtx_chained
+            with_cdr_for_read {
+                cdr->update_internal_reason(DisconnectByORG,"Request terminated (Cancel)",487);
+            }
 		}
 	}
 
@@ -626,8 +629,11 @@ CCChainProcessing Yeti::onInDialogRequest(SBCCallLeg *call, const AmSipRequest &
 
 CCChainProcessing Yeti::onInDialogReply(SBCCallLeg *call, const AmSipReply &reply) {
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
-	if(!call->isALeg()){
-		getCdr(call)->update(reply);
+    if(!call->isALeg()){
+        getCtx_chained
+        with_cdr_for_read {
+            cdr->update(reply);
+        }
 	}
 	return ContinueProcessing;
 }
@@ -704,7 +710,7 @@ CCChainProcessing Yeti::onRtpTimeout(SBCCallLeg *call,const AmRtpTimeoutEvent &r
 	unsigned int internal_code,response_code;
 	string internal_reason,response_reason;
 
-	getCtx_chained();
+    getCtx_chained
 
 	if(call->getCallStatus()!=CallLeg::Connected){
 		WARN("module catched RtpTimeout in no Connected state. ignore it");
@@ -716,10 +722,11 @@ CCChainProcessing Yeti::onRtpTimeout(SBCCallLeg *call,const AmRtpTimeoutEvent &r
 		internal_code,internal_reason,
 		response_code,response_reason,
 		ctx->getOverrideId());
-	Cdr *cdr = getCdr(ctx);
-	cdr->update_internal_reason(DisconnectByTS,internal_reason,internal_code);
-	cdr->update_aleg_reason("Bye",200);
-	cdr->update_bleg_reason("Bye",200);
+    with_cdr_for_read {
+        cdr->update_internal_reason(DisconnectByTS,internal_reason,internal_code);
+        cdr->update_aleg_reason("Bye",200);
+        cdr->update_bleg_reason("Bye",200);
+    }
 	return ContinueProcessing;
 }
 
@@ -733,25 +740,25 @@ CCChainProcessing Yeti::onSystemEvent(SBCCallLeg *call,AmSystemEvent* event){
 
 CCChainProcessing Yeti::onTimerEvent(SBCCallLeg *call,int timer_id){
 	DBG("%s(%p,%d,leg%s)",FUNC_NAME,call,timer_id,call->isALeg()?"A":"B");
-
-	Cdr *cdr = getCdr(call);
-
-	switch(timer_id){
-	case YETI_CALL_DURATION_TIMER:
-		cdr->update_internal_reason(DisconnectByTS,"Call duration limit reached",200);
-		cdr->update_aleg_reason("Bye",200);
-		cdr->update_bleg_reason("Bye",200);
-		break;
-	case YETI_RINGING_TIMEOUT_TIMER:
-		cdr->update_internal_reason(DisconnectByTS,"Ringing timeout",408);
-		AmSessionContainer::instance()->postEvent(
-					call->getLocalTag(),
-					new B2BEvent(B2BTerminateLeg));
-		break;
-	default:
-		cdr->update_internal_reason(DisconnectByTS,"Timer "+int2str(timer_id)+" fired",200);
-		break;
-	}
+    getCtx_chained
+    with_cdr_for_read {
+        switch(timer_id){
+        case YETI_CALL_DURATION_TIMER:
+            cdr->update_internal_reason(DisconnectByTS,"Call duration limit reached",200);
+            cdr->update_aleg_reason("Bye",200);
+            cdr->update_bleg_reason("Bye",200);
+            break;
+        case YETI_RINGING_TIMEOUT_TIMER:
+            cdr->update_internal_reason(DisconnectByTS,"Ringing timeout",408);
+            AmSessionContainer::instance()->postEvent(
+                        call->getLocalTag(),
+                        new B2BEvent(B2BTerminateLeg));
+            break;
+        default:
+            cdr->update_internal_reason(DisconnectByTS,"Timer "+int2str(timer_id)+" fired",200);
+            break;
+        }
+    }
 	return ContinueProcessing;
 }
 
@@ -766,19 +773,22 @@ CCChainProcessing Yeti::onControlEvent(SBCCallLeg *call,SBCControlEvent *event){
 
 void Yeti::onServerShutdown(SBCCallLeg *call){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
-	getCtx_void();
-	getCdr(ctx)->update_internal_reason(DisconnectByTS,"ServerShutdown",200);
+    getCtx_void
+    with_cdr_for_read {
+        cdr->update_internal_reason(DisconnectByTS,"ServerShutdown",200);
+    }
 	//may never reach onDestroy callback so free resources here
 	rctl.put(call->getCallProfile().resource_handler);
 }
 
 CCChainProcessing Yeti::onTearDown(SBCCallLeg *call){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
-	getCtx_chained();
-	Cdr *cdr = getCdr(ctx);
-	cdr->update_internal_reason(DisconnectByTS,"Teardown",200);
-	cdr->update_aleg_reason("Bye",200);
-	cdr->update_bleg_reason("Bye",200);
+    getCtx_chained
+    with_cdr_for_read {
+        cdr->update_internal_reason(DisconnectByTS,"Teardown",200);
+        cdr->update_aleg_reason("Bye",200);
+        cdr->update_bleg_reason("Bye",200);
+    }
 	return ContinueProcessing;
 }
 
@@ -804,7 +814,7 @@ CCChainProcessing Yeti::handleHoldReply(SBCCallLeg *call, bool succeeded) {
 
 CCChainProcessing Yeti::onRemoteDisappeared(SBCCallLeg *call, const AmSipReply &reply){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
-	getCtx_chained();
+    getCtx_chained
 	if(call->isALeg()){
 		//trace available values
 		if(ctx->initial_invite!=NULL){
@@ -813,42 +823,43 @@ CCChainProcessing Yeti::onRemoteDisappeared(SBCCallLeg *call, const AmSipReply &
 		} else {
 			ERROR("intial_invite == NULL");
 		}
-		getCdr(ctx)->update_internal_reason(DisconnectByTS,reply.reason,reply.code);
+        with_cdr_for_read {
+            cdr->update_internal_reason(DisconnectByTS,reply.reason,reply.code);
+        }
 	}
 	return ContinueProcessing;
 }
 
 CCChainProcessing Yeti::onBye(SBCCallLeg *call, const AmSipRequest &req){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
-	getCtx_chained();
-	Cdr *cdr = getCdr(ctx);
-
-	if(call->isALeg()){
-		if(call->getCallStatus()!=CallLeg::Connected){
-			ERROR("received Bye in not connected state");
-			cdr->update_internal_reason(DisconnectByORG,"EarlyBye",500);
-			cdr->update_aleg_reason("EarlyBye",200);
-			cdr->update_bleg_reason("Cancel",487);
-		} else {
-			cdr->update_internal_reason(DisconnectByORG,"Bye",200);
-			cdr->update_bleg_reason("Bye",200);
-		}
-	} else {
-		cdr->update_internal_reason(DisconnectByDST,"Bye",200);
-		cdr->update_bleg_reason("Bye",200);
-	}
+    getCtx_chained
+    with_cdr_for_read {
+        if(call->isALeg()){
+            if(call->getCallStatus()!=CallLeg::Connected){
+                ERROR("received Bye in not connected state");
+                cdr->update_internal_reason(DisconnectByORG,"EarlyBye",500);
+                cdr->update_aleg_reason("EarlyBye",200);
+                cdr->update_bleg_reason("Cancel",487);
+            } else {
+                cdr->update_internal_reason(DisconnectByORG,"Bye",200);
+                cdr->update_bleg_reason("Bye",200);
+            }
+        } else {
+            cdr->update_internal_reason(DisconnectByDST,"Bye",200);
+            cdr->update_bleg_reason("Bye",200);
+        }
+    }
 	return ContinueProcessing;
 }
 
 CCChainProcessing Yeti::onOtherBye(SBCCallLeg *call, const AmSipRequest &req){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
-	getCtx_chained();
+    getCtx_chained
 	if(call->isALeg()){
 		if(call->getCallStatus()!=CallLeg::Connected){
 			//avoid considering of bye in not connected state as succ call
 			ERROR("received OtherBye in not connected state");
-			Cdr *cdr = ctx->getCdrSafe<true>();
-			if(cdr){
+            with_cdr_for_write {
 				cdr->update_internal_reason(DisconnectByDST,"EarlyBye",500);
 				cdr->update_aleg_reason("Request terminated",487);
 				cdr_list.erase(cdr);
@@ -861,7 +872,7 @@ CCChainProcessing Yeti::onOtherBye(SBCCallLeg *call, const AmSipRequest &req){
 
 void Yeti::onCallConnected(SBCCallLeg *call, const AmSipReply& reply){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
-	getCtx_void();
+    getCtx_void
 	if(call->isALeg()){
 		Cdr *cdr = getCdr(ctx);
 		cdr->update(Connect);
@@ -869,18 +880,19 @@ void Yeti::onCallConnected(SBCCallLeg *call, const AmSipReply& reply){
 }
 
 void Yeti::onCallEnded(SBCCallLeg *call){
-	getCtx_void();
+    getCtx_void
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	if(call->isALeg()){
-		Cdr *cdr = getCdr(ctx);
-		cdr->update(End);
-		cdr_list.erase(cdr);
+        with_cdr_for_read {
+            cdr->update(End);
+            cdr_list.erase(cdr);
+        }
 	}
 }
 
 void Yeti::onRTPStreamDestroy(SBCCallLeg *call,AmRtpStream *stream){
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
-	getCtx_void();
+    getCtx_void
 	getCdr(ctx)->update(call,stream);
 }
 
@@ -908,7 +920,7 @@ void Yeti::onSdpCompleted(SBCCallLeg *call, AmSdp& offer, AmSdp& answer){
 
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,aleg?"A":"B");
 
-	getCtx_void();
+    getCtx_void
 	const vector<SdpMedia> &negotiated_media = aleg ?
 				ctx->aleg_negotiated_media :
 				ctx->bleg_negotiated_media;

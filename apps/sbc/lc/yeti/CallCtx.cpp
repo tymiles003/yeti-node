@@ -93,11 +93,7 @@ template <>
 Cdr *CallCtx::getCdrSafe<false>(){
 	Cdr *ret;
 	lock();
-	if(!cdr){
-		unlock();
-		return NULL;
-	}
-	ret = cdr;
+    ret = cdr;
 	unlock();
 	return ret;
 }
