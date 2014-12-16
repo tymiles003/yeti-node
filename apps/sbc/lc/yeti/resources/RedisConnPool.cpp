@@ -1,3 +1,5 @@
+#include "signal.h"
+
 #include "RedisConnPool.h"
 #include "log.h"
 #include "AmUtils.h"
@@ -57,12 +59,13 @@ void RedisConnPool::run(){
 			timeval timeout = { REDIS_CONN_TIMEOUT, 0 };
 			ctx = redisConnectWithTimeout(_cfg.server.c_str(),_cfg.port,timeout);
 			if(ctx != NULL && ctx->err){
+				redisFree(ctx);
 				ERROR("[%p] failed conn for %s redis pool <host = %s:%d>",
 					  this,
 					  pool_name.c_str(),
 					  _cfg.server.c_str(),
 					  _cfg.port);
-				throw std::exception();
+				kill(getpid(),SIGINT); //commit suicide
 			} else {
 				active_ctxs.push_back(ctx);
 				active_count++;
