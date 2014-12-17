@@ -102,8 +102,8 @@ int main(int argc, char *argv[])
 		ERROR("codec for payload %s. doesn't have decode() func",payload->name);
 		return EXIT_FAILURE;
 	}
-	if(!codec->bytes2samples){
-		ERROR("codec for payload %s. doesn't have bytes2samples() func",payload->name);
+	if(!codec->bytes2samples && !codec->frames2samples){
+		ERROR("codec for payload %s. doesn't have bytes2samples() or frames2samples() func",payload->name);
 		return EXIT_FAILURE;
 	}
 
@@ -130,7 +130,13 @@ int main(int argc, char *argv[])
 	}
 	INFO("%d bytes were gained from file for decoding",rc);
 
-	out_size = PCM16_S2B((*codec->bytes2samples)(h_codec,in_size));
+	//if(codec->b)
+	if(codec->frames2samples){
+		out_size = PCM16_S2B((*codec->frames2samples)(h_codec,in,in_size));
+	} else {
+		out_size = PCM16_S2B((*codec->bytes2samples)(h_codec,in_size));
+	}
+	//out_size = PCM16_S2B((*codec->bytes2samples)(h_codec,in_size));
 	INFO("alleged output buffer size: %ld",out_size);
 	out = new unsigned char [out_size];
 	if(!out){

@@ -273,6 +273,12 @@ typedef unsigned int (*amci_codec_bytes2samples_t)(long h_codec, unsigned int nu
 typedef unsigned int (*amci_codec_samples2bytes_t)(long h_codec, unsigned int num_samples);
 
 /**
+ * \brief Codec's function for calculating the number of samples from buffer considering frames
+ */
+typedef unsigned int (*amci_codec_frames2samples_t)(long h_codec, unsigned char* in, unsigned int size);
+
+
+/**
  * \brief Codec description
  */
 struct amci_codec_t {
@@ -302,6 +308,10 @@ struct amci_codec_t {
 
     /** Function for calculating the number of samples from bytes. */
     amci_codec_samples2bytes_t samples2bytes;
+
+	/** Function for calculating the number of samples considering frames
+		(for codecs with variable frame size)*/
+	amci_codec_frames2samples_t frames2samples;
 };
   
   /** \brief supported subtypes for a file */
@@ -473,7 +483,14 @@ struct amci_exports_t {
  * @hideinitializer
  */
 #define CODEC(id, intern2type,type2intern,plc,init,destroy,bytes2samples,samples2bytes) \
-                    { id, intern2type, type2intern, plc, init, destroy, bytes2samples, samples2bytes },
+					{ id, intern2type, type2intern, plc, init, destroy, bytes2samples, samples2bytes, NULL },
+
+/**
+ * Portable export definition macro for codecs with variable frames like g723.1
+ * @hideinitializer
+ */
+#define CODEC_VARIABLE_FRAMES(id, intern2type,type2intern,plc,init,destroy,bytes2samples,samples2bytes, frames2bytes) \
+					{ id, intern2type, type2intern, plc, init, destroy, bytes2samples, samples2bytes, frames2bytes },
 
 /**
  * Portable export definition macro

@@ -369,7 +369,9 @@ int AmAudio::decode(unsigned int size)
     return -1;
   }
 
-  unsigned int out_size = PCM16_S2B(bytes2samples(size));
+  unsigned int out_size = PCM16_S2B(codec->frames2samples ?
+							codec->frames2samples(h_codec,samples,size) :
+							bytes2samples(size));
   if(out_size>AUDIO_BUFFER_SIZE){
 	WARN("pre-calculated buffer size for pcm16 (%ud) bigger than allowed (%ud)",
 		out_size, AUDIO_BUFFER_SIZE);
