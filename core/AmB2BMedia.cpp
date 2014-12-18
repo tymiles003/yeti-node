@@ -1020,6 +1020,10 @@ void AmB2BMedia::updateStreams(bool a_leg, const AmSdp &local_sdp, const AmSdp &
     const string& connection_address = (m->conn.address.empty() ? remote_sdp.conn.address : m->conn.address);
 
     if (m->type == MT_AUDIO) {
+      if(astream == audio.end()) {
+          WARN("can't process audio stream from sdp. no appropriate audio stream. ignore it");
+          continue;
+      }
       // initialize relay mask in the other(!) leg and relay destination for stream in current leg
       TRACE("relay payloads in direction %s\n", a_leg ? "B -> A" : "A -> B");
       if (a_leg) {

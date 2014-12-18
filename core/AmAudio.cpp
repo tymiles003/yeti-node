@@ -369,9 +369,7 @@ int AmAudio::decode(unsigned int size)
     return -1;
   }
 
-  unsigned int out_size = PCM16_S2B(codec->frames2samples ?
-							codec->frames2samples(h_codec,samples,size) :
-							bytes2samples(size));
+  unsigned int out_size = PCM16_S2B(decoded_samples_count(codec,h_codec,size));
   if(out_size>AUDIO_BUFFER_SIZE){
 	WARN("pre-calculated buffer size for pcm16 (%ud) bigger than allowed (%ud)",
 		out_size, AUDIO_BUFFER_SIZE);
@@ -493,6 +491,14 @@ unsigned int AmAudio::scaleSystemTS(unsigned long long system_ts)
     / (WALLCLOCK_RATE / 100);
 		 
   return (unsigned int)user_ts;
+}
+
+unsigned int AmAudio::decoded_samples_count(amci_codec_t* codec, long h_codec, unsigned int size)
+{
+  if(codec->frames2samples)
+    return codec->frames2samples(h_codec,samples,size);
+  else
+    return bytes2samples(size);
 }
 
 unsigned int AmAudio::calcBytesToRead(unsigned int nb_samples) const

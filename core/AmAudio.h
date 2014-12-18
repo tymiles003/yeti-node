@@ -339,6 +339,10 @@ protected:
    */
   unsigned int scaleSystemTS(unsigned long long system_ts);
 
+  /**
+   *Get assumed samples count after decoding size bytes from buffer
+   */
+  unsigned int decoded_samples_count(amci_codec_t* codec, long h_codec, unsigned int size);
 public:
   /** Destructor */
   virtual ~AmAudio();
