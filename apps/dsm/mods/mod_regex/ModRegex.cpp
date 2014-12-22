@@ -52,9 +52,8 @@ MOD_CONDITIONEXPORT_BEGIN(MOD_CLS_NAME) {
 
 int MOD_CLS_NAME::preload() {
    AmConfigReader cfg;
-   if(cfg.loadPluginConf(MOD_NAME)) {
-     INFO("no module configuration for '%s' found, not preloading regular expressions\n",
-	  MOD_NAME);
+   if(cfg.loadPluginConf("mod_regex")) {
+	 INFO("no module configuration for 'mod_regex' found, not preloading regular expressions\n");
      return 0;
    }
 

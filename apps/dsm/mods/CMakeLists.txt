@@ -12,4 +12,6 @@ ADD_SUBDIRECTORY (mod_sys)
 ADD_SUBDIRECTORY (mod_uri)
 ADD_SUBDIRECTORY (mod_utils)
 ADD_SUBDIRECTORY (mod_curl)
-
+ADD_SUBDIRECTORY (mod_groups)
+ADD_SUBDIRECTORY (mod_regex)
+ADD_SUBDIRECTORY (mod_xml)
