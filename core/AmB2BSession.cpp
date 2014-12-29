@@ -371,7 +371,8 @@ void AmB2BSession::insertMappedReferID(unsigned int refer_id,
 void AmB2BSession::onSipRequest(const AmSipRequest& req)
 {
   bool fwd = sip_relay_only &&
-    (req.method != SIP_METH_CANCEL);
+	(req.method != SIP_METH_CANCEL) &&
+	(req.method != SIP_METH_INFO);
 
   if( ((req.method == SIP_METH_SUBSCRIBE) ||
        (req.method == SIP_METH_NOTIFY) ||
@@ -433,8 +434,10 @@ void AmB2BSession::onSipRequest(const AmSipRequest& req)
     return;
   }
 
-  DBG("relaying B2B SIP request %s %s\n", r_ev->req.method.c_str(), r_ev->req.r_uri.c_str());
-  relayEvent(r_ev);
+  if(r_ev->req.method!=SIP_METH_INFO){
+	DBG("relaying B2B SIP request %s %s\n", r_ev->req.method.c_str(), r_ev->req.r_uri.c_str());
+	relayEvent(r_ev);
+  }
 }
 
 void AmB2BSession::onRequestSent(const AmSipRequest& req)

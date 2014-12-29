@@ -698,11 +698,54 @@ CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
 	return ContinueProcessing;
 }
 
-CCChainProcessing Yeti::onDtmf(SBCCallLeg *call, int event, int duration){
-	DBG("%s(call = %p,event = %d,duration = %d) got dtmf event. accept it",
-		FUNC_NAME,call,event,duration);
-	//return StopProcessing;
-	return ContinueProcessing;
+CCChainProcessing Yeti::onDtmf(SBCCallLeg *call, AmDtmfEvent* e){
+	DBG("%s(call = %p,event = %d,duration = %d) got dtmf event id = %d",
+		FUNC_NAME,call,e->event(),e->duration(),e->event_id);
+
+	AmSipDtmfEvent *sip_dtmf = NULL;
+	SBCCallProfile &p = call->getCallProfile();
+	bool aleg = call->isALeg();
+	bool allowed = false;
+
+	//filter incoming methods
+	if((sip_dtmf = dynamic_cast<AmSipDtmfEvent *>(e))){
+		DBG("SIP DTMF event\n");
+		allowed = aleg ?
+					p.aleg_dtmf_recv_modes&DTMF_RX_MODE_INFO :
+					p.bleg_dtmf_recv_modes&DTMF_RX_MODE_INFO;
+	/*} else if(dynamic_cast<AmRtpDtmfEvent *>(e)){
+		DBG("RTP DTMF event\n");*/
+	} else {
+		DBG("generic DTMF event\n");
+		allowed = aleg ?
+					p.aleg_dtmf_recv_modes&DTMF_RX_MODE_RFC2833 :
+					p.bleg_dtmf_recv_modes&DTMF_RX_MODE_RFC2833;
+	}
+
+	if(!allowed){
+		DBG("DTMF event filtered");
+		return StopProcessing;
+	}
+
+	//choose outgoing method
+	int send_method = aleg ? p.aleg_dtmf_send_mode_id : p.bleg_dtmf_send_mode_id;
+	switch(send_method){
+	case DTMF_TX_MODE_RFC2833:
+		//nothing to do. it's default methos thus just continue processing
+		return ContinueProcessing;
+		break;
+	case DTMF_TX_MODE_INFO_DTMF_RELAY:
+		//!TODO: send as application/dtmf-relay
+		return StopProcessing;
+		break;
+	case DTMF_TX_MODE_INFO_DTMF:
+		//!TODO: send as application/dtmf
+		return StopProcessing;
+		break;
+	default:
+		ERROR("unknown dtmf send method %d",send_method);
+		return StopProcessing;
+	}
 }
 
 CCChainProcessing Yeti::onRtpTimeout(SBCCallLeg *call,const AmRtpTimeoutEvent &rtp_event){

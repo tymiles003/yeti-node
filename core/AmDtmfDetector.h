@@ -57,6 +57,8 @@ namespace Dtmf
   enum EventSource { SOURCE_RTP, SOURCE_SIP, SOURCE_INBAND, SOURCE_DETECTOR };
 
   enum InbandDetectorType { SEMSInternal, SpanDSP }; 
+
+  enum SipEventType { DTMF, DTMF_RELAY };
 };
 /**
  * \brief sink for audio to be processed by the inband DTMF detector 
@@ -200,17 +202,24 @@ class AmSipDtmfEvent : public AmDtmfEvent
   /**
    * Parser for application/dtmf-relay
    */
-  void parseRequestBody(const string&);
+  void parseDtmfRelayBody(const string&);
   /**
    * Parser for application/dtmf-relay
    */
   void parseLine(const string&);
-
+  /**
+   * Parser for application/dtmf
+   */
+  void parseDtmfBody(const string &);
+  /**
+   * resolve string to dtmf id
+   */
+  int str2id(const string &);
  public:
   /**
    * Constructor
    */
-  AmSipDtmfEvent(const string& request_body);
+  AmSipDtmfEvent(const string& request_body, Dtmf::SipEventType type);
 };
 
 /** the inband DTMF detector interface */

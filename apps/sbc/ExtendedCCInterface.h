@@ -71,7 +71,7 @@ class ExtendedCCInterface
     /** called before any other processing for the event is done */
     virtual CCChainProcessing onEvent(SBCCallLeg *call, AmEvent *e) { return ContinueProcessing; }
 
-    virtual CCChainProcessing onDtmf(SBCCallLeg *call, int event, int duration) { return ContinueProcessing;  };
+	virtual CCChainProcessing onDtmf(SBCCallLeg *call, AmDtmfEvent* e) { return ContinueProcessing;  };
 
     // hold related functionality (seems to work best being explicitly supported
     // with API than hacking based on another callbacks)

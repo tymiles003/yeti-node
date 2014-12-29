@@ -652,19 +652,19 @@ void SBCCallLeg::onOtherBye(const AmSipRequest& req)
     SBCEventLog::instance()->logCallEnd(req,getLocalTag(),"bye",&call_connect_ts);
 }
 
-void SBCCallLeg::onDtmf(int event, int duration)
+void SBCCallLeg::onDtmf(AmDtmfEvent* e)
 {
-  DBG("received DTMF on %c-leg (%i;%i)\n", a_leg ? 'A': 'B', event, duration);
+  DBG("received DTMF on %c-leg (%i;%i)\n", a_leg ? 'A': 'B', e->event(), e->duration());
 
   for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
-    if ((*i)->onDtmf(this, event, duration)  == StopProcessing)
+	if ((*i)->onDtmf(this, e)  == StopProcessing)
       return;
   }
 
   AmB2BMedia *ms = getMediaSession();
   if(ms) {
-    DBG("sending DTMF (%i;%i)\n", event, duration);
-    ms->sendDtmf(!a_leg,event,duration);
+	DBG("sending DTMF (%i;%i)\n", e->event(), e->duration());
+	ms->sendDtmf(!a_leg,e->event(),e->duration());
   }
 }
 

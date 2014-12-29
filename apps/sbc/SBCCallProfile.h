@@ -51,6 +51,17 @@ typedef SBCVarMapT::const_iterator SBCVarMapConstIteratorT;
 #define LOG_RTP_MASK	0x2
 #define LOG_FULL_MASK	(LOG_SIP_MASK|LOG_RTP_MASK)
 
+#define DTMF_RX_MODE_RFC2833			0x1		// telephone-event RTP payload
+#define DTMF_RX_MODE_INFO				0x2		// SIP INFO msg
+#define DTMF_RX_MODE_INBOUND			0x4		// inbound dtmf
+
+#define DTMF_TX_MODE_RFC2833			0x1		// telephone-event RTP payload
+#define DTMF_TX_MODE_INFO_DTMF_RELAY	0x2		// application/dtmf-relay
+#define DTMF_TX_MODE_INFO_DTMF			0x4		// application/dtmf
+#define DTMF_TX_MODE_INBOUND			0x8		// inbound dtmf
+
+#define DTMF_RX_MODE_ALL	(DTMF_RX_MODE_RFC2833|DTMF_RX_MODE_INFO|DTMF_RX_MODE_INBOUND)
+
 struct CCInterface {
   string cc_name;
   string cc_module;
@@ -163,6 +174,9 @@ struct SBCCallProfile
 
   int aleg_sensor_id, bleg_sensor_id;
   int aleg_sensor_level_id, bleg_sensor_level_id;
+
+  int aleg_dtmf_recv_modes, bleg_dtmf_recv_modes;
+  int aleg_dtmf_send_mode_id, bleg_dtmf_send_mode_id;
 
   vector<FilterEntry> headerfilter;
   vector<FilterEntry> messagefilter;
@@ -410,7 +424,11 @@ struct SBCCallProfile
 	force_relay_CN(false),
 	inv_transaction_timeout(0),
 	aleg_sensor_id(-1), bleg_sensor_id(-1),
-	aleg_sensor_level_id(0), bleg_sensor_level_id(0)
+	aleg_sensor_level_id(0), bleg_sensor_level_id(0),
+	aleg_dtmf_send_mode_id(DTMF_RX_MODE_RFC2833),
+	bleg_dtmf_send_mode_id(DTMF_RX_MODE_RFC2833),
+	aleg_dtmf_recv_modes(DTMF_RX_MODE_ALL),
+	bleg_dtmf_recv_modes(DTMF_RX_MODE_ALL)
   { }
 
   bool readFromConfiguration(const string& name, const string profile_file_name);

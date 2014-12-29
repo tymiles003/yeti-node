@@ -39,6 +39,7 @@
 // one needs to wait 5 sec on the first keypress
 // (e.g. due to a bug on recent snoms)
 #define MAX_INFO_DTMF_LENGTH 1000 
+#define DEFAULT_INFO_DTMF_LENGTH 250
 
 //
 // AmDtmfEventQueue methods
@@ -63,13 +64,20 @@ void AmDtmfEventQueue::putDtmfAudio(const unsigned char *buf, int size, unsigned
 //
 // AmSipDtmfEvent methods
 //
-AmSipDtmfEvent::AmSipDtmfEvent(const string& request_body)
+AmSipDtmfEvent::AmSipDtmfEvent(const string& request_body, Dtmf::SipEventType type)
   : AmDtmfEvent(Dtmf::SOURCE_SIP)
 {
-  parseRequestBody(request_body);
+  switch(type){
+  case Dtmf::DTMF_RELAY:
+	  parseDtmfRelayBody(request_body);
+	  break;
+  case Dtmf::DTMF:
+	  parseDtmfBody(request_body);
+	  break;
+  }
 }
 
-void AmSipDtmfEvent::parseRequestBody(const string& request_body)
+void AmSipDtmfEvent::parseDtmfRelayBody(const string& request_body)
 {
   string::size_type start = 0;
   string::size_type stop = 0;
@@ -94,33 +102,7 @@ void AmSipDtmfEvent::parseLine(const string& line)
       line.substr(0, KeySignal.length()) == KeySignal)
     {
       string event(line.substr(KeySignal.length(), string::npos));
-      switch (event.c_str()[0])
-        {
-        case '*':
-	  m_event = 10;
-	  break;
-        case '#':
-	  m_event = 11;
-	  break;
-        case 'A':
-        case 'a':
-	  m_event = 12;
-	  break;
-        case 'B':
-        case 'b':
-	  m_event = 13;
-	  break;
-        case 'C':
-        case 'c':
-	  m_event = 14;
-	  break;
-        case 'D':
-        case 'd':
-	  m_event = 15;
-	  break;
-        default:
-	  m_event = atol(event.c_str());
-        }
+	  m_event = str2id(event);
     }
   else if (line.length() > KeyDuration.length() &&
 	   line.substr(0, KeyDuration.length()) == KeyDuration)
@@ -130,6 +112,42 @@ void AmSipDtmfEvent::parseLine(const string& line)
 	m_duration_msec  = MAX_INFO_DTMF_LENGTH;
 
     }
+}
+
+void AmSipDtmfEvent::parseDtmfBody(const string &s){
+	m_event = str2id(s);
+	m_duration_msec = DEFAULT_INFO_DTMF_LENGTH;
+}
+
+int AmSipDtmfEvent::str2id(const string &s){
+	int id = -1;
+	switch (s[0]){
+	case '*':
+		m_event = 10;
+		break;
+	case '#':
+		m_event = 11;
+		break;
+	case 'A':
+	case 'a':
+		m_event = 12;
+		break;
+	case 'B':
+	case 'b':
+		m_event = 13;
+		break;
+	case 'C':
+	case 'c':
+		m_event = 14;
+		break;
+	case 'D':
+	case 'd':
+		m_event = 15;
+		break;
+	default:
+		m_event = atol(s.c_str());
+	}
+	return id;
 }
 
 //

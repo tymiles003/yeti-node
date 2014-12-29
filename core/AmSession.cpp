@@ -604,19 +604,22 @@ void AmSession::setInbandDetector(Dtmf::InbandDetectorType t)
 
 void AmSession::postDtmfEvent(AmDtmfEvent *evt)
 {
+	DBG("AmSession::postDtmfEvent");
   if (m_dtmfDetectionEnabled)
     {
-      if (dynamic_cast<AmSipDtmfEvent *>(evt) ||
+	  if (/*dynamic_cast<AmSipDtmfEvent *>(evt) ||*/
 	  dynamic_cast<AmRtpDtmfEvent *>(evt))
         {   
 	  // this is a raw event from sip info or rtp
+		  DBG("post as raw event");
 	  m_dtmfEventQueue.postEvent(evt);
         }
-      else 
+	  else
         {
 	  // this is an aggregated event, 
 	  // post it into our event queue
-	  postEvent(evt);
+		  DBG("post as aggregated event");
+		postEvent(evt);
         }
     }
 }
@@ -639,9 +642,9 @@ void AmSession::sendDtmf(int event, unsigned int duration_ms) {
 }
 
 
-void AmSession::onDtmf(int event, int duration_msec)
+void AmSession::onDtmf(AmDtmfEvent* e)
 {
-  DBG("AmSession::onDtmf(%i,%i)\n",event,duration_msec);
+  DBG("AmSession::onDtmf(%i,%i)\n",e->event(),e->duration());
 }
 
 void AmSession::clearAudio()
@@ -693,7 +696,7 @@ void AmSession::process(AmEvent* ev)
   if (dtmf_ev) {
     DBG("Session received DTMF, event = %d, duration = %d\n", 
 	dtmf_ev->event(), dtmf_ev->duration());
-    onDtmf(dtmf_ev->event(), dtmf_ev->duration());
+	onDtmf(dtmf_ev);
     return;
   }
 
@@ -754,18 +757,26 @@ void AmSession::onSipRequest(const AmSipRequest& req)
     onCancel(req);
   } 
   else if( req.method == SIP_METH_INFO ){
+	Dtmf::SipEventType type;
+	const AmMimeBody* dtmf_body;
+	bool supported = false;
 
-    const AmMimeBody* dtmf_body = 
-      req.body.hasContentType("application/dtmf-relay");
+	if ((dtmf_body = req.body.hasContentType("application/dtmf-relay"))) {
+		type = Dtmf::DTMF_RELAY;
+		supported = true;
+	} else if((dtmf_body = req.body.hasContentType("application/dtmf-relay"))){
+		type = Dtmf::DTMF;
+		supported = true;
+	}
 
-    if (dtmf_body) {
-      string dtmf_body_str((const char*)dtmf_body->getPayload(),
-			   dtmf_body->getLen());
-      postDtmfEvent(new AmSipDtmfEvent(dtmf_body_str));
-      dlg->reply(req, 200, "OK");
-    } else {
-      dlg->reply(req, 415, "Unsupported Media Type");
-    }
+	if(supported){
+		string dtmf_body_str((const char*)dtmf_body->getPayload(),
+				 dtmf_body->getLen());
+		postDtmfEvent(new AmSipDtmfEvent(dtmf_body_str,type));
+		dlg->reply(req, 200, "OK");
+	} else {
+		dlg->reply(req, 415, "Unsupported Media Type");
+	}
   } else if (req.method == SIP_METH_PRACK) {
     // TODO: SDP
     dlg->reply(req, 200, "OK");

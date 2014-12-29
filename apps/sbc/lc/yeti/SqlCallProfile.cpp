@@ -314,6 +314,11 @@ bool SqlCallProfile::readFromTuple(const pqxx::result::tuple &t,const DynFieldsT
 	/*aleg_sensor_level_id = bleg_sensor_level_id = LOG_FULL_MASK;
 	aleg_sensor_id = bleg_sensor_id = 3;*/
 
+	assign_int_safe(aleg_dtmf_send_mode_id,"aleg_dtmf_send_mode_id",DTMF_TX_MODE_RFC2833,DTMF_TX_MODE_RFC2833);
+	assign_int_safe(bleg_dtmf_send_mode_id,"bleg_dtmf_send_mode_id",DTMF_TX_MODE_RFC2833,DTMF_TX_MODE_RFC2833);
+	assign_int_safe(aleg_dtmf_recv_modes,"aleg_dtmf_recv_modes",DTMF_RX_MODE_ALL,DTMF_RX_MODE_ALL);
+	assign_int_safe(bleg_dtmf_recv_modes,"bleg_dtmf_recv_modes",DTMF_RX_MODE_ALL,DTMF_RX_MODE_ALL);
+
 	DBG("Yeti: loaded SQL profile\n");
 
 	return true;
@@ -505,6 +510,11 @@ void SqlCallProfile::infoPrint(const DynFieldsT &df){
 		DBG("aleg_sensor_level_id: %d",aleg_sensor_level_id);
 		DBG("bleg_sensor_id: %d",bleg_sensor_id);
 		DBG("bleg_sensor_level_id: %d",bleg_sensor_level_id);
+
+		DBG("aleg_dtmf_send_mode_id: %d",aleg_dtmf_send_mode_id);
+		DBG("bleg_dtmf_send_mode_id: %d",bleg_dtmf_send_mode_id);
+		DBG("aleg_dtmf_recv_modes: %d",aleg_dtmf_recv_modes);
+		DBG("bleg_dtmf_recv_modes: %d",bleg_dtmf_recv_modes);
 
 		DynFieldsT::const_iterator dfit = df.begin();
 		for(unsigned int k = 0;k<dyn_fields.size();k++){

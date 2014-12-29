@@ -456,7 +456,7 @@ public:
   /* ---------- event handlers ------------------------- */
 
   /** DTMF event handler for apps to use*/
-  virtual void onDtmf(int event, int duration);
+  virtual void onDtmf(AmDtmfEvent* e);
 
   /**
    * onStart will be called before everything else.
