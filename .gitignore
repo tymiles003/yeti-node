@@ -29,3 +29,4 @@ apps/sbc/lc/yeti/etc/oodprofile.yeti.dist.conf
 apps/sbc/lc/yeti/etc/yeti.dist.conf
 core/etc/sems.conf.dist
 core/sems.h
+apps/dsm/etc/*.conf
