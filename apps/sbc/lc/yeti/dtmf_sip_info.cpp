@@ -6,13 +6,34 @@
 #include "AmUtils.h"
 #include "AmMimeBody.h"
 
+//invert AmSipDtmfEvent::str2id
+static inline void add_dtmf_symbol(std::stringstream &stream,int symbol_code){
+	static const char symbols[6] = {'*', '#', 'A', 'B', 'C', 'D'};
+	//0..9
+	if(symbol_code<10){
+		stream << symbol_code;
+		return;
+	}
+	//10..15
+	if(symbol_code < 16){
+		stream << symbols[symbol_code-10];
+		return;
+	}
+	//>15
+	stream << symbol_code;
+}
+
 namespace yeti_dtmf {
 
 template <>
 void send_dtmf<DTMF>(AmSipDialog *dlg, AmDtmfEvent* dtmf){
 	AmMimeBody body;
 	AmContentType type;
-	string payload(int2str(dtmf->event()));
+
+	std::stringstream s;
+	s << dtmf->event() << CRLF;
+
+	string payload(s.str());
 
 	type.setType("application");
 	type.setSubType("dtmf");
@@ -29,8 +50,8 @@ void send_dtmf<DTMF_RELAY>(AmSipDialog *dlg, AmDtmfEvent* dtmf){
 	AmContentType type;
 
 	std::stringstream s;
-	s << "Signal=" << dtmf->event() << std::endl;
-	s << "Duration=" << dtmf->duration() << std::endl;
+	s << "Signal="; add_dtmf_symbol(s,dtmf->event()); s << CRLF;
+	s << "Duration=" << dtmf->duration() << CRLF;
 
 	string payload(s.str());
 
