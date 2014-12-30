@@ -604,21 +604,23 @@ void AmSession::setInbandDetector(Dtmf::InbandDetectorType t)
 
 void AmSession::postDtmfEvent(AmDtmfEvent *evt)
 {
-	DBG("AmSession::postDtmfEvent");
+   /*DBG("AmSession::postDtmfEvent(evt: { event: %d, duration: %d})",evt->event(),evt->duration());
+   log_stacktrace(L_INFO);*/
+
   if (m_dtmfDetectionEnabled)
     {
 	  if (/*dynamic_cast<AmSipDtmfEvent *>(evt) ||*/
 	  dynamic_cast<AmRtpDtmfEvent *>(evt))
         {   
 	  // this is a raw event from sip info or rtp
-		  DBG("post as raw event");
+		  //DBG("post as raw event");
 	  m_dtmfEventQueue.postEvent(evt);
         }
 	  else
         {
 	  // this is an aggregated event, 
 	  // post it into our event queue
-		  DBG("post as aggregated event");
+		  //DBG("post as aggregated event");
 		postEvent(evt);
         }
     }
@@ -764,7 +766,7 @@ void AmSession::onSipRequest(const AmSipRequest& req)
 	if ((dtmf_body = req.body.hasContentType("application/dtmf-relay"))) {
 		type = Dtmf::DTMF_RELAY;
 		supported = true;
-	} else if((dtmf_body = req.body.hasContentType("application/dtmf-relay"))){
+	} else if((dtmf_body = req.body.hasContentType("application/dtmf"))){
 		type = Dtmf::DTMF;
 		supported = true;
 	}

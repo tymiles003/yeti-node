@@ -55,6 +55,7 @@ typedef SBCVarMapT::const_iterator SBCVarMapConstIteratorT;
 #define DTMF_RX_MODE_INFO				0x2		// SIP INFO msg
 #define DTMF_RX_MODE_INBOUND			0x4		// inbound dtmf
 
+#define DTMF_TX_MODE_DISABLED			0x0		// avoid sending
 #define DTMF_TX_MODE_RFC2833			0x1		// telephone-event RTP payload
 #define DTMF_TX_MODE_INFO_DTMF_RELAY	0x2		// application/dtmf-relay
 #define DTMF_TX_MODE_INFO_DTMF			0x4		// application/dtmf

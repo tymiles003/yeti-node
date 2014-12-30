@@ -16,6 +16,7 @@ set (yeti_SRCS
 	CodecsGroup.cpp
 	sdp_filter.cpp
 	codecs_bench.cpp
+	dtmf_sip_info.cpp
 	resources/RedisConnPool.cpp
         resources/ResourceCache.cpp
         resources/ResourceControl.cpp

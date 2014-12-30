@@ -30,7 +30,6 @@
 #define _AmDtmfSender_h_
 
 #include "AmThread.h"
-
 #include <queue>
 using std::queue;
 using std::pair;

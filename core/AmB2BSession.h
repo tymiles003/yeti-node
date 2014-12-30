@@ -40,7 +40,8 @@ enum { B2BTerminateLeg,
        B2BConnectLeg,
        B2BSipRequest,
        B2BSipReply,
-       B2BMsgBody };
+	   B2BMsgBody,
+	   B2BDtmfEvent };
 
 /** \brief base class for event in B2B session */
 struct B2BEvent: public AmEvent

@@ -123,29 +123,30 @@ int AmSipDtmfEvent::str2id(const string &s){
 	int id = -1;
 	switch (s[0]){
 	case '*':
-		m_event = 10;
+		id = 10;
 		break;
 	case '#':
-		m_event = 11;
+		id = 11;
 		break;
 	case 'A':
 	case 'a':
-		m_event = 12;
+		id = 12;
 		break;
 	case 'B':
 	case 'b':
-		m_event = 13;
+		id = 13;
 		break;
 	case 'C':
 	case 'c':
-		m_event = 14;
+		id = 14;
 		break;
 	case 'D':
 	case 'd':
-		m_event = 15;
+		id = 15;
 		break;
 	default:
-		m_event = atol(s.c_str());
+		if(!str2int(s.c_str(),id))
+			WARN("cannot cast string '%s' to integer",s.c_str());
 	}
 	return id;
 }
