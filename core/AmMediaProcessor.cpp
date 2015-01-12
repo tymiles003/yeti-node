@@ -212,20 +212,15 @@ void AmMediaProcessor::dispose()
 }
 
 void AmMediaProcessor::getInfo(AmArg& ret){
-	AmArg info;
-
 	group_mut.lock();
 	for (unsigned int i=0;i<num_threads;i++) {
 		AmArg l;
 		AmMediaProcessorThread *t = threads[i];
 		if(!t) continue;
 		t->getInfo(l);
-		info.push(int2str((unsigned int)t->thread_pid),l);
+		ret.push(int2str((unsigned int)t->thread_pid),l);
 	}
 	group_mut.unlock();
-
-	ret.push(200);
-	ret.push(info);
 }
 
 /* the actual media processing thread */

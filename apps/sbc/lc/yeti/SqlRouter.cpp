@@ -16,6 +16,7 @@
 #include "db/DbTypes.h"
 #include "yeti.h"
 #include "cdr/TrustedHeaders.h"
+#include "XmlRpcException.h"
 
 const static_field profile_static_fields[] = {
     { "node_id", "integer" },
@@ -599,13 +600,9 @@ void SqlRouter::clearCache(){
 
 void SqlRouter::showCache(AmArg& ret){
 	if(cache_enabled && cache){
-		AmArg cache_info;
-		cache->dump(cache_info);
-		ret.push(200);
-		ret.push(cache_info);
+		cache->dump(ret);
 	} else {
-		ret.push(404);
-		ret.push("profiles cache is not used");
+		throw XmlRpc::XmlRpcException("profiles cache is not used",404);
 	}
 }
 

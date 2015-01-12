@@ -4,6 +4,7 @@
 #include "AmSession.h"
 #include "../db/DbConfig.h"
 #include <pqxx/pqxx>
+#include "XmlRpcException.h"
 
 //workaround for callback
 static ResourceControl *_instance;
@@ -378,19 +379,12 @@ void ResourceControl::showResources(AmArg &ret){
 
 void ResourceControl::showResourceByHandler(const string &h, AmArg &ret){
 	handlers_lock.lock();
-
 	HandlersIt i = handlers.find(h);
 	if(i==handlers.end()){
 		handlers_lock.unlock();
-		ret.push(404);
-		ret.push(AmArg("no such handler"));
-		return;
+		throw XmlRpc::XmlRpcException("no such handler",500);
 	}
-
-	ret.push(200);
-	ret.push(AmArg());
-	handler_info(i,ret.back());
-
+	handler_info(i,ret);
 	handlers_lock.unlock();
 }
 
@@ -405,24 +399,16 @@ void ResourceControl::showResourceByLocalTag(const string &tag, AmArg &ret){
 	}
 	if(i==handlers.end()){
 		handlers_lock.unlock();
-		ret.push(404);
-		ret.push(AmArg("no such handler"));
-		return;
+		throw XmlRpc::XmlRpcException("no such handler",404);
 	}
-
-	ret.push(200);
-	ret.push(AmArg());
-	handler_info(i,ret.back());
-
+	handler_info(i,ret);
 	handlers_lock.unlock();
 }
 
 void ResourceControl::showResourcesById(int id, AmArg &ret){
-	AmArg v;
-
 	handlers_lock.lock();
 
-	v.assertArray();
+	ret.assertArray();
 
 	HandlersIt i = handlers.begin();
 	for(;i!=handlers.end();++i){
@@ -431,19 +417,11 @@ void ResourceControl::showResourcesById(int id, AmArg &ret){
 		for(;j!=e.resources.end();j++){
 			const Resource &r = *j;
 			if(r.id==id){
-				v.push(AmArg());
-				handler_info(i,v.back());
+				ret.push(AmArg());
+				handler_info(i,ret.back());
 				break; //loop over resources
 			}
 		}
-	}
-
-	if(v.size()){
-		ret.push(200);
-		ret.push(v);
-	} else {
-		ret.push(404);
-		ret.push(AmArg("no handlers which manage resources with such id"));
 	}
 
 	handlers_lock.unlock();

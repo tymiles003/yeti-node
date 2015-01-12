@@ -11,6 +11,10 @@
 #include <sys/types.h>
 #include <signal.h>
 
+#include "XmlRpcException.h"
+
+const char *XMLRPC_CMD_SUCC = "OK";
+
 static timeval last_shutdown_time;
 
 typedef void (Yeti::*YetiRpcHandler)(const AmArg& args, AmArg& ret);
@@ -385,9 +389,6 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
 	} else if (method == "showVersion"){
 		INFO ("showVersion received via xmlrpc2di");
 		showVersion(args, ret);
-	} else if(method == "reload"){
-		INFO ("reload received via xmlrpc2di");
-		reload(args,ret);
 	} else if(method == "closeCdrFiles"){
 		INFO ("closeCdrFiles received via xmlrpc2di");
 		closeCdrFiles(args,ret);
@@ -423,16 +424,6 @@ void Yeti::invoke(const string& method, const AmArg& args, AmArg& ret)
  * 				aux funcs				*
  ****************************************/
 
-bool Yeti::reload_config(AmArg &ret){
-	cfg = AmConfigReader();
-	if(!read_config()){
-		ret.push(500);
-		ret.push("config file reload failed");
-		return false;
-	}
-	return true;
-}
-
 bool Yeti::check_event_id(int event_id,AmArg &ret){
 	bool succ = false;
 	try {
@@ -451,16 +442,15 @@ bool Yeti::check_event_id(int event_id,AmArg &ret){
 			succ = true;
 		} else {
 			WARN("no appropriate id in database");
-			ret.push(503);
-			ret.push(AmArg("no such event_id"));
+			throw XmlRpc::XmlRpcException("no such event_id",503);
 		}
 	} catch(pqxx::pqxx_exception &e){
 		DBG("e = %s",e.base().what());
-		ret.push(500);
-		ret.push(AmArg(string("can't check event id in database ")+e.base().what()));
+		throw XmlRpc::XmlRpcException(string("can't check event id in database ")+e.base().what(),500);
+	} catch(XmlRpc::XmlRpcException){
+		throw;
 	} catch(...){
-		ret.push(500);
-		ret.push(AmArg("can't check event id in database"));
+		throw XmlRpc::XmlRpcException("can't check event id in database",500);
 	}
 	return succ;
 }
@@ -469,10 +459,8 @@ bool Yeti::assert_event_id(const AmArg &args,AmArg &ret){
 	if(args.size()){
 		int event_id;
 		args.assertArrayFmt("s");
-		if(!str2int(args[1].asCStr(),event_id)){
-			ret.push(500);
-			ret.push(AmArg("invalid event id"));
-			return false;
+		if(!str2int(args[0].asCStr(),event_id)){
+			throw XmlRpc::XmlRpcException("invalid event id",500);
 		}
 		if(!check_event_id(event_id,ret))
 				return false;
@@ -486,105 +474,71 @@ bool Yeti::assert_event_id(const AmArg &args,AmArg &ret){
 
 void Yeti::GetCallsCount(const AmArg& args, AmArg& ret) {
 	handler_log();
-	ret.push(200);
-	ret.push((long int)cdr_list.get_count());
+	ret = (long int)cdr_list.get_count();
 }
 
 void Yeti::GetCall(const AmArg& args, AmArg& ret) {
-	AmArg call;
 	string local_tag;
 	handler_log();
+
 	if (!args.size()) {
-		ret.push(500);
-		ret.push("Parameters error: expected local tag of requested cdr ");
-		return;
+		throw XmlRpc::XmlRpcException("Parameters error: expected local tag of requested cdr",500);
 	}
 
 	local_tag = args[0].asCStr();
-	if(cdr_list.getCall(local_tag,call,router)){
-		ret.push(200);
-		ret.push(call);
-	} else {
-		ret.push(404);
-		ret.push("Have no CDR with such local tag");
+	if(!cdr_list.getCall(local_tag,ret,router)){
+		throw XmlRpc::XmlRpcException("Have no CDR with such local tag",404);
 	}
 }
 
 void Yeti::GetCalls(const AmArg& args, AmArg& ret) {
-	AmArg calls;
 	handler_log();
 	if(args.size()){
 		string local_tag = args[0].asCStr();
-		if(!cdr_list.getCall(local_tag,calls,router)){
-			ret.push(404);
-			ret.push("Have no CDR with such local tag");
-			return;
+		if(!cdr_list.getCall(local_tag,ret,router)){
+			throw XmlRpc::XmlRpcException("Have no CDR with such local tag",404);
 		}
 	} else {
-		cdr_list.getCalls(calls,calls_show_limit,router);
+		cdr_list.getCalls(ret,calls_show_limit,router);
 	}
-
-	ret.push(200);
-	ret.push(calls);
 }
 
 void Yeti::GetCallsFields(const AmArg &args, AmArg &ret){
 	handler_log();
 
 	if(!args.size()){
-		ret.push(500);
-		ret.push("you should specify at least one field");
-		return;
+		throw XmlRpc::XmlRpcException("you should specify at least one field",500);
 	}
 
 	AmArg failed_fields;
 	vector<string> str_fields = args.asStringVector();
 	if(!cdr_list.validate_fields(str_fields,router,failed_fields)){
-		ret.push(500);
-		ret.push(AmArg());
-		AmArg &body = ret.back();
-		body["reason"] = "passed one or more non existent fields";
-		body["invalid_fields"] = failed_fields;
-		return;
+		ERROR("GetCallsFiltered: passed non existent fields: %s",AmArg::print(failed_fields).c_str());
+		throw XmlRpc::XmlRpcException("passed one or more non existent fields",500);
 	}
 
-	ret.push(200);
-	ret.push(AmArg());
-	AmArg &calls = ret.back();
-	calls.assertArray();
-	cdr_list.getCallsFields(calls,calls_show_limit,router,str_fields);
+	cdr_list.getCallsFields(ret,calls_show_limit,router,str_fields);
 }
 
 void Yeti::showCallsFields(const AmArg &args, AmArg &ret){
-	ret.push(200);
-	ret.push(AmArg());
-	cdr_list.getFields(ret.back(),router);
+	cdr_list.getFields(ret,router);
 }
 
 void Yeti::GetRegistration(const AmArg& args, AmArg& ret){
-	AmArg reg;
 	string reg_id_str;
 	int reg_id;
 	handler_log();
 	if (!args.size()) {
-		ret.push(500);
-		ret.push(AmArg("Parameters error: expected id of requested registration"));
-		return;
+		throw XmlRpc::XmlRpcException("Parameters error: expected id of requested registration",500);
 	}
 
 	reg_id_str = args[0].asCStr();
 	if(!str2int(reg_id_str,reg_id)){
-		ret.push(500);
-		ret.push(AmArg("Non integer value passed as registrations id"));
-		return;
+		throw XmlRpc::XmlRpcException("Non integer value passed as registrations id",500);
 	}
 
-	if(Registration::instance()->get_registration_info(reg_id,reg)){
-		ret.push(200);
-		ret.push(reg);
-	} else {
-		ret.push(404);
-		ret.push("Have no registration with such id");
+	if(!Registration::instance()->get_registration_info(reg_id,ret)){
+		throw XmlRpc::XmlRpcException("Have no registration with such id",404);
 	}
 }
 
@@ -593,45 +547,32 @@ void Yeti::RenewRegistration(const AmArg& args, AmArg& ret){
 	int reg_id;
 	handler_log();
 	if (!args.size()) {
-		ret.push(500);
-		ret.push(AmArg("Parameters error: expected id of active registration"));
-		return;
+		throw XmlRpc::XmlRpcException("Parameters error: expected id of active registration",500);
 	}
 
 	reg_id_str = args[0].asCStr();
 	if(!str2int(reg_id_str,reg_id)){
-		ret.push(500);
-		ret.push(AmArg("Non integer value passed as registrations id"));
-		return;
+		throw XmlRpc::XmlRpcException("Non integer value passed as registrations id",500);
 	}
 
-	if(Registration::instance()->reregister(reg_id)){
-		ret.push(200);
-		ret.push(AmArg("OK"));
-	} else {
-		ret.push(404);
-		ret.push("Have no registration with such id and in appropriate state");
+	if(!Registration::instance()->reregister(reg_id)){
+		throw XmlRpc::XmlRpcException("Have no registration with such id and in appropriate state",404);
 	}
+	ret = XMLRPC_CMD_SUCC;
 }
 
 void Yeti::GetRegistrations(const AmArg& args, AmArg& ret){
-	AmArg regs;
 	handler_log();
-
 	if(args.size()){
 		GetRegistration(args,ret);
 		return;
 	}
-	Registration::instance()->list_registrations(regs);
-
-	ret.push(200);
-	ret.push(regs);
+	Registration::instance()->list_registrations(ret);
 }
 
 void Yeti::GetRegistrationsCount(const AmArg& args, AmArg& ret){
 	handler_log();
-	ret.push(200);
-	ret.push(Registration::instance()->get_registrations_count());
+	ret = Registration::instance()->get_registrations_count();
 }
 
 void Yeti::ClearStats(const AmArg& args, AmArg& ret){
@@ -640,8 +581,7 @@ void Yeti::ClearStats(const AmArg& args, AmArg& ret){
 	if(router)
 		router->clearStats();
 	rctl.clearStats();
-	ret.push(200);
-	ret.push("OK");
+	ret = XMLRPC_CMD_SUCC;
 }
 
 void Yeti::ClearCache(const AmArg& args, AmArg& ret){
@@ -649,8 +589,7 @@ void Yeti::ClearCache(const AmArg& args, AmArg& ret){
 	AmLock l(router_mutex);
 	if(router)
 		router->clearCache();
-	ret.push(200);
-	ret.push("OK");
+	ret = XMLRPC_CMD_SUCC;
 }
 
 void Yeti::ShowCache(const AmArg& args, AmArg& ret){
@@ -661,109 +600,78 @@ void Yeti::ShowCache(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::GetStats(const AmArg& args, AmArg& ret){
-	AmArg stats,u;
 	time_t now;
 	handler_log();
 
-	ret.push(200);
-
 	/* Yeti stats */
-	stats["calls_show_limit"] = (int)calls_show_limit;
+	ret["calls_show_limit"] = (int)calls_show_limit;
 	now = time(NULL);
-	stats["localtime"] = now;
-	stats["uptime"] = difftime(now,start_time);
+	ret["localtime"] = now;
+	ret["uptime"] = difftime(now,start_time);
 
 	/* sql_router stats */
 	router_mutex.lock();
-	AmArg routers_stats;
-	stats["active_routers_count"] = (long int)routers.size();
+	AmArg &routers_stats = ret["routers"];
+	ret["active_routers_count"] = (long int)routers.size();
 	set<SqlRouter *>::const_iterator i = routers.begin();
 	for(;i!=routers.end();++i){
-		u.clear();
 		SqlRouter *r = *i;
 		if(r){
-			r->getStats(u);
-			if(r == router){
-				routers_stats.push("active",u);
-			} else {
-				routers_stats.push("old",u);
-			}
+			routers_stats.push(AmArg());
+			AmArg &rs = routers_stats.back();
+			r->getStats(rs);
+			rs["is_active"] = (r == router);
 		}
 	}
 	router_mutex.unlock();
-	stats.push("routers",routers_stats);
 
-	u.clear();
-	AmSessionContainer::instance()->getStats(u);
-	stats.push("AmSessionContainer",u);
+	AmSessionContainer::instance()->getStats(ret["AmSessionContainer"]);
 
-	u.clear();
-	u["SessionNum"] = (int)AmSession::getSessionNum();
-	u["MaxSessionNum"] = (int)AmSession::getMaxSessionNum();
-	u["AvgSessionNum"] = (int)AmSession::getAvgSessionNum();
-	stats.push("AmSession",u);
+	AmArg &ss = ret["AmSession"];
+	ss["SessionNum"] = (int)AmSession::getSessionNum();
+	ss["MaxSessionNum"] = (int)AmSession::getMaxSessionNum();
+	ss["AvgSessionNum"] = (int)AmSession::getAvgSessionNum();
 
-
-	u.clear();
+	AmArg &ts = ret["trans_layer"];
 	const trans_stats &tstats = trans_layer::instance()->get_stats();
-	u["rx_replies"] = (long)tstats.get_received_replies();
-	u["tx_replies"] = (long)tstats.get_sent_replies();
-	u["tx_replies_retrans"] = (long)tstats.get_sent_reply_retrans();
-	u["rx_requests"] =(long) tstats.get_received_requests();
-	u["tx_requests"] = (long)tstats.get_sent_requests();
-	u["tx_requests_retrans"] = (long)tstats.get_sent_request_retrans();
-	stats.push("trans_layer",u);
+	ts["rx_replies"] = (long)tstats.get_received_replies();
+	ts["tx_replies"] = (long)tstats.get_sent_replies();
+	ts["tx_replies_retrans"] = (long)tstats.get_sent_reply_retrans();
+	ts["rx_requests"] =(long) tstats.get_received_requests();
+	ts["tx_requests"] = (long)tstats.get_sent_requests();
+	ts["tx_requests_retrans"] = (long)tstats.get_sent_request_retrans();
 
-	u.clear();
-	rctl.getStats(u);
-	stats.push("resource_control",u);
-
-	u.clear();
-	CodesTranslator::instance()->getStats(u);
-	stats.push("translator",u);
-
-	ret.push(stats);
+	rctl.getStats(ret["resource_control"]);
+	CodesTranslator::instance()->getStats(ret["translator"]);
 }
 
 void Yeti::GetConfig(const AmArg& args, AmArg& ret) {
-	AmArg u,s;
-	ret.push(200);
 	handler_log();
-	s["calls_show_limit"] = calls_show_limit;
-	s["node_id"] = config.node_id;
-	s["pop_id"] = config.pop_id;
+
+	ret["calls_show_limit"] = calls_show_limit;
+	ret["node_id"] = config.node_id;
+	ret["pop_id"] = config.pop_id;
 
 	router_mutex.lock();
 	if(router){
-		router->getConfig(u);
-		s.push("router",u);
+		router->getConfig(ret["router"]);
 	}
 	router_mutex.unlock();
 
-	u.clear();
-	CodesTranslator::instance()->GetConfig(u);
-	s.push("translator",u);
-
-	u.clear();
-	rctl.GetConfig(u);
-	s.push("resources_control",u);
-
-	u.clear();
-	CodecsGroups::instance()->GetConfig(u);
-	s.push("codecs_groups",u);
-
-	ret.push(s);
+	CodesTranslator::instance()->GetConfig(ret["translator"]);
+	rctl.GetConfig(ret["resources_control"]);
+	CodecsGroups::instance()->GetConfig(ret["codecs_groups"]);
 }
 
 void Yeti::DropCall(const AmArg& args, AmArg& ret){
 	SBCControlEvent* evt;
 	string local_tag;
 	handler_log();
-	if (!args.size()) {
-		ret.push(500);
-		ret.push("Parameters error: expected local tag of active call");
-		return;
+
+	if (!args.size()){
+		throw XmlRpc::XmlRpcException("Parameters error: expected local tag of active call",500);
 	}
+
 	local_tag = args[0].asCStr();
 
 	evt = new SBCControlEvent("teardown");
@@ -783,136 +691,21 @@ void Yeti::DropCall(const AmArg& args, AmArg& ret){
 			router_mutex.lock(); //avoid unexpected router reload
 				router->write_cdr(cdr,true);
 			router_mutex.unlock();
-			ret.push(202);
-			ret.push("Dropped from active_calls (no presented in sessions container)");
+			ret = "Dropped from active_calls (no presented in sessions container)";
 		} else {
-			ret.push(404);
-			ret.push("Not found.");
+			throw XmlRpc::XmlRpcException("Not found",404);
 		}
 	} else {
-		ret.push(202);
-		ret.push("Dropped from sessions container");
+		ret = "Dropped from sessions container";
 	}
 }
 
 void Yeti::showVersion(const AmArg& args, AmArg& ret) {
-		AmArg p;
-		handler_log();
-		ret.push(200);
-		p["build"] = YETI_VERSION;
-		p["build_commit"] = YETI_COMMIT;
-		p["compiled_at"] = YETI_BUILD_DATE;
-		p["compiled_by"] = YETI_BUILD_USER;
-		ret.push(p);
-}
-
-/* obsolete function !!! */
-void Yeti::reload(const AmArg& args, AmArg& ret){
 	handler_log();
-	if(0==args.size()){
-		ret.push(400);
-		ret.push(AmArg());
-		ret[1].push("resources");
-		ret[1].push("translations");
-		ret[1].push("registrations");
-		ret[1].push("codecs_groups");
-		ret[1].push("router");
-		return;
-	}
-	args.assertArrayFmt("s");
-
-	if(args.size()>1){
-		int event_id;
-		args.assertArrayFmt("ss");
-		if(!str2int(args[1].asCStr(),event_id)){
-			ret.push(500);
-			ret.push(AmArg("invalid event id"));
-			return;
-		} else {
-			DBG("we have event_id = %d",event_id);
-			//check it
-			if(!check_event_id(event_id,ret))
-				return;
-		}
-	}
-
-	if(!reload_config(ret))
-		return;
-
-	string action = args[0].asCStr();
-	if(action=="resources"){
-		rctl.configure_db(cfg);
-		if(rctl.reload()){
-			ret.push(200);
-			ret.push("OK");
-		} else {
-			ret.push(500);
-			ret.push("errors during resources config reload. there is empty resources config now");
-		}
-	} else if(action == "translations"){
-		CodesTranslator::instance()->configure_db(cfg);
-		if(CodesTranslator::instance()->reload()){
-			ret.push(200);
-			ret.push("OK");
-		} else {
-			ret.push(500);
-			ret.push("errors during translations config reload. there is empty translation hashes now");
-		}
-	} else if(action == "registrations"){
-		if(0==Registration::instance()->reload(cfg)){
-			ret.push(200);
-			ret.push("OK");
-		} else {
-			ret.push(500);
-			ret.push("errors during registrations config reload. there is empty registrations list now");
-		}
-	} else if(action=="codecs_groups"){
-		CodecsGroups::instance()->configure_db(cfg);
-		if(CodecsGroups::instance()->reload()){
-			ret.push(200);
-			ret.push("OK");
-		} else {
-			ret.push(500);
-			ret.push("errors during codecs groups reload. there is empty resources config now");
-		}
-	} else if(action == "router"){
-		//create & configure & run new instance
-		INFO("Allocate new SqlRouter instance");
-		SqlRouter *r =new SqlRouter();
-
-		INFO("Configure SqlRouter");
-		if (r->configure(cfg)){
-			ERROR("SqlRouter confgiure failed");
-			delete r;
-			ret.push(500);
-			ret.push("SqlRouter confgiure failed");
-			return;
-		}
-
-		INFO("Run SqlRouter");
-		if(r->run()){
-			ERROR("SqlRouter start failed");
-			delete r;
-			ret.push(500);
-			ret.push("SqlRouter start failed");
-			return;
-		}
-
-		INFO("replace current SqlRouter instance with newly created");
-		router_mutex.lock();
-			router->release(routers); //mark it or delete (may be deleted now if unused)
-			//replace main router pointer
-			//(old pointers still available throught existent CallCtx instances)
-			router = r;
-			routers.insert(router);
-		router_mutex.unlock();
-		INFO("SqlRouter reload successfull");
-		ret.push(200);
-		ret.push("OK");
-	} else {
-		ret.push(400);
-		ret.push("unknown action");
-	}
+	ret["build"] = YETI_VERSION;
+	ret["build_commit"] = YETI_COMMIT;
+	ret["compiled_at"] = YETI_BUILD_DATE;
+	ret["compiled_by"] = YETI_BUILD_USER;
 }
 
 void Yeti::reloadResources(const AmArg& args, AmArg& ret){
@@ -920,13 +713,10 @@ void Yeti::reloadResources(const AmArg& args, AmArg& ret){
 	if(!assert_event_id(args,ret))
 		return;
 	rctl.configure_db(cfg);
-	if(rctl.reload()){
-		ret.push(200);
-		ret.push("OK");
-	} else {
-		ret.push(500);
-		ret.push("errors during resources config reload. leave old state");
+	if(!rctl.reload()){
+		throw XmlRpc::XmlRpcException("errors during resources config reload. leave old state",500);
 	}
+	ret = XMLRPC_CMD_SUCC;
 }
 
 void Yeti::reloadTranslations(const AmArg& args, AmArg& ret){
@@ -934,13 +724,10 @@ void Yeti::reloadTranslations(const AmArg& args, AmArg& ret){
 	if(!assert_event_id(args,ret))
 		return;
 	CodesTranslator::instance()->configure_db(cfg);
-	if(CodesTranslator::instance()->reload()){
-		ret.push(200);
-		ret.push("OK");
-	} else {
-		ret.push(500);
-		ret.push("errors during translations config reload. leave old state");
+	if(!CodesTranslator::instance()->reload()){
+		throw XmlRpc::XmlRpcException("errors during translations config reload. leave old state",500);
 	}
+	ret = XMLRPC_CMD_SUCC;
 }
 
 void Yeti::reloadRegistrations(const AmArg& args, AmArg& ret){
@@ -948,11 +735,9 @@ void Yeti::reloadRegistrations(const AmArg& args, AmArg& ret){
 	if(!assert_event_id(args,ret))
 		return;
 	if(0==Registration::instance()->reload(cfg)){
-		ret.push(200);
-		ret.push("OK");
+		ret = XMLRPC_CMD_SUCC;
 	} else {
-		ret.push(500);
-		ret.push("errors during registrations config reload. leave old state");
+		throw XmlRpc::XmlRpcException("errors during registrations config reload. leave old state",500);
 	}
 }
 
@@ -961,13 +746,10 @@ void Yeti::reloadCodecsGroups(const AmArg& args, AmArg& ret){
 	if(!assert_event_id(args,ret))
 		return;
 	CodecsGroups::instance()->configure_db(cfg);
-	if(CodecsGroups::instance()->reload()){
-		ret.push(200);
-		ret.push("OK");
-	} else {
-		ret.push(500);
-		ret.push("errors during codecs groups reload. leave old state");
+	if(!CodecsGroups::instance()->reload()){
+		throw XmlRpc::XmlRpcException("errors during codecs groups reload. leave old state",500);
 	}
+	ret = XMLRPC_CMD_SUCC;
 }
 
 void Yeti::reloadRouter(const AmArg& args, AmArg& ret){
@@ -981,18 +763,14 @@ void Yeti::reloadRouter(const AmArg& args, AmArg& ret){
 	if (r->configure(cfg)){
 		ERROR("SqlRouter confgiure failed");
 		delete r;
-		ret.push(500);
-		ret.push("SqlRouter confgiure failed");
-		return;
+		throw XmlRpc::XmlRpcException("SqlRouter confgiure failed",500);
 	}
 
 	INFO("Run SqlRouter");
 	if(r->run()){
 		ERROR("SqlRouter start failed");
 		delete r;
-		ret.push(500);
-		ret.push("SqlRouter start failed");
-		return;
+		throw XmlRpc::XmlRpcException("SqlRouter start failed",500);
 	}
 
 	INFO("replace current SqlRouter instance with newly created");
@@ -1005,8 +783,7 @@ void Yeti::reloadRouter(const AmArg& args, AmArg& ret){
 	router_mutex.unlock();
 
 	INFO("SqlRouter reload successfull");
-	ret.push(200);
-	ret.push("OK");
+	ret = XMLRPC_CMD_SUCC;
 }
 
 void Yeti::requestReloadSensors(const AmArg& args, AmArg& ret){
@@ -1015,20 +792,15 @@ void Yeti::requestReloadSensors(const AmArg& args, AmArg& ret){
 		return;
 	Sensors::instance()->configure_db(cfg);
 	if(Sensors::instance()->reload()){
-		ret.push(200);
-		ret.push("OK");
+		ret = XMLRPC_CMD_SUCC;
 	} else {
-		ret.push(500);
-		ret.push("errors during sensors reload. leave old state");
+		throw XmlRpc::XmlRpcException("errors during sensors reload. leave old state",500);
 	}
 }
 
 void Yeti::showSensorsState(const AmArg& args, AmArg& ret){
 	handler_log();
-
-	ret.push(200);
-	ret.push(AmArg());
-	Sensors::instance()->GetConfig(ret.back());
+	Sensors::instance()->GetConfig(ret);
 }
 
 void Yeti::closeCdrFiles(const AmArg& args, AmArg& ret){
@@ -1039,8 +811,7 @@ void Yeti::closeCdrFiles(const AmArg& args, AmArg& ret){
 			if(*i) (*i)->closeCdrFiles();
 		}
 	router_mutex.unlock();
-	ret.push(200);
-	ret.push("OK");
+	ret = XMLRPC_CMD_SUCC;
 }
 
 void Yeti::showMediaStreams(const AmArg& args, AmArg& ret){
@@ -1064,15 +835,11 @@ void Yeti::showPayloads(const AmArg& args, AmArg& ret){
 		compute_cost = size > 0;
 	}
 
-	ret.push(200);
-	ret.push(AmArg());
-	AmArg &p_list = ret.back();
-
 	vector<SdpPayload>::const_iterator it = payloads.begin();
 	for(;it!=payloads.end();++it){
 		const SdpPayload &p = *it;
-		p_list.push(p.encoding_name,AmArg());
-		AmArg &a = p_list[p.encoding_name];
+		ret.push(p.encoding_name,AmArg());
+		AmArg &a = ret[p.encoding_name];
 
 		DBG("process codec: %s (%d)",
 			p.encoding_name.c_str(),p.payload_type);
@@ -1088,8 +855,9 @@ void Yeti::showPayloads(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::showInterfaces(const AmArg& args, AmArg& ret){
-	AmArg ifaces,rtp,sig;
 	handler_log();
+
+	AmArg &sig = ret["sip"];
 	for(int i=0; i<(int)AmConfig::SIP_Ifs.size(); i++) {
 		AmConfig::SIP_interface& iface = AmConfig::SIP_Ifs[i];
 		AmArg am_iface;
@@ -1103,13 +871,15 @@ void Yeti::showInterfaces(const AmArg& args, AmArg& ret){
 		am_iface["force_outbound_if"] = (iface.SigSockOpts&trsp_socket::force_outbound_if) != 0;
 		sig[iface.name] = am_iface;
 	}
-	ifaces["sip"] = sig;
+
+	AmArg &sip_map = ret["sip_map"];
 	for(multimap<string,unsigned short>::iterator it = AmConfig::LocalSIPIP2If.begin();
 		it != AmConfig::LocalSIPIP2If.end(); ++it) {
 		AmConfig::SIP_interface& iface = AmConfig::SIP_Ifs[it->second];
-		ifaces["sip_map"][it->first] = iface.name.empty() ? "default" : iface.name;
+		sip_map[it->first] = iface.name.empty() ? "default" : iface.name;
 	}
 
+	AmArg &rtp = ret["media"];
 	for(int i=0; i<(int)AmConfig::RTP_Ifs.size(); i++) {
 		AmConfig::RTP_interface& iface = AmConfig::RTP_Ifs[i];
 		AmArg am_iface;
@@ -1123,14 +893,9 @@ void Yeti::showInterfaces(const AmArg& args, AmArg& ret){
 		string name = iface.name.empty() ? "default" : iface.name;
 		rtp[name] = am_iface;
 	}
-	ifaces["media"] = rtp;
-
-	ret.push(200);
-	ret.push(ifaces);
 }
 
 void Yeti::showRouterCdrWriterOpenedFiles(const AmArg& args, AmArg& ret){
-	AmArg r;
 	handler_log();
 	router_mutex.lock();
 		set<SqlRouter *>::const_iterator i = routers.begin();
@@ -1140,32 +905,27 @@ void Yeti::showRouterCdrWriterOpenedFiles(const AmArg& args, AmArg& ret){
 				ostringstream ss;
 				ss << hex << *i;
 				(*i)->showOpenedFiles(a);
-				r[ss.str()] = a;
+				ret[ss.str()] = a;
 			}
 		}
 	router_mutex.unlock();
-	ret.push(200);
-	ret.push(r);
 }
 
 void Yeti::requestSystemLogDump(const AmArg& args, AmArg& ret){
 	handler_log();
 
 	if(!args.size()){
-		ret.push(500);
-		ret.push("missed path for dump");
-		return;
+		throw XmlRpc::XmlRpcException("missed path for dump",500);
 	}
 
 	AmDynInvokeFactory* di_log = AmPlugIn::instance()->getFactory4Di("di_log");
 	if(0==di_log){
-		ret.push(404);
-		ret.push("di_log module not loaded");
-		return;
+		throw XmlRpc::XmlRpcException("di_log module not loaded",404);
 	}
 
-	ret.push(200);
-	di_log->getInstance()->invoke("dumplogtodisk",args,ret);
+	AmArg s;
+	di_log->getInstance()->invoke("dumplogtodisk",args,s);
+	ret = XMLRPC_CMD_SUCC;
 }
 
 static void addLoggingFacilityLogLevel(AmArg& ret,const string &facility_name){
@@ -1178,42 +938,28 @@ static void addLoggingFacilityLogLevel(AmArg& ret,const string &facility_name){
 static void setLoggingFacilityLogLevel(const AmArg& args, AmArg& ret,const string &facility_name){
 	int log_level;
 	if(!args.size()){
-		ret.push(500);
-		ret.push("missed new log_level");
-		return;
+		throw XmlRpc::XmlRpcException("missed new log_level",500);
 	}
 	args.assertArrayFmt("s");
 	if(!str2int(args.get(0).asCStr(),log_level)){
-		ret.push(500);
-		ret.push("invalid log_level fmt");
-		return;
+		throw XmlRpc::XmlRpcException("invalid log_level fmt",500);
 	}
 
 	AmLoggingFacility* fac = AmPlugIn::instance()->getFactory4LogFaclty(facility_name);
 	if(0==fac){
-		ret.push(404);
-		ret.push("logging facility not loaded");
-		return;
+		throw XmlRpc::XmlRpcException("logging facility not loaded",404);
 	}
 
 	fac->setLogLevel(log_level);
 
-	ret.push(200);
-	ret.push("OK");
+	ret = XMLRPC_CMD_SUCC;
 }
 
 void Yeti::showSystemLogLevel(const AmArg& args, AmArg& ret){
-	AmArg r,fac;
-
 	handler_log();
-	r["log_level"] = log_level;
-
-	addLoggingFacilityLogLevel(fac,"syslog");
-	addLoggingFacilityLogLevel(fac,"di_log");
-	r["facilities"] = fac;
-
-	ret.push(200);
-	ret.push(r);
+	ret["log_level"] = log_level;
+	addLoggingFacilityLogLevel(ret["facilities"],"syslog");
+	addLoggingFacilityLogLevel(ret["facilities"],"di_log");
 }
 
 void Yeti::setSystemLogSyslogLevel(const AmArg& args, AmArg& ret){
@@ -1227,25 +973,19 @@ void Yeti::setSystemLogDiLogLevel(const AmArg& args, AmArg& ret){
 }
 
 void Yeti::showSystemStatus(const AmArg& args, AmArg& ret){
-	AmArg s;
 	handler_log();
-	s["shutdown_mode"] = (bool)AmConfig::ShutdownMode;
-	s["shutdown_request_time"] = !timerisset(&last_shutdown_time) ?
+	ret["shutdown_mode"] = (bool)AmConfig::ShutdownMode;
+	ret["shutdown_request_time"] = !timerisset(&last_shutdown_time) ?
 					"nil" : timeval2str(last_shutdown_time);
-	ret.push(200);
-	ret.push(s);
 }
 
 void Yeti::showSystemAlarms(const AmArg& args, AmArg& ret){
-	AmArg as;
 	handler_log();
 	alarms *a = alarms::instance();
 	for(int id = 0; id < alarms::MAX_ALARMS; id++){
-		as.push(AmArg());
-		a->get(id).getInfo(as.back());
+		ret.push(AmArg());
+		a->get(id).getInfo(ret.back());
 	}
-	ret.push(200);
-	ret.push(as);
 }
 
 inline void graceful_suicide(){
@@ -1270,32 +1010,27 @@ static void set_system_shutdown(bool shutdown){
 void Yeti::requestSystemShutdown(const AmArg& args, AmArg& ret){
 	handler_log();
 	graceful_suicide();
-	ret.push(200);
-	ret.push("OK");
-
+	ret = XMLRPC_CMD_SUCC;
 }
 
 void Yeti::requestSystemShutdownImmediate(const AmArg& args, AmArg& ret){
 	handler_log();
 	immediate_suicide();
-	ret.push(200);
-	ret.push("OK");
+	ret = XMLRPC_CMD_SUCC;
 }
 
 void Yeti::requestSystemShutdownGraceful(const AmArg& args, AmArg& ret){
 	handler_log();
 	gettimeofday(&last_shutdown_time,NULL);
 	set_system_shutdown(true);
-	ret.push(200);
-	ret.push("OK");
+	ret = XMLRPC_CMD_SUCC;
 }
 
 void Yeti::requestSystemShutdownCancel(const AmArg& args, AmArg& ret){
 	handler_log();
 	timerclear(&last_shutdown_time);
 	set_system_shutdown(false);
-	ret.push(200);
-	ret.push("OK");
+	ret = XMLRPC_CMD_SUCC;
 }
 
 void Yeti::getResourceState(const AmArg& args, AmArg& ret){
@@ -1304,9 +1039,7 @@ void Yeti::getResourceState(const AmArg& args, AmArg& ret){
 	int type, id;
 
 	if(args.size()<2){
-		ret.push(500);
-		ret.push("specify type and id of resource");
-		return;
+		throw XmlRpc::XmlRpcException("specify type and id of resource",500);
 	}
 
 	args.assertArrayFmt("ss");
@@ -1315,42 +1048,31 @@ void Yeti::getResourceState(const AmArg& args, AmArg& ret){
 	if(all_values==args.get(0).asCStr()){
 		type = ANY_VALUE;
 	} else if(!str2int(args.get(0).asCStr(),type)){
-		ret.push(500);
-		ret.push(AmArg("invalid resource type"));
-		return;
+		throw XmlRpc::XmlRpcException("invalid resource type",500);
 	}
 	if(all_values==args.get(1).asCStr()){
 		id = ANY_VALUE;
 	}
 	else if(!str2int(args.get(1).asCStr(),id)){
-		ret.push(500);
-		ret.push(AmArg("invalid resource id"));
-		return;
+		throw XmlRpc::XmlRpcException("invalid resource id",500);
 	}
 
 	try {
-		rctl.getResourceState(type,id,states);
-		ret.push(200);
-		ret.push(states);
+		rctl.getResourceState(type,id,ret);
 	} catch(const ResourceCacheException &e){
-		ret.push(e.code);
-		ret.push(e.what);
+		throw XmlRpc::XmlRpcException(e.what,e.code);
 	}
 }
 
 void Yeti::showResources(const AmArg& args, AmArg& ret){
 	handler_log();
-	ret.push(200);
-	ret.push(AmArg());
-	rctl.showResources(ret.back());
+	rctl.showResources(ret);
 }
 
 void Yeti::showResourceByHandler(const AmArg& args, AmArg& ret){
 	handler_log();
 	if(!args.size()){
-		ret.push(500);
-		ret.push(AmArg("specify handler id"));
-		return;
+		throw XmlRpc::XmlRpcException("specify handler id",500);
 	}
 	rctl.showResourceByHandler(args.get(0).asCStr(),ret);
 }
@@ -1358,9 +1080,7 @@ void Yeti::showResourceByHandler(const AmArg& args, AmArg& ret){
 void Yeti::showResourceByLocalTag(const AmArg& args, AmArg& ret){
 	handler_log();
 	if(!args.size()){
-		ret.push(500);
-		ret.push(AmArg("specify local_tag"));
-		return;
+		throw XmlRpc::XmlRpcException("specify local_tag",500);
 	}
 	rctl.showResourceByLocalTag(args.get(0).asCStr(),ret);
 }
@@ -1370,107 +1090,77 @@ void Yeti::showResourcesById(const AmArg& args, AmArg& ret){
 
 	int id;
 	if(!args.size()){
-		ret.push(500);
-		ret.push(AmArg("specify resource id"));
-		return;
+		throw XmlRpc::XmlRpcException("specify resource id",500);
 	}
 	if(!str2int(args.get(0).asCStr(),id)){
-		ret.push(500);
-		ret.push(AmArg("invalid resource id"));
-		return;
+		throw XmlRpc::XmlRpcException("invalid resource id",500);
 	}
 	rctl.showResourcesById(id,ret);
 }
 
 void Yeti::showResourceTypes(const AmArg& args, AmArg& ret){
 	handler_log();
-	ret.push(200);
-	ret.push(AmArg());
-	rctl.GetConfig(ret.back(),true);
+	rctl.GetConfig(ret,true);
 }
 
 void Yeti::requestResourcesInvalidate(const AmArg& args, AmArg& ret){
 	handler_log();
 	if(rctl.invalidate_resources()){
-		ret.push(200);
-		ret.push(AmArg("OK"));
+		ret = XMLRPC_CMD_SUCC;
 	} else {
-		ret.push(500);
-		ret.push(AmArg("handlers invalidated. but resources initialization failed"));
+		throw XmlRpc::XmlRpcException("handlers invalidated. but resources initialization failed",500);
 	}
 }
 
 void Yeti::showSessions(const AmArg& args, AmArg& ret){
 	handler_log();
-	ret.push(200);
-	ret.push(AmArg());
-	AmArg &info = ret.back();
 
-	info["limit"] = (long int)AmConfig::SessionLimit;
-	info["limit_error_code"] = (long int)AmConfig::SessionLimitErrCode;
-	info["limit_error_reason"] = AmConfig::SessionLimitErrReason;
+	ret["limit"] = (long int)AmConfig::SessionLimit;
+	ret["limit_error_code"] = (long int)AmConfig::SessionLimitErrCode;
+	ret["limit_error_reason"] = AmConfig::SessionLimitErrReason;
 }
 
 void Yeti::setSessionsLimit(const AmArg& args, AmArg& ret){
 	handler_log();
 	if(args.size()<3){
-		ret.push(500);
-		ret.push("missed parameter");
-		return;
+		throw XmlRpc::XmlRpcException("missed parameter",500);
 	}
 	args.assertArrayFmt("sss");
 
 	int limit,code;
 	if(!str2int(args.get(0).asCStr(),limit)){
-		ret.push(500);
-		ret.push(AmArg("non integer value for sessions limit"));
-		return;
+		throw XmlRpc::XmlRpcException("non integer value for sessions limit",500);
 	}
 	if(!str2int(args.get(1).asCStr(),code)){
-		ret.push(500);
-		ret.push(AmArg("non integer value for overload response code"));
-		return;
+		throw XmlRpc::XmlRpcException("non integer value for overload response code",500);
 	}
 
 	AmConfig::SessionLimit = limit;
 	AmConfig::SessionLimitErrCode = code;
 	AmConfig::SessionLimitErrReason = args.get(2).asCStr();
 
-	ret.push(200);
-	ret.push("OK");
+	ret = XMLRPC_CMD_SUCC;
 }
 
 
 void Yeti::requestResolverClear(const AmArg& args, AmArg& ret){
 	handler_log();
 	resolver::instance()->clear_cache();
-	ret.push(200);
-	ret.push("OK");
+	ret = XMLRPC_CMD_SUCC;
 }
 
 void Yeti::requestResolverGet(const AmArg& args, AmArg& ret){
 	handler_log();
-
 	if(!args.size()){
-		ret.push(500);
-		ret.push("missed parameter");
+		throw XmlRpc::XmlRpcException("missed parameter",500);
 	}
-	string dns_name = args.get(0).asCStr();
 	sockaddr_storage ss;
 	dns_handle dh;
-
 	int err = resolver::instance()->resolve_name(args.get(0).asCStr(),&dh,&ss,IPv4);
 	if(err == -1){
-		ret.push(500);
-		ret.push("can't resolve");
-		return;
+		throw XmlRpc::XmlRpcException("can't resolve",500);
 	}
-
-	ret.push(200);
-	ret.push(AmArg());
-	AmArg &data = ret.back();
-	data["address"] = get_addr_str(&ss).c_str();
-
-	dh.dump(data["handler"]);
+	ret["address"] = get_addr_str(&ss).c_str();
+	dh.dump(ret["handler"]);
 }
 

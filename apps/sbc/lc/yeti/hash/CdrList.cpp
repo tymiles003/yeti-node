@@ -129,10 +129,8 @@ void CdrList::getCalls(AmArg &calls,int limit,const SqlRouter *router){
 }
 
 void CdrList::getCallsFields(AmArg &calls,int limit,const SqlRouter *router,const vector<string> &fields){
-	AmArg call;
 	entry *e;
 
-	//convert AmArg array to vector of strings
 	calls.assertArray();
 	int i = limit;
 	lock();

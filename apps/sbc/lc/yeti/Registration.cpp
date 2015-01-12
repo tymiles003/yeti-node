@@ -201,6 +201,7 @@ void Registration::remove_registration(RegInfo& ri){
 }
 
 void Registration::list_registrations(AmArg &ret){
+	ret.assertArray();
 	cfg_mutex.lock();
 	for (vector<RegInfo>::iterator it = registrations.begin(); it != registrations.end(); it++) {
 		AmArg r;
