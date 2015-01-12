@@ -77,7 +77,7 @@ void Yeti::init_xmlrpc_cmds(){
 		reg_leaf(show,show_resource,"resource","resources related functions");
 
 			reg_leaf_method_arg(show_resource,show_resource_state,"state","get resources state from redis",getResourceState,
-								"","<type>/all <id>/all","retreive info about certain resources state");
+								"","<type>/-1 <id>/-1","retreive info about certain resources state");
 
 			reg_leaf_method(show_resource_state,show_resource_state_used,"used","show active resources handlers",showResources,"");
 			reg_method_arg(show_resource_state_used,"handler","find resource by handler id",showResourceByHandler,"",
@@ -1035,25 +1035,16 @@ void Yeti::requestSystemShutdownCancel(const AmArg& args, AmArg& ret){
 
 void Yeti::getResourceState(const AmArg& args, AmArg& ret){
 	handler_log();
-	AmArg states;
 	int type, id;
 
 	if(args.size()<2){
 		throw XmlRpc::XmlRpcException("specify type and id of resource",500);
 	}
-
 	args.assertArrayFmt("ss");
-
-	const string all_values = "all";
-	if(all_values==args.get(0).asCStr()){
-		type = ANY_VALUE;
-	} else if(!str2int(args.get(0).asCStr(),type)){
+	if(!str2int(args.get(0).asCStr(),type)){
 		throw XmlRpc::XmlRpcException("invalid resource type",500);
 	}
-	if(all_values==args.get(1).asCStr()){
-		id = ANY_VALUE;
-	}
-	else if(!str2int(args.get(1).asCStr(),id)){
+	if(!str2int(args.get(1).asCStr(),id)){
 		throw XmlRpc::XmlRpcException("invalid resource id",500);
 	}
 
