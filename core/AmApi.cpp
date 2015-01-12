@@ -177,7 +177,7 @@ void AmLoggingFacility::setLogLevel(int log_level_arg){
 			log_level = _log_level;
 	}
 
-	INFO("global loglevel ajusted to %d",log_level);
+	INFO("global loglevel adjusted to %d",log_level);
 }
 
 void AmLoggingFacility::on_destroy(){
