@@ -369,6 +369,30 @@ bool curl_run_post(DSMSession* sc_sess, const string& par1, const string& par2,
     return false;
   }
 
+  if (curl_easy_setopt(m_curl_handle, CURLOPT_POST, 1)
+  != CURLE_OK)  {
+	  ERROR("setting curl post option\n");
+	  sc_sess->SET_ERRNO(DSM_ERRNO_FILE);
+	  curl_easy_cleanup(m_curl_handle);
+	  return false;
+  }
+
+  struct curl_slist *slist=NULL;
+  if (!sc_sess->var["curl.content-type"].empty()) {
+	  string hdr = "Content-Type: ";
+	  hdr.append(sc_sess->var["curl.content-type"]);
+
+	  slist = curl_slist_append(slist, hdr.c_str());
+	  if (curl_easy_setopt(m_curl_handle, CURLOPT_HTTPHEADER, slist)
+	  != CURLE_OK)  {
+		  ERROR("setting curl content type\n");
+		  sc_sess->SET_ERRNO(DSM_ERRNO_FILE);
+		  curl_easy_cleanup(m_curl_handle);
+		  if(slist) curl_slist_free_all(slist);
+		  return false;
+	  }
+  }
+
   struct curl_httppost *post=NULL;
   struct curl_httppost *last=NULL;
   string post_vars;
@@ -396,6 +420,7 @@ bool curl_run_post(DSMSession* sc_sess, const string& par1, const string& par2,
   }
   curl_formfree(post);
   curl_easy_cleanup(m_curl_handle);
+  if(slist) curl_slist_free_all(slist);
   return false;
 }
 
