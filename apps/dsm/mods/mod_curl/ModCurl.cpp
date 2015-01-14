@@ -406,6 +406,16 @@ bool curl_run_post(DSMSession* sc_sess, const string& par1, const string& par2,
 		 CURLFORM_COPYCONTENTS, sc_sess->var[varname].c_str(), CURLFORM_END);
   }
 
+  if (curl_easy_setopt(m_curl_handle, CURLOPT_HTTPPOST, post)
+  != CURLE_OK)  {
+	  ERROR("setting curl httppost option\n");
+	  sc_sess->SET_ERRNO(DSM_ERRNO_FILE);
+	  curl_formfree(post);
+	  curl_easy_cleanup(m_curl_handle);
+	  if(slist) curl_slist_free_all(slist);
+	  return false;
+  }
+
   CURLcode rescode = curl_easy_perform(m_curl_handle);
 
   bool res = false;
