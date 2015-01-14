@@ -262,7 +262,9 @@ void DSMCall::unmute() {
 }
 
 
-void DSMCall::onDtmf(int event, int duration_msec) {
+void DSMCall::onDtmf(AmDtmfEvent* e) {
+  int event = e->event();
+  int duration_msec = e->duration();
   DBG("* Got DTMF key %d duration %d\n", 
       event, duration_msec);
 

@@ -83,7 +83,7 @@ public:
   void startSession();
   void onCancel(const AmSipRequest& cancel);
   void onBye(const AmSipRequest& req);
-  void onDtmf(int event, int duration_msec);
+  void onDtmf(AmDtmfEvent* e);
   void onBeforeDestroy();
 
   void onSessionTimeout();
