@@ -43,14 +43,9 @@ INSTALL(FILES
 INSTALL(PROGRAMS
 	tools/yetictl
 	tools/yeticmd
-	tools/yeti-version
-	tools/yeti-stats
-	tools/yeti-callscount
-	tools/yeti-showconfig
 	tools/yeti-getcounters
 	tools/yeti-sumcounters
 	tools/yeti-csv2sql
-	tools/yeti-dumplog
 	tools/yeti_core_log.gdb
 	tools/yeti-corelog
 	tools/yeti-remove-obsolete-dumps
