@@ -191,7 +191,10 @@ int AmRtpPacket::sendto(int sd)
 		     SA_len(&addr));
 
   if(err == -1){
-    ERROR("while sending RTP packet: %s\n",strerror(errno));
+	ERROR("while sending RTP packet with sendto(%d,%p,%d,0,%p,%ld): %s\n",
+		  sd,buffer,b_size,&addr,SA_len(&addr),
+		  strerror(errno));
+	log_stacktrace(L_DBG);
     return -1;
   }
 
