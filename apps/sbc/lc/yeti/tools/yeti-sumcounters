@@ -34,7 +34,7 @@ try:
 	q = 0
 	for key in argv[2:]:
 		kk = key.split('.')
-		q+=ss(data[1][kk[0]],kk[1:])
+		q+=ss(data[kk[0]],kk[1:])
 	print q
 except Fault as err:
 	print "Fault code: %d" % err.faultCode

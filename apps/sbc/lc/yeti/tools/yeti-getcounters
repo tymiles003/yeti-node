@@ -31,7 +31,7 @@ try:
 	data=s.di('yeti','getStats')
 	for key in argv[2:]:
 		kk = key.split('.')
-		ss(data[1][kk[0]],kk[1:],kk)
+		ss(data[kk[0]],kk[1:],kk)
 except Fault as err:
 	print "Fault code: %d" % err.faultCode
 	print "Fault string: %s" % err.faultString

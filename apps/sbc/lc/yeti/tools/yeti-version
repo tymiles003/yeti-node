@@ -1,2 +1,0 @@
-#!/bin/bash
-yetictl http://localhost:8090 showVersion
