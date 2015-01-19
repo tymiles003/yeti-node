@@ -38,7 +38,8 @@
 // per RFC this is 5000ms, but in reality then 
 // one needs to wait 5 sec on the first keypress
 // (e.g. due to a bug on recent snoms)
-#define MAX_INFO_DTMF_LENGTH 1000 
+#define MAX_INFO_DTMF_LENGTH 1000
+#define MIN_INFO_DTMF_LENFTH 160
 #define DEFAULT_INFO_DTMF_LENGTH 250
 
 //
@@ -110,6 +111,8 @@ void AmSipDtmfEvent::parseLine(const string& line)
       m_duration_msec = atol(line.substr(KeyDuration.length(), string::npos).c_str());
       if (m_duration_msec > MAX_INFO_DTMF_LENGTH)
 	m_duration_msec  = MAX_INFO_DTMF_LENGTH;
+      if (m_duration_msec < MIN_INFO_DTMF_LENFTH)
+          m_duration_msec = MIN_INFO_DTMF_LENFTH;
 
     }
 }
