@@ -367,7 +367,12 @@ CCChainProcessing Yeti::onBLegRefused(SBCCallLeg *call, AmSipReply& reply) {
 							ctx->attempt_num,cdr->msg_logger_path.c_str());
 					} else {
 						AmSipRequest &req = *ctx->initial_invite;
-						connectCallee(call,req);
+						try {
+							connectCallee(call,req);
+						} catch(InternalException &e){
+							cdr->update_internal_reason(DisconnectByTS,e.internal_reason,e.internal_code);
+							throw AmSession::Exception(e.response_code,e.response_reason);
+						}
 					}
 				} else {
 					DBG("%s() no new profile, just finish as usual",FUNC_NAME);
@@ -600,16 +605,21 @@ CCChainProcessing Yeti::onInDialogRequest(SBCCallLeg *call, const AmSipRequest &
 		}
 
 		AmSipRequest inv_req(req);
-
-		int res = negotiateRequestSdp(p,
-									  inv_req,
-									  *negotiated_media,
-									  inv_req.method,
-									  static_codecs_negotiate_id,
-									  true,
-									  single_codec);
-		if (res < 0) {
-			throw AmSession::Exception(488,"Not Acceptable Here");
+		try {
+			int res = negotiateRequestSdp(p,
+										  inv_req,
+										  *negotiated_media,
+										  inv_req.method,
+										  static_codecs_negotiate_id,
+										  true,
+										  single_codec);
+			if (res < 0) {
+				call->dlg->reply(req,488,"Not Acceptable Here",&req.body,"",SIP_FLAGS_VERBATIM);
+				return StopProcessing;
+			}
+		} catch(InternalException &e){
+			call->dlg->reply(req,e.response_code,e.response_reason,&req.body,"",SIP_FLAGS_VERBATIM);
+			return StopProcessing;
 		}
 
 		call->processLocalReInvite(inv_req);
@@ -1000,7 +1010,7 @@ int Yeti::relayEvent(SBCCallLeg *call, AmEvent *e){
 	if(NULL==ctx) {
 		ERROR("Yeti::relayEvent(%p) zero ctx. ignore event",call);
 		delete e;
-		return 1;
+		return -1;
 	}
 
 	bool a_leg = call->isALeg();
@@ -1028,23 +1038,27 @@ int Yeti::relayEvent(SBCCallLeg *call, AmEvent *e){
 				static_codecs_filter_id = call_profile.static_codecs_aleg_id;
 				negotiated_media = &ctx->bleg_negotiated_media;
 			}
-
-			int res = negotiateRequestSdp(call_profile,
-										  req_ev->req,
-										  *negotiated_media,
-										  req_ev->req.method,
-										  static_codecs_negotiate_id);
-			if (res < 0) {
+			try {
+				int res = negotiateRequestSdp(call_profile,
+											  req_ev->req,
+											  *negotiated_media,
+											  req_ev->req.method,
+											  static_codecs_negotiate_id);
+				if (res < 0) {
+					delete e;
+					return res;
+				}
+				res = filterRequestSdp(call,
+									   call_profile,
+									   req_ev->req.body, req_ev->req.method,
+									   static_codecs_filter_id);
+				if (res < 0) {
+					delete e;
+					return res;
+				}
+			} catch(InternalException &){
 				delete e;
-				return res;
-			}
-			res = filterRequestSdp(call,
-								   call_profile,
-								   req_ev->req.body, req_ev->req.method,
-								   static_codecs_filter_id);
-			if (res < 0) {
-				delete e;
-				return res;
+				return -448;
 			}
 		} break;
 
@@ -1052,8 +1066,8 @@ int Yeti::relayEvent(SBCCallLeg *call, AmEvent *e){
 			B2BSipReplyEvent* reply_ev = dynamic_cast<B2BSipReplyEvent*>(e);
 			assert(reply_ev);
 
-			DBG("Yeti::relayEvent(%p) filtering body for reply '%s' (c/t '%s')\n",
-				call,reply_ev->trans_method.c_str(), reply_ev->reply.body.getCTStr().c_str());
+			DBG("Yeti::relayEvent(%p) filtering body for reply %d cseq.method '%s' (c/t '%s')\n",
+				call,reply_ev->reply.code,reply_ev->trans_method.c_str(), reply_ev->reply.body.getCTStr().c_str());
 
 			SBCCallProfile &call_profile = call->getCallProfile();
 			vector<SdpMedia> * negotiated_media;

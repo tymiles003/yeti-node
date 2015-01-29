@@ -512,14 +512,7 @@ int filterRequestSdp(SBCCallLeg *call,
 	normalizeSDP(sdp, false, "");
 
 	CodecsGroupEntry codecs_group;
-	try {
-		CodecsGroups::instance()->get(static_codecs_id,codecs_group);
-	} catch(...){
-		//!TODO: replace with correct InternalException throw
-		ERROR("filterRequestSdp() can't find codecs group %d",
-			  static_codecs_id);
-		return -488;
-	}
+	CodecsGroups::instance()->get(static_codecs_id,codecs_group);
 
 	std::vector<SdpPayload> &static_codecs = codecs_group.get_payloads();
 

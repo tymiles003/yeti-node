@@ -55,6 +55,7 @@ class CodecsGroups {
 		map<unsigned int,CodecsGroupEntry>::iterator i = m.find(group_id);
 		if(i==m.end()){
 			_lock.unlock();
+			ERROR("can't find codecs group %d",group_id);
 			throw CodecsGroupException(FC_CG_GROUP_NOT_FOUND,group_id);
 		}
 		e = i->second;
