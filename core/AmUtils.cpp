@@ -69,6 +69,11 @@ string timeval2str(const timeval &tv)
   return string("conversion error");
 }
 
+double timeval2double(const timeval &tv)
+{
+	return tv.tv_sec + tv.tv_usec/(double)1e6;
+}
+
 string int2str(unsigned int val)
 {
   char buffer[64] = {0};

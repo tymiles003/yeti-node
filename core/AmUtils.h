@@ -62,6 +62,11 @@ typedef unsigned char HASHHEX[HASHHEXLEN+1];
  */
 string timeval2str(const timeval &tv);
 
+/**
+ * Convert an timeval to a double (tv_sec as integral and tv_usec as fractional part)
+ */
+double timeval2double(const timeval &tv);
+
 /** 
  * Convert an int to a string. 
  */

@@ -7,6 +7,7 @@
 #include "../resources/Resource.h"
 #include "AmRtpStream.h"
 #include "cJSON.h"
+#include <pqxx/pqxx>
 
 enum UpdateAction {
     Start,
@@ -100,6 +101,8 @@ struct Cdr: public
     void refuse(const SBCCallProfile &profile);
 	void refuse(int code, string reason);
 
+	void invoc(pqxx::prepare::invocation &invoc, AmArg &invoced_values);
+	void to_csv_stream(ofstream &s);
     //serializators
     char *serialize_rtp_stats();
 };

@@ -34,7 +34,7 @@
 #define PROF_START(var) timeval prof_start_##var; gettimeofday(&prof_start_##var,NULL);
 #define PROF_END(var) timeval prof_end_##var; gettimeofday(&prof_end_##var,NULL);
 #define PROF_DIFF(var) timeval prof_diff_##var; timersub(&prof_end_##var,&prof_start_##var,&prof_diff_##var);
-#define PROF_PRINT(descr,var) PROF_DIFF(var); DBG(descr" took %f",prof_diff_##var.tv_sec+prof_diff_##var.tv_usec/1e6);
+#define PROF_PRINT(descr,var) PROF_DIFF(var); DBG(descr" took %f",timeval2double(prof_diff_##var));
 
 #else
 

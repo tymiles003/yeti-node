@@ -147,12 +147,12 @@ void CdrList:: cdr2arg(const Cdr *cdr,const SqlRouter *router, AmArg& arg){
 	#define add_field(val)\
 		arg[#val] = cdr->val;
 	#define add_timeval_field(val)\
-		arg[#val] = (cdr->val.tv_sec+cdr->val.tv_usec/1e6);
+		arg[#val] = timeval2double(cdr->val);
 
 	struct timeval now;
 
 	gettimeofday(&now, NULL);
-	arg["local_time"] = now.tv_sec+now.tv_usec/1e6;
+	arg["local_time"] = timeval2double(now);
 	add_timeval_field(cdr_born_time);
 	add_timeval_field(start_time);
 	add_timeval_field(connect_time);
@@ -194,7 +194,7 @@ void CdrList::cdr2arg(const Cdr *cdr,const SqlRouter *router, AmArg& arg, const 
 			arg[#val] = cdr->val;
 	#define add_timeval_field(val)\
 		filter(#val)\
-			arg[#val] = (cdr->val.tv_sec+cdr->val.tv_usec/1e6);
+			arg[#val] = timeval2double(cdr->val);
 
 	struct timeval now;
 
@@ -205,7 +205,7 @@ void CdrList::cdr2arg(const Cdr *cdr,const SqlRouter *router, AmArg& arg, const 
 
 	filter("local_time") {
 		gettimeofday(&now, NULL);
-		arg["local_time"] = now.tv_sec+now.tv_usec/1e6;
+		arg["local_time"] = timeval2double(now);
 	}
 	add_timeval_field(cdr_born_time);
 	add_timeval_field(start_time);

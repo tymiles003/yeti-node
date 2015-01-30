@@ -399,3 +399,137 @@ char *Cdr::serialize_rtp_stats(){
     return s;
 #undef field_name
 }
+
+
+static inline void invoc_AmArg(pqxx::prepare::invocation &invoc,const AmArg &arg){
+	short type = arg.getType();
+	AmArg a;
+	switch(type){
+	case AmArg::Int:      { invoc(arg.asInt()); } break;
+	case AmArg::LongLong: { invoc(arg.asLongLong()); } break;
+	case AmArg::Bool:     { invoc(arg.asBool()); } break;
+	case AmArg::CStr:     { invoc(arg.asCStr()); } break;
+	case AmArg::Undef:    { invoc(); } break;
+	default: {
+		ERROR("invoc_AmArg. unhandled AmArg type %s",a.t2str(type));
+		invoc();
+	}
+	}
+}
+
+void Cdr::invoc(pqxx::prepare::invocation &invoc,AmArg &invoced_values)
+{
+#define invoc_field(field_value)\
+	invoced_values.push(AmArg(field_value));\
+	invoc(field_value);
+
+	invoc_field(attempt_num);
+	invoc_field(is_last);
+	invoc_field(time_limit);
+	invoc_field(legA_local_ip);
+	invoc_field(legA_local_port);
+	invoc_field(legA_remote_ip);
+	invoc_field(legA_remote_port);
+	invoc_field(legB_local_ip);
+	invoc_field(legB_local_port);
+	invoc_field(legB_remote_ip);
+	invoc_field(legB_remote_port);
+	invoc_field(timeval2double(start_time));
+	invoc_field(timeval2double(connect_time));
+	invoc_field(timeval2double(end_time));
+	invoc_field(disconnect_code);
+	invoc_field(disconnect_reason);
+	invoc_field(disconnect_initiator);
+	invoc_field(disconnect_internal_code);
+	invoc_field(disconnect_internal_reason);
+	if(is_last){
+		invoc_field(disconnect_rewrited_code);
+		invoc_field(disconnect_rewrited_reason);
+	} else {
+		invoc_field(0);
+		invoc_field("");
+	}
+	invoc_field(orig_call_id);
+	invoc_field(term_call_id);
+	invoc_field(local_tag);
+	invoc_field(msg_logger_path);
+	invoc_field(dump_level_id);
+
+	char *rtp_stats = serialize_rtp_stats();
+	invoc_field(rtp_stats);
+	free(rtp_stats);
+
+	invoc_field(global_tag);
+
+	/* invocate dynamic fields  */
+	const size_t n = dyn_fields.size();
+	for(unsigned int k = 0;k<n;++k)
+		invoc_AmArg(invoc,dyn_fields.get(k));
+	/* invocate trusted hdrs  */
+	for(vector<AmArg>::const_iterator i = trusted_hdrs.begin();
+			i != trusted_hdrs.end(); ++i){
+		invoc_AmArg(invoc,*i);
+	}
+
+#undef invoc_field
+}
+
+template<class T>
+static void join_csv(ofstream &s, const T &a){
+	if(!a.size())
+		return;
+
+	int n = a.size()-1;
+
+	s << ",";
+	for(int k = 0;k<n;k++)
+		s << "'" << AmArg::print(a[k]) << "',";
+	s << "'" << AmArg::print(a[n]) << "'";
+}
+
+void Cdr::to_csv_stream(ofstream &s)
+{
+#define quote(v) "'"<<v<< "'" << ','
+
+	s <<
+	quote(attempt_num) <<
+	quote(is_last) <<
+	quote(time_limit) <<
+	quote(legA_local_ip) << quote(legA_local_port) <<
+	quote(legA_remote_ip) << quote(legA_remote_port) <<
+	quote(legB_local_ip) << quote(legB_local_port) <<
+	quote(legB_remote_ip) << quote(legB_remote_port) <<
+	quote(timeval2double(start_time)) <<
+	quote(timeval2double(connect_time)) <<
+	quote(timeval2double(end_time)) <<
+	quote(disconnect_code) << quote(disconnect_reason) <<
+	quote(disconnect_initiator) <<
+	quote(disconnect_internal_code) << quote(disconnect_internal_reason);
+
+	if(is_last){
+		s <<
+		quote(disconnect_rewrited_code) <<
+		quote(disconnect_rewrited_reason);
+	} else {
+		s <<
+		quote(0) <<
+		quote("");
+	}
+
+	s << quote(orig_call_id) << quote(term_call_id) <<
+	quote(local_tag) << quote(msg_logger_path) <<
+	quote(dump_level_id);
+
+	char *rtp_stats = serialize_rtp_stats();
+	s << quote(rtp_stats);
+	free(rtp_stats);
+
+	s << quote(global_tag);
+
+		//dynamic fields
+	join_csv(s,dyn_fields);
+
+		//trusted fields
+	join_csv(s,trusted_hdrs);
+#undef quote
+}

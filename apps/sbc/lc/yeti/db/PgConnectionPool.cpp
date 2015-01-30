@@ -119,7 +119,7 @@ void PgConnectionPool::returnConnection(PgConnection* c,conn_stat stat){
 				} else {
 					stats.transactions_count++;
 					timersub(&now,&c->access_time,&ttdiff);
-					tt_curr = ttdiff.tv_sec+ttdiff.tv_usec/(double)1e6;
+					tt_curr = timeval2double(ttdiff);
 					if(tt_curr > stats.tt_max)
 						stats.tt_max = tt_curr;
 					if(stats.tt_min){

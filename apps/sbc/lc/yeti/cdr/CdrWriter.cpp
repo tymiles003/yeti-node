@@ -22,9 +22,9 @@ const static_field cdr_static_fields[] = {
 	{ "legB_local_port", "integer" },
 	{ "legB_remote_ip", "inet" },
 	{ "legB_remote_port", "integer" },
-	{ "start_time", "bigint" },
-	{ "connect_time", "bigint" },
-	{ "end_time", "bigint" },
+	{ "start_time", "double" },
+	{ "connect_time", "double" },
+	{ "end_time", "double" },
 	{ "disconnect_code", "integer" },
 	{ "disconnect_reason", "varchar" },
     { "disconnect_initiator", "integer" },
@@ -557,7 +557,6 @@ int CdrThread::writecdr(cdr_writer_connection* conn, Cdr* cdr){
 
 	DBG("%s[%p](conn = %p,cdr = %p)",FUNC_NAME,this,conn,cdr);
 	int ret = 1;
-    char *rtp_stats;
 
 	Yeti::global_config &gc = Yeti::instance()->config;
 	AmArg fields_values;
@@ -581,85 +580,17 @@ int CdrThread::writecdr(cdr_writer_connection* conn, Cdr* cdr){
 		}
 
 		pqxx::prepare::invocation invoc = tnx.prepared("writecdr");
-		/* invocate static fields */
+
 		invoc_field(conn->isMaster());
 		invoc_field(gc.node_id);
 		invoc_field(gc.pop_id);
-		invoc_field(cdr->attempt_num);
-		invoc_field(cdr->is_last);
-		invoc_field(cdr->time_limit);
-		invoc_field(cdr->legA_local_ip);
-		invoc_field(cdr->legA_local_port);
-		invoc_field(cdr->legA_remote_ip);
-		invoc_field(cdr->legA_remote_port);
-		invoc_field(cdr->legB_local_ip);
-		invoc_field(cdr->legB_local_port);
-		invoc_field(cdr->legB_remote_ip);
-		invoc_field(cdr->legB_remote_port);
-		invoc_field(cdr->start_time.tv_sec);
-		invoc_field(cdr->connect_time.tv_sec);
-		invoc_field(cdr->end_time.tv_sec);
-		invoc_field(cdr->disconnect_code);
-		invoc_field(cdr->disconnect_reason);
-		invoc_field(cdr->disconnect_initiator);
-		invoc_field(cdr->disconnect_internal_code);
-		invoc_field(cdr->disconnect_internal_reason);
-		if(cdr->is_last){
-			invoc_field(cdr->disconnect_rewrited_code);
-			invoc_field(cdr->disconnect_rewrited_reason);
-		} else {
-			invoc_field(0);
-			invoc_field("");
-		}
-		invoc_field(cdr->orig_call_id);
-		invoc_field(cdr->term_call_id);
-		invoc_field(cdr->local_tag);
-		invoc_field(cdr->msg_logger_path);
-		invoc_field(cdr->dump_level_id);
 
-        rtp_stats = cdr->serialize_rtp_stats();
-        invoc_field(rtp_stats);
-        free(rtp_stats);
-
-        /*invoc_field(join_str_vector2(cdr->legA_payloads.incoming,
-									 cdr->legA_payloads.incoming_relayed,","));
-		invoc_field(join_str_vector2(cdr->legA_payloads.outgoing,
-									cdr->legA_payloads.outgoing_relayed,","));
-		invoc_field(join_str_vector2(cdr->legB_payloads.incoming,
-									cdr->legB_payloads.incoming_relayed,","));
-		invoc_field(join_str_vector2(cdr->legB_payloads.outgoing,
-                                     cdr->legB_payloads.outgoing_relayed,","));
-
-		invoc_field(cdr->legA_bytes_recvd);
-		invoc_field(cdr->legA_bytes_sent);
-		invoc_field(cdr->legB_bytes_recvd);
-		invoc_field(cdr->legB_bytes_sent);
-
-		invoc_field(cdr->legA_stream_errors.decode_errors);
-		invoc_field(cdr->legA_stream_errors.out_of_buffer_errors);
-		invoc_field(cdr->legA_stream_errors.rtp_parse_errors);
-		invoc_field(cdr->legB_stream_errors.decode_errors);
-		invoc_field(cdr->legB_stream_errors.out_of_buffer_errors);
-        invoc_field(cdr->legB_stream_errors.rtp_parse_errors);*/
-
-		invoc_field(cdr->global_tag);
-
-		/* invocate dynamic fields  */
-		const size_t n = cdr->dyn_fields.size();
-		for(unsigned int k = 0;k<n;++k)
-			invoc_AmArg(invoc,cdr->dyn_fields.get(k));
-		/* invocate trusted hdrs  */
-		for(vector<AmArg>::const_iterator i = cdr->trusted_hdrs.begin();
-				i != cdr->trusted_hdrs.end(); ++i){
-			invoc_AmArg(invoc,*i);
-		}
+		cdr->invoc(invoc,fields_values);
 
 		r = invoc.exec();
 		if (r.size()!=0&&0==r[0][0].as<int>()){
 			ret = 0;
 		}
-
-
 	} catch(const pqxx::pqxx_exception &e){
 		DBG("SQL exception on CdrWriter thread: %s",e.base().what());
 		dbg_writecdr(fields_values,cdr->dyn_fields);
@@ -740,98 +671,25 @@ void CdrThread::write_header(){
 	wf.flush();
 }
 
-template<class T>
-static void join_csv(ofstream &s, const T &a){
-	if(!a.size())
-		return;
-
-	int n = a.size()-1;
-
-	s << ",";
-	for(int k = 0;k<n;k++)
-		s << "'" << AmArg::print(a[k]) << "',";
-	s << "'" << AmArg::print(a[n]) << "'";
-}
-
 int CdrThread::writecdrtofile(Cdr* cdr){
-	#define wv(v) "'"<<v<< "'" << ','
+#define quote(v) "'"<<v<< "'" << ','
 	if(!openfile()){
 		return -1;
 	}
-	ofstream &wf = *wfp.get();
+	ofstream &s = *wfp.get();
 	Yeti::global_config &gc = Yeti::instance()->config;
 
-	wf << std::dec <<
-		//static fields
-	wv(gc.node_id) << wv(gc.pop_id) <<
-	wv(cdr->attempt_num) << wv(cdr->is_last) << wv(cdr->time_limit) <<
-	wv(cdr->legA_local_ip) << wv(cdr->legA_local_port) <<
-	wv(cdr->legA_remote_ip) << wv(cdr->legA_remote_port) <<
-	wv(cdr->legB_local_ip) << wv(cdr->legB_local_port) <<
-	wv(cdr->legB_remote_ip) << wv(cdr->legB_remote_port) <<
-	wv(cdr->start_time.tv_sec) << wv(cdr->connect_time.tv_sec) << wv(cdr->end_time.tv_sec) <<
-	wv(cdr->disconnect_code) << wv(cdr->disconnect_reason) <<
-	wv(cdr->disconnect_initiator) <<
-	wv(cdr->disconnect_internal_code) << wv(cdr->disconnect_internal_reason);
-	if(cdr->is_last){
-		wf << 	wv(cdr->disconnect_rewrited_code) <<
-		wv(cdr->disconnect_rewrited_reason);
-	} else {
-		wf << wv(0) << wv("");
-	}
-	wf << wv(cdr->orig_call_id) << wv(cdr->term_call_id) <<
-	wv(cdr->local_tag) << wv(cdr->msg_logger_path) <<
-    wv(cdr->dump_level_id);
+	s << std::dec <<
+	quote(gc.node_id) <<
+	quote(gc.pop_id);
 
-    char *rtp_stats = cdr->serialize_rtp_stats();
-    wf << wv(rtp_stats);
-    free(rtp_stats);
+	cdr->to_csv_stream(s);
 
-    /*wv(join_str_vector2(cdr->legA_payloads.incoming,
-						cdr->legA_payloads.incoming_relayed,",")) <<
-	wv(join_str_vector2(cdr->legA_payloads.outgoing,
-						cdr->legA_payloads.outgoing_relayed,",")) <<
-	wv(join_str_vector2(cdr->legB_payloads.incoming,
-						cdr->legB_payloads.incoming_relayed,",")) <<
-	wv(join_str_vector2(cdr->legB_payloads.outgoing,
-						cdr->legB_payloads.outgoing_relayed,",")) <<
-	wv(cdr->legA_bytes_recvd) << wv(cdr->legA_bytes_sent) <<
-	wv(cdr->legB_bytes_recvd) << wv(cdr->legB_bytes_sent) <<
-	wv(cdr->legA_stream_errors.decode_errors) <<
-	wv(cdr->legA_stream_errors.out_of_buffer_errors) <<
-	wv(cdr->legA_stream_errors.rtp_parse_errors) <<
-	wv(cdr->legB_stream_errors.decode_errors) <<
-	wv(cdr->legB_stream_errors.out_of_buffer_errors) <<
-    wv(cdr->legB_stream_errors.rtp_parse_errors) <<*/
-    wf << wv(cdr->global_tag);
-
-		//dynamic fields
-	join_csv(wf,cdr->dyn_fields);
-
-		//trusted fields
-	join_csv(wf,cdr->trusted_hdrs);
-
-	wf << endl;
-	wf.flush();
+	s << endl;
+	s.flush();
 	stats.writed_cdrs++;
 	return 0;
-}
-
-bool CdrThread::invoc_AmArg(pqxx::prepare::invocation &invoc,const AmArg &arg){
-	short type = arg.getType();
-	AmArg a;
-	switch(type){
-	case AmArg::Int:      { invoc(arg.asInt()); } break;
-	case AmArg::LongLong: { invoc(arg.asLongLong()); } break;
-	case AmArg::Bool:     { invoc(arg.asBool()); } break;
-	case AmArg::CStr:     { invoc(arg.asCStr()); } break;
-	case AmArg::Undef:    { invoc(); } break;
-	default: {
-        ERROR("invoc_AmArg. unhandled AmArg type %s",a.t2str(type));
-		invoc();
-	}
-	}
-	return true;
+#undef quote
 }
 
 int CdrThreadCfg::cfg2CdrThCfg(AmConfigReader& cfg, string& prefix){

@@ -5,6 +5,7 @@
 #include "AmPlugIn.h"
 #include "AmSdp.h"
 #include "AmAudio.h"
+#include "AmUtils.h"
 
 #include <fstream>
 #include <iostream>
@@ -157,7 +158,7 @@ int main(int argc, char *argv[])
 	}
 
 	timersub(&end,&start,&diff);
-	INFO("decode() = %d. took: %f seconds",rc,diff.tv_sec+diff.tv_usec/1e6);
+	INFO("decode() = %d. took: %f seconds",rc,timeval2double(diff));
 
 	ret = EXIT_SUCCESS;
 

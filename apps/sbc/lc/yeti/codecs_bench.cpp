@@ -2,6 +2,7 @@
 
 #include "AmPlugIn.h"
 #include "AmAudioFile.h"
+#include "AmUtils.h"
 
 int load_testing_source(string path,unsigned char *&buf){
 	AmAudioFile f;
@@ -125,7 +126,7 @@ void get_codec_cost(int payload_id,unsigned char *buf, int size, AmArg &cost){
 	h_codec = -1;
 
 	timersub(&end,&start,&diff);
-	encode_cost = (diff.tv_sec+diff.tv_usec/1e6);
+	encode_cost = timeval2double(diff);
 	encode_ch = pcm16_len/encode_cost;
 
 	cost["encoded_size"] = ret;
@@ -171,7 +172,7 @@ void get_codec_cost(int payload_id,unsigned char *buf, int size, AmArg &cost){
 	DBG("%s.decode() = %d (alleged: %d)",payload->name,ret,out_buf_size);
 
 	timersub(&end,&start,&diff);
-	decode_cost = diff.tv_sec+diff.tv_usec/1e6;
+	decode_cost = timeval2double(diff);
 	decode_ch = pcm16_len/decode_cost;
 
 	cost["decode_cost"] = decode_cost;

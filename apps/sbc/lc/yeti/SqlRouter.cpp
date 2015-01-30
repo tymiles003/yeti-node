@@ -298,7 +298,7 @@ void SqlRouter::update_counters(struct timeval &start_time){
     }
     // took
     timersub(&now_time,&start_time,&diff_time);
-    diff = diff_time.tv_sec+diff_time.tv_usec/(double)1e6;
+	diff = timeval2double(diff_time);
     if(diff > gt_max)
         gt_max = diff;
     if(!gt_min || (diff < gt_min))
