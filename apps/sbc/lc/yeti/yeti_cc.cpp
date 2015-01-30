@@ -862,6 +862,18 @@ CCChainProcessing Yeti::onTearDown(SBCCallLeg *call){
 	return ContinueProcessing;
 }
 
+void Yeti::terminateLegOnReplyException(SBCCallLeg *call,const AmSipReply& reply,const InternalException &e){
+	getCtx_void
+	with_cdr_for_read {
+		getCdr(call)->update_internal_reason(DisconnectByTS,e.internal_reason,e.internal_code);
+	}
+	if(!call->isALeg()){
+		call->relayError(reply.cseq_method,reply.cseq,true,e.response_code,e.response_reason.c_str());
+		call->disconnect(false,false);
+	}
+	call->stopCall(CallLeg::StatusChangeCause::InternalError);
+}
+
 CCChainProcessing Yeti::putOnHold(SBCCallLeg *call) {
 	DBG("%s(%p,leg%s)",FUNC_NAME,call,call->isALeg()?"A":"B");
 	return ContinueProcessing;
@@ -1070,21 +1082,6 @@ int Yeti::relayEvent(SBCCallLeg *call, AmEvent *e){
 				call,reply_ev->reply.code,reply_ev->trans_method.c_str(), reply_ev->reply.body.getCTStr().c_str());
 
 			SBCCallProfile &call_profile = call->getCallProfile();
-			vector<SdpMedia> * negotiated_media;
-			bool single_codec;
-			if(a_leg){
-				negotiated_media = &ctx->bleg_negotiated_media;
-				single_codec = call_profile.bleg_single_codec;
-			} else {
-				negotiated_media = &ctx->aleg_negotiated_media;
-				single_codec = call_profile.aleg_single_codec;
-			}
-
-			filterReplySdp(call,
-						   reply_ev->reply.body, reply_ev->reply.cseq_method,
-						   *negotiated_media,
-						   single_codec,
-						   call_profile.filter_noaudio_streams);
 
 			//append headers for 200 OK replyin direction B -> A
 			AmSipReply &reply = reply_ev->reply;
@@ -1110,6 +1107,33 @@ int Yeti::relayEvent(SBCCallLeg *call, AmEvent *e){
 				}
 
 				reply.hdrs+=call_profile.aleg_append_headers_reply;
+			}
+
+			vector<SdpMedia> * negotiated_media;
+			bool single_codec;
+			if(a_leg){
+				negotiated_media = &ctx->bleg_negotiated_media;
+				single_codec = call_profile.bleg_single_codec;
+			} else {
+				negotiated_media = &ctx->aleg_negotiated_media;
+				single_codec = call_profile.aleg_single_codec;
+			}
+
+			try {
+				int res = filterReplySdp(call,
+										 reply.body, reply.cseq_method,
+										 *negotiated_media,
+										 single_codec,
+										 call_profile.filter_noaudio_streams);
+				if(res<0){
+					terminateLegOnReplyException(call,reply,InternalException(DC_REPLY_SDP_GENERIC_EXCEPTION));
+					delete e;
+					return -488;
+				}
+			} catch(InternalException &exception){
+				terminateLegOnReplyException(call,reply,exception);
+				delete e;
+				return -488;
 			}
 		} break;
 		case B2BDtmfEvent:

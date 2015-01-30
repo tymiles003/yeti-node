@@ -5,6 +5,7 @@
 #include "SDPFilter.h"
 #include "CallCtx.h"
 #include "CodecsGroup.h"
+#include "CodesTranslator.h"
 #include "CallLeg.h"
 
 
@@ -571,8 +572,10 @@ int filterReplySdp(SBCCallLeg *call,
 	int res = sdp.parse((const char *)sdp_body->getPayload());
 	if (0 != res) {
 		DBG("filterReplySdp() SDP parsing failed during body filtering!\n");
-		return res;
+		throw InternalException(DC_REPLY_SDP_PARSING_FAILED);
 	}
+
+	res = -488;
 
 	normalizeSDP(sdp, false, ""); // anonymization is done in the other leg to use correct IP address
 
@@ -583,7 +586,7 @@ int filterReplySdp(SBCCallLeg *call,
 
 		if(!sdp.media.size()){
 			ERROR("filterReplySdp() empty answer sdp");
-			return -488;
+			throw InternalException(DC_REPLY_SDP_EMPTY_ANSWER);
 		}
 
 		if(negotiated_media.size()!=sdp.media.size()){
@@ -595,17 +598,16 @@ int filterReplySdp(SBCCallLeg *call,
 				{
 					if(it->type==MT_AUDIO)
 						audio_streams++;
-
 				}
 				if(sdp.media.size()!=audio_streams){
 					ERROR("filterReplySdp() audio streams count not equal reply: %lu, saved: %u)",
 						  sdp.media.size(),audio_streams);
-					return -488;
+					throw InternalException(DC_REPLY_SDP_STREAMS_COUNT);
 				}
 			} else {
 				ERROR("filterReplySdp() streams count not equal reply: %lu, saved: %lu)",
 					sdp.media.size(),negotiated_media.size());
-				return -488;
+				throw InternalException(DC_REPLY_SDP_STREAMS_COUNT);
 			}
 		}
 
@@ -620,7 +622,7 @@ int filterReplySdp(SBCCallLeg *call,
 			if(m.type!=other_m.type){
 				ERROR("filterReplySdp() streams types not matched idx = %d",stream_idx);
 				dump_SdpPayload(other_m.payloads,"other_m payload "+int2str(stream_idx));
-				return -488;
+				throw InternalException(DC_REPLY_SDP_STREAMS_TYPES);
 			}
 
 			if(m.type!=MT_AUDIO)
@@ -698,6 +700,6 @@ int filterReplySdp(SBCCallLeg *call,
 	sdp.print(n_body);
 	sdp_body->setPayload((const unsigned char*)n_body.c_str(), n_body.length());
 
-	return res;
+	return 0;
 }
 

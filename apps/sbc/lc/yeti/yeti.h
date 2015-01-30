@@ -88,6 +88,8 @@ class Yeti : public AmDynInvoke, AmObject, SBCLogicInterface, ExtendedCCInterfac
   CCChainProcessing onTimerEvent(SBCCallLeg *call,int timer_id);
   CCChainProcessing onTearDown(SBCCallLeg *call);
 
+  void terminateLegOnReplyException(SBCCallLeg *call,const AmSipReply& reply, const InternalException &e);
+
  public:
   Yeti();
   ~Yeti();
