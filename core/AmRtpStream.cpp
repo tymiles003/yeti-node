@@ -874,34 +874,39 @@ void AmRtpStream::bufferPacket(AmRtpPacket* p)
   }
 
   if (relay_enabled) {
-    if (force_receive_dtmf) {
-      recvDtmfPacket(p);
-    }
+	if (force_receive_dtmf) {
+		recvDtmfPacket(p);
+	}
 
-    // Relay DTMF packets if current audio payload
-    // is also relayed.
-    // Else, check whether or not we should relay this payload
+	bool is_dtmf_packet = (p->payload == getLocalTelephoneEventPT());
 
-    bool is_dtmf_packet = (p->payload == getLocalTelephoneEventPT()); 
+	if (relay_raw
+		|| (is_dtmf_packet
+			&& (force_relay_dtmf ||!active))
+			//can relay
+		|| (relay_payloads.get(p->payload)
+			//avoid asymmetric payloads
+			&& NULL != relay_stream
+			&& p->payload == relay_stream->getLastPayload()))
+	{
+		if(active){
+			DBG("switching to relay-mode\t(ts=%u;stream=%p)\n",p->timestamp,this);
+			active = false;
+		}
 
-	  if (relay_raw || (is_dtmf_packet && (force_relay_dtmf || !active)) ||
-	  relay_payloads.get(p->payload)) {
-      if(active){
-	DBG("switching to relay-mode\t(ts=%u;stream=%p)\n",
-	    p->timestamp,this);
-	active = false;
-      }
-      handleSymmetricRtp(&p->addr,false);
+		handleSymmetricRtp(&p->addr,false);
+		add_if_no_exist(incoming_relayed_payloads,p->payload);
 
-      add_if_no_exist(incoming_relayed_payloads,p->payload);
-      if (NULL != relay_stream &&
-	  (!(relay_filter_dtmf && is_dtmf_packet))) {
-		relay_stream->relay(p, is_dtmf_packet, force_receive_dtmf && !force_relay_dtmf);
-	  }
+		if (NULL != relay_stream							//we have relay stream
+			&& (!(relay_filter_dtmf&& is_dtmf_packet)))		//packet is not dtmf or relay dtmf is not filtered
+		{
+			relay_stream->relay(p, is_dtmf_packet,
+								force_receive_dtmf && !force_relay_dtmf);
+		}
 
-      mem.freePacket(p);
-      return;
-    }
+		mem.freePacket(p);
+		return;
+	}
   }
 
 #ifndef WITH_ZRTP
