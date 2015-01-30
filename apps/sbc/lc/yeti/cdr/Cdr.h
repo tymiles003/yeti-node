@@ -11,6 +11,7 @@
 
 enum UpdateAction {
     Start,
+	BLegInvite,
     Connect,
     End,
     Write
@@ -52,8 +53,13 @@ struct Cdr: public
 
     struct timeval cdr_born_time;
     struct timeval start_time;
+	struct timeval bleg_invite_time;
     struct timeval connect_time;
     struct timeval end_time;
+
+	struct timeval sip_10x_time;
+	struct timeval sip_18x_time;
+	bool sip_early_media_present;
 
     string legB_remote_ip, legB_local_ip;
     unsigned short legB_remote_port, legB_local_port;

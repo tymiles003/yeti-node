@@ -17,18 +17,22 @@ const static_field cdr_static_fields[] = {
 	{ "legA_local_ip", "inet" },
 	{ "legA_local_port", "integer" },
 	{ "legA_remote_ip", "inet" },
-    { "legA_remote_port", "integer" },
-    { "legB_local_ip", "inet" }, //10
+	{ "legA_remote_port", "integer" },
+	{ "legB_local_ip", "inet" },
 	{ "legB_local_port", "integer" },
 	{ "legB_remote_ip", "inet" },
 	{ "legB_remote_port", "integer" },
 	{ "start_time", "double" },
+	{ "bleg_invite_time", "double" },
 	{ "connect_time", "double" },
 	{ "end_time", "double" },
+	{ "time_10x", "double" },
+	{ "time_18x", "double" },
+	{ "early_media_present", "boolean" },
 	{ "disconnect_code", "integer" },
 	{ "disconnect_reason", "varchar" },
-    { "disconnect_initiator", "integer" },
-    { "disconnect_intermediate_code", "integer" }, //20
+	{ "disconnect_initiator", "integer" },
+	{ "disconnect_intermediate_code", "integer" },
 	{ "disconnect_intermediate_reason", "varchar" },
 	{ "disconnect_rewrited_code", "integer" },
 	{ "disconnect_rewrited_reason", "varchar" },
@@ -37,22 +41,8 @@ const static_field cdr_static_fields[] = {
 	{ "local_tag", "varchar" },
 	{ "msg_logger_path", "varchar" },
 	{ "dump_level_id", "integer" },
-    /*{ "lega_rx_payloads", "varchar" }, //29
-    { "lega_tx_payloads", "varchar" },
-    { "legb_rx_payloads", "varchar" },
-    { "legb_tx_payloads", "varchar" },
-    { "lega_rx_bytes", "integer" },
-    { "lega_tx_bytes", "integer" },
-    { "legb_rx_bytes", "integer" },
-    { "legb_tx_bytes", "integer" },
-    { "lega_rx_decode_errs", "integer" },
-    { "lega_rx_no_buf_errs", "integer" },
-    { "lega_rx_parse_errs", "integer" },
-    { "legb_rx_decode_errs", "integer" },
-    { "legb_rx_no_buf_errs", "integer" },
-    { "legb_rx_parse_errs", "integer" },*/
-    { "rtp_stats", "json" }, //stats variables serialized to json
-    { "global_tag", "varchar" },
+	{ "rtp_stats", "json" }, //stats variables serialized to json
+	{ "global_tag", "varchar" },
 };
 
 
@@ -395,12 +385,12 @@ while(true){
 	}
 #endif
 //#if 0
-	if(0!=writecdr(masterconn,cdr)){
+	if(0!=writecdr(masterconn,*cdr)){
 		ERROR("Cant write CDR to master database");
 		db_err = true;
 		if (config.failover_to_slave) {
 			DBG("failover_to_slave enabled. try");
-			if(!slaveconn || 0!=writecdr(slaveconn,cdr)){
+			if(!slaveconn || 0!=writecdr(slaveconn,*cdr)){
 				db_err = true;
 				ERROR("Cant write CDR to slave database");
 				if(config.failover_to_file){
@@ -520,7 +510,7 @@ int CdrThread::connectdb(){
 	return ret;
 }
 
-void CdrThread::dbg_writecdr(AmArg &fields_values,AmArg &dyn_fields){
+void CdrThread::dbg_writecdr(AmArg &fields_values,Cdr &cdr){
 	int k = 0;
 	//static fields
 	for(int j = 0;j<WRITECDR_STATIC_FIELDS_COUNT;j++,k++){
@@ -532,7 +522,7 @@ void CdrThread::dbg_writecdr(AmArg &fields_values,AmArg &dyn_fields){
 			a.t2str(a.getType()));
 	}
 	//dynamic fields
-	const size_t n = dyn_fields.size();
+	const size_t n = cdr.dyn_fields.size();
 	const size_t m = config.dyn_fields.size();
 	if(m!=n){
 		ERROR("mismatched count of configured and actually gained dynamic fields."
@@ -541,21 +531,23 @@ void CdrThread::dbg_writecdr(AmArg &fields_values,AmArg &dyn_fields){
 	}
 	DynFieldsT_const_iterator it = config.dyn_fields.begin();
 	for(int j = 0;it!=config.dyn_fields.end();++it,++j,++k){
-		AmArg &a = dyn_fields.get(j);
+		AmArg &a = cdr.dyn_fields.get(j);
 		const DynField &f = *it;
 		DBG("%d: %s[%s] -> %s[%s]",
 			k,f.first.c_str(),f.second.c_str(),
 			AmArg::print(a).c_str(),
 			a.t2str(a.getType()));
 	}
+
+	//TrustedHeaders::instance()->print_hdrs(cdr.trusted_hdrs);
 }
 
-int CdrThread::writecdr(cdr_writer_connection* conn, Cdr* cdr){
+int CdrThread::writecdr(cdr_writer_connection* conn, Cdr& cdr){
 #define invoc_field(field_value)\
 	fields_values.push(AmArg(field_value));\
 	invoc(field_value);
 
-	DBG("%s[%p](conn = %p,cdr = %p)",FUNC_NAME,this,conn,cdr);
+	DBG("%s[%p](conn = %p,cdr = %p)",FUNC_NAME,this,conn,&cdr);
 	int ret = 1;
 
 	Yeti::global_config &gc = Yeti::instance()->config;
@@ -585,15 +577,17 @@ int CdrThread::writecdr(cdr_writer_connection* conn, Cdr* cdr){
 		invoc_field(gc.node_id);
 		invoc_field(gc.pop_id);
 
-		cdr->invoc(invoc,fields_values);
+		cdr.invoc(invoc,fields_values);
 
 		r = invoc.exec();
 		if (r.size()!=0&&0==r[0][0].as<int>()){
 			ret = 0;
 		}
+
+		dbg_writecdr(fields_values,cdr);
 	} catch(const pqxx::pqxx_exception &e){
 		DBG("SQL exception on CdrWriter thread: %s",e.base().what());
-		dbg_writecdr(fields_values,cdr->dyn_fields);
+		dbg_writecdr(fields_values,cdr);
 		conn->disconnect();
 		stats.db_exceptions++;
 	}

@@ -192,11 +192,15 @@ void Yeti::onSendRequest(SBCCallLeg *call,AmSipRequest& req, int &flags){
 	bool aleg = call->isALeg();
 	DBG("Yeti::onSendRequest(%p|%s) a_leg = %d",
 		call,call->getLocalTag().c_str(),aleg);
+	getCtx_void
+	if(!aleg && req.method==SIP_METH_INVITE){
+		with_cdr_for_read cdr->update(BLegInvite);
+	}
 }
 
 void Yeti::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cause){
 	string reason;
-    getCtx_void
+	getCtx_void
 	SBCCallLeg::CallStatus status = call->getCallStatus();
 	bool aleg = call->isALeg();
 	int internal_disconnect_code = 0;
@@ -667,10 +671,11 @@ CCChainProcessing Yeti::onEvent(SBCCallLeg *call, AmEvent *e) {
 
 	AmSipReplyEvent *reply_event = dynamic_cast<AmSipReplyEvent*>(e);
 	if(reply_event){
+		AmSipReply &reply = reply_event->reply;
 		DBG("reply event  code: %d, reason:'%s'",
-			reply_event->reply.code,reply_event->reply.reason.c_str());
+			reply.code,reply.reason.c_str());
 		//!TODO: find appropiate way to avoid hangup in disconnected state
-		if(reply_event->reply.code==408 && call->getCallStatus()==CallLeg::Disconnected){
+		if(reply.code==408 && call->getCallStatus()==CallLeg::Disconnected){
 			ERROR("received 408 in disconnected state");
 			throw AmSession::Exception(500,SIP_REPLY_SERVER_INTERNAL_ERROR);
 		}

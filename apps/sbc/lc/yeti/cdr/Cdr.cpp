@@ -47,11 +47,15 @@ void Cdr::replace(string& s, const string& from, const string& to){
 void Cdr::init(){
     //initital values
 	timerclear(&start_time);
+	timerclear(&bleg_invite_time);
 	timerclear(&connect_time);
 	timerclear(&end_time);
+	timerclear(&sip_10x_time);
+	timerclear(&sip_18x_time);
 
     gettimeofday(&cdr_born_time, NULL);
 
+	sip_early_media_present = false;
 	trusted_hdrs_gw = false;
 	TrustedHeaders::instance()->init_hdrs(trusted_hdrs);
 
@@ -148,6 +152,20 @@ void Cdr::update(const AmSipReply &reply){
 		legB_remote_port = reply.remote_port;
 		legB_local_ip = reply.local_ip;
 		legB_local_port = reply.local_port;
+		if(reply.code>=100){
+			if(reply.code<110){ //10x codes
+				if(!timerisset(&sip_10x_time)){
+					gettimeofday(&sip_10x_time,NULL);
+				}
+			} else if(reply.code>=180 && reply.code<190){ //18x codes
+				if(!timerisset(&sip_18x_time)){
+					gettimeofday(&sip_18x_time,NULL);
+				}
+				if(NULL!=reply.body.hasContentType(SIP_APPLICATION_SDP)){ //18x with SDP
+					sip_early_media_present = true;
+				}
+			}
+		}
 	}
     unlock();
 }
@@ -176,6 +194,10 @@ void Cdr::update(UpdateAction act){
         gettimeofday(&start_time, NULL);
         end_time = start_time;
         break;
+	case BLegInvite:
+		if(!timerisset(&bleg_invite_time))
+			gettimeofday(&bleg_invite_time, NULL);
+		break;
     case Connect:
         gettimeofday(&connect_time, NULL);
         break;
@@ -423,6 +445,16 @@ void Cdr::invoc(pqxx::prepare::invocation &invoc,AmArg &invoced_values)
 	invoced_values.push(AmArg(field_value));\
 	invoc(field_value);
 
+#define invoc_timestamp(field_value)\
+	if(timerisset(&field_value)){\
+		double v = timeval2double(field_value);\
+		invoced_values.push(AmArg(v));\
+		invoc(v);\
+	} else {\
+		invoced_values.push(AmArg());\
+		invoc();\
+	}
+
 	invoc_field(attempt_num);
 	invoc_field(is_last);
 	invoc_field(time_limit);
@@ -434,9 +466,13 @@ void Cdr::invoc(pqxx::prepare::invocation &invoc,AmArg &invoced_values)
 	invoc_field(legB_local_port);
 	invoc_field(legB_remote_ip);
 	invoc_field(legB_remote_port);
-	invoc_field(timeval2double(start_time));
-	invoc_field(timeval2double(connect_time));
-	invoc_field(timeval2double(end_time));
+	invoc_timestamp(start_time);
+	invoc_timestamp(bleg_invite_time);
+	invoc_timestamp(connect_time);
+	invoc_timestamp(end_time);
+	invoc_timestamp(sip_10x_time);
+	invoc_timestamp(sip_18x_time);
+	invoc_field(sip_early_media_present);
 	invoc_field(disconnect_code);
 	invoc_field(disconnect_reason);
 	invoc_field(disconnect_initiator);
@@ -500,8 +536,13 @@ void Cdr::to_csv_stream(ofstream &s)
 	quote(legB_local_ip) << quote(legB_local_port) <<
 	quote(legB_remote_ip) << quote(legB_remote_port) <<
 	quote(timeval2double(start_time)) <<
+	quote(timeval2double(bleg_invite_time)) <<
 	quote(timeval2double(connect_time)) <<
 	quote(timeval2double(end_time)) <<
+	quote(timeval2double(sip_10x_time)) <<
+	quote(timeval2double(sip_18x_time)) <<
+	quote(sip_early_media_present) <<
+
 	quote(disconnect_code) << quote(disconnect_reason) <<
 	quote(disconnect_initiator) <<
 	quote(disconnect_internal_code) << quote(disconnect_internal_reason);

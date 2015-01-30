@@ -65,8 +65,8 @@ class CdrThread : public AmThread{
 	int _connectdb(cdr_writer_connection **conn,string conn_str,bool master);
 	int connectdb();
 	void prepare_queries(pqxx::connection *c);
-	void dbg_writecdr(AmArg &fields_values,AmArg &dyn_fields);
-	int writecdr(cdr_writer_connection* conn,Cdr* cdr);
+	void dbg_writecdr(AmArg &fields_values,Cdr &cdr);
+	int writecdr(cdr_writer_connection* conn,Cdr &cdr);
 	int writecdrtofile(Cdr* cdr);
 	bool openfile();
 	void write_header();
