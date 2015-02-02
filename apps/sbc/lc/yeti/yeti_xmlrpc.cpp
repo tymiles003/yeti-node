@@ -21,6 +21,12 @@ typedef void (Yeti::*YetiRpcHandler)(const AmArg& args, AmArg& ret);
 
 #define handler_log() DBG("execute handler: %s(%s)",FUNC_NAME,args.print(args).c_str());
 
+class CdrNotFoundException: public XmlRpc::XmlRpcException {
+  public:
+	CdrNotFoundException(string local_tag):
+		XmlRpc::XmlRpcException("call with local_tag: '"+local_tag+"' is not found",404) {}
+};
+
 struct xmlrpc_entry: public AmObject {
   YetiRpcHandler handler;
   string leaf_descr,func_descr,arg,arg_descr;
@@ -487,7 +493,7 @@ void Yeti::GetCall(const AmArg& args, AmArg& ret) {
 
 	local_tag = args[0].asCStr();
 	if(!cdr_list.getCall(local_tag,ret,router)){
-		throw XmlRpc::XmlRpcException("Have no CDR with such local tag",404);
+		throw CdrNotFoundException(local_tag);
 	}
 }
 
@@ -496,7 +502,7 @@ void Yeti::GetCalls(const AmArg& args, AmArg& ret) {
 	if(args.size()){
 		string local_tag = args[0].asCStr();
 		if(!cdr_list.getCall(local_tag,ret,router)){
-			throw XmlRpc::XmlRpcException("Have no CDR with such local tag",404);
+			throw CdrNotFoundException(local_tag);
 		}
 	} else {
 		cdr_list.getCalls(ret,calls_show_limit,router);
@@ -693,7 +699,7 @@ void Yeti::DropCall(const AmArg& args, AmArg& ret){
 			router_mutex.unlock();
 			ret = "Dropped from active_calls (no presented in sessions container)";
 		} else {
-			throw XmlRpc::XmlRpcException("Not found",404);
+			throw CdrNotFoundException(local_tag);
 		}
 	} else {
 		ret = "Dropped from sessions container";
