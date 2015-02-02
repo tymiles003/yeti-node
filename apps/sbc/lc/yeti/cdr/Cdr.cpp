@@ -191,7 +191,7 @@ void Cdr::update(UpdateAction act){
     if(writed) return;
     switch(act){
     case Start:
-        gettimeofday(&start_time, NULL);
+		gettimeofday(&start_time, NULL);
         end_time = start_time;
         break;
 	case BLegInvite:
@@ -210,6 +210,10 @@ void Cdr::update(UpdateAction act){
         writed = true;
         break;
     }
+}
+
+void Cdr::set_start_time(const timeval &t){
+	end_time = start_time = t;
 }
 
 void Cdr::update_bleg_reason(string reason, int code){

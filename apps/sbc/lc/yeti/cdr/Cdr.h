@@ -10,7 +10,7 @@
 #include <pqxx/pqxx>
 
 enum UpdateAction {
-    Start,
+	Start,
 	BLegInvite,
     Connect,
     End,
@@ -97,7 +97,8 @@ struct Cdr: public
 	void update(const AmSipReply &reply);
     void update(SBCCallLeg &leg);
 	void update(SBCCallLeg *call,AmRtpStream *stream);
-    void update(UpdateAction act);
+	void update(UpdateAction act);
+	void set_start_time(const timeval &t);
     void update_bleg_reason(string reason, int code);
     void update_aleg_reason(string reason, int code);
     void update_internal_reason(DisconnectInitiator initiator,string reason, int code);

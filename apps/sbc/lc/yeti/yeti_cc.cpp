@@ -109,6 +109,9 @@ SBCCallLeg *Yeti::getCallLeg(	const AmSipRequest& req,
 								CallLegCreator *leg_creator )
 {
 	DBG("%s()",FUNC_NAME);
+	timeval t;
+	gettimeofday(&t,NULL);
+
 	router_mutex.lock();
 	SqlRouter *r = router;
 	router_mutex.unlock();
@@ -128,7 +131,8 @@ SBCCallLeg *Yeti::getCallLeg(	const AmSipRequest& req,
 	PROF_END(gprof);
 	PROF_PRINT("getting profile",gprof);
 
-	Cdr *cdr = call_ctx->cdr;
+	Cdr *cdr = getCdr(call_ctx);
+	cdr->set_start_time(t);
 
 	ctx.call_profile = profile;
 	if(check_and_refuse(profile,cdr,req,ctx,true)) {
@@ -406,7 +410,6 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 
 	PROF_START(func);
 
-	cdr->update(Start);
 	cdr->update(req);
 
 	ctx->initial_invite = new AmSipRequest(req);
@@ -1440,7 +1443,6 @@ bool Yeti::check_and_refuse(SqlCallProfile *profile,Cdr *cdr,
 	need_reply = (response_code!=NO_REPLY_DISCONNECT_CODE);
 
 	if(write_cdr){
-		cdr->update(Start);
 		cdr->update_internal_reason(DisconnectByDB,internal_reason,internal_code);
 		cdr->update_aleg_reason(response_reason,response_code);
 	} else {
