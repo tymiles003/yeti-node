@@ -447,7 +447,10 @@ ProfilesCacheEntry* SqlRouter::_getprofiles(const AmSipRequest &req, pqxx::conne
 	}
 
 	try {
+		PROF_START(sql_query);
 		r = invoc.exec();
+		PROF_END(sql_query);
+		PROF_PRINT("SQL routing query",sql_query);
 	} catch(pqxx::broken_connection &e){
 		ERROR("SQL exception for [%p]: pqxx::broken_connection.",conn);
 		dbg_get_profiles(fields_values);
