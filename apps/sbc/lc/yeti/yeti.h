@@ -24,7 +24,7 @@
 
 #include <ctime>
 
-#define YETI_ENABLE_PROFILING 0
+#define YETI_ENABLE_PROFILING 1
 
 #define YETI_CALL_DURATION_TIMER SBC_TIMER_ID_CALL_TIMERS_START
 #define YETI_RINGING_TIMEOUT_TIMER (SBC_TIMER_ID_CALL_TIMERS_START+1)
@@ -34,7 +34,7 @@
 #define PROF_START(var) timeval prof_start_##var; gettimeofday(&prof_start_##var,NULL);
 #define PROF_END(var) timeval prof_end_##var; gettimeofday(&prof_end_##var,NULL);
 #define PROF_DIFF(var) timeval prof_diff_##var; timersub(&prof_end_##var,&prof_start_##var,&prof_diff_##var);
-#define PROF_PRINT(descr,var) PROF_DIFF(var); DBG(descr" took %f",timeval2double(prof_diff_##var));
+#define PROF_PRINT(descr,var) PROF_DIFF(var); DBG("PROFILING: "descr" took %s",timeval2str_usec(prof_diff_##var).c_str());
 
 #else
 

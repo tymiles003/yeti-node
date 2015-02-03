@@ -43,8 +43,10 @@ class _AmSipMsgInDlg
   unsigned short local_port;
   string         trsp;
 
+  timeval recv_timestamp;
+
   _AmSipMsgInDlg() : cseq(0), rseq(0) { }
-  virtual ~_AmSipMsgInDlg() { };
+  virtual ~_AmSipMsgInDlg() { }
 
   virtual string print() const = 0;
 };

@@ -69,6 +69,14 @@ string timeval2str(const timeval &tv)
   return string("conversion error");
 }
 
+string timeval2str_usec(const timeval &tv)
+{
+	char s[64] = {0};
+	int len = snprintf(s, sizeof s, "%ld.%06ld", tv.tv_sec, tv.tv_usec);
+	if(len>0) return string(s,len);
+	return string("conversion error");
+}
+
 double timeval2double(const timeval &tv)
 {
 	return tv.tv_sec + tv.tv_usec/(double)1e6;

@@ -8,6 +8,15 @@
 #include "CodesTranslator.h"
 #include "CallLeg.h"
 
+//#define DBG_SDP_PROCESSING
+
+#if defined DBG_SDP_PROCESSING
+#define DBG_SDP_PAYLOAD(payload,prefix) dump_SdpPayload(payload,prefix)
+#define DBG_SDP_MEDIA(media,prefix) dump_SdpMedia(media,prefix)
+#else
+#define DBG_SDP_PAYLOAD(payload,prefix) ;
+#define DBG_SDP_MEDIA(media,prefix) ;
+#endif
 
 const char *conn_location2str(int location_id){
 	static const char *both = "both";
@@ -33,7 +42,6 @@ int AmMimeBody2Sdp(const AmMimeBody &body,AmSdp &sdp){
 	}
 	return 0;
 }
-
 
 void dump_SdpPayload(const vector<SdpPayload> &p,string prefix){
 	if(!prefix.empty())
@@ -295,7 +303,7 @@ int filter_arrange_SDP(AmSdp& sdp,
 	int media_idx = 0;
 	int stream_idx = 0;
 
-	dump_SdpMedia(sdp.media,"filter_arrange_SDP_in");
+	DBG_SDP_MEDIA(sdp.media,"filter_arrange_SDP_in");
 
 	for (vector<SdpMedia>::iterator m_it =
 		 sdp.media.begin();m_it != sdp.media.end(); m_it++)
@@ -348,7 +356,7 @@ int filter_arrange_SDP(AmSdp& sdp,
 		stream_idx++;
 	}
 
-	dump_SdpMedia(sdp.media,"filter_arrange_SDP_out");
+	DBG_SDP_MEDIA(sdp.media,"filter_arrange_SDP_out");
 
 	if ((!media_line_left) && media_line_filtered_out) {
 		DBG("all streams were marked as inactive\n");
@@ -471,8 +479,8 @@ int negotiateRequestSdp(SBCCallProfile &call_profile,
 	//save negotiated result for the future usage
 	negotiated_media = sdp.media;
 
-	dump_SdpPayload(static_codecs_filter,"static_codecs_filter");
-	dump_SdpMedia(negotiated_media,"negotiateRequestSdp");
+	DBG_SDP_PAYLOAD(static_codecs_filter,"static_codecs_filter");
+	DBG_SDP_MEDIA(negotiated_media,"negotiateRequestSdp");
 
 	string n_body;
 	sdp.print(n_body);
@@ -508,7 +516,7 @@ int filterRequestSdp(SBCCallLeg *call,
 		return res;
 	}
 
-	dump_SdpMedia(sdp.media,"filterRequestSdp_in");
+	DBG_SDP_MEDIA(sdp.media,"filterRequestSdp_in");
 
 	normalizeSDP(sdp, false, "");
 
@@ -534,7 +542,7 @@ int filterRequestSdp(SBCCallLeg *call,
 								call_profile.bleg_conn_location_id :
 								call_profile.aleg_conn_location_id);
 
-	dump_SdpMedia(sdp.media,"filterRequestSdp_out");
+	DBG_SDP_MEDIA(sdp.media,"filterRequestSdp_out");
 
 	//update body
 	string n_body;
@@ -579,8 +587,8 @@ int filterReplySdp(SBCCallLeg *call,
 
 	normalizeSDP(sdp, false, ""); // anonymization is done in the other leg to use correct IP address
 
-	dump_SdpMedia(negotiated_media,"filterReplySdp_negotiated_media");
-	dump_SdpMedia(sdp.media,"filterReplySdp_in");
+	DBG_SDP_MEDIA(negotiated_media,"filterReplySdp_negotiated_media");
+	DBG_SDP_MEDIA(sdp.media,"filterReplySdp_in");
 
 	if(negotiated_media.size()){
 
@@ -621,7 +629,7 @@ int filterReplySdp(SBCCallLeg *call,
 
 			if(m.type!=other_m.type){
 				ERROR("filterReplySdp() streams types not matched idx = %d",stream_idx);
-				dump_SdpPayload(other_m.payloads,"other_m payload "+int2str(stream_idx));
+				DBG_SDP_PAYLOAD(other_m.payloads,"other_m payload "+int2str(stream_idx));
 				throw InternalException(DC_REPLY_SDP_STREAMS_TYPES);
 			}
 
@@ -631,8 +639,8 @@ int filterReplySdp(SBCCallLeg *call,
 			//remove all unknown attributes
 			//m.attributes.clear();
 
-			dump_SdpPayload(m.payloads,"m.payloads");
-			dump_SdpPayload(other_m.payloads,"other_m.payloads");
+			DBG_SDP_PAYLOAD(m.payloads,"m.payloads");
+			DBG_SDP_PAYLOAD(other_m.payloads,"other_m.payloads");
 
 			std::vector<SdpPayload> new_pl;
 			if(!call_profile.avoid_transcoding){
@@ -663,7 +671,7 @@ int filterReplySdp(SBCCallLeg *call,
 					}
 				}
 			}
-			dump_SdpPayload(new_pl,"new_pl");
+			DBG_SDP_PAYLOAD(new_pl,"new_pl");
 			m.payloads = new_pl;
 
 			stream_idx++;
@@ -691,7 +699,7 @@ int filterReplySdp(SBCCallLeg *call,
 								call_profile.bleg_conn_location_id :
 								call_profile.aleg_conn_location_id);
 
-	dump_SdpMedia(sdp.media,"filterReplySdp_out");
+	DBG_SDP_MEDIA(sdp.media,"filterReplySdp_out");
 
 	negotiated_media = sdp.media;
 

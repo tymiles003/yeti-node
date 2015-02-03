@@ -39,6 +39,7 @@ using std::list;
 
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <time.h>
 
 struct sip_request;
 struct sip_reply;
@@ -134,6 +135,8 @@ struct sip_msg
     sockaddr_storage   remote_ip;
     dns_handle         h_dns;
     
+	struct timeval     recv_timestamp;
+
     sip_msg();
     sip_msg(const char* msg_buf, int msg_len);
     ~sip_msg();

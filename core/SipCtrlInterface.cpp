@@ -560,6 +560,8 @@ inline bool _SipCtrlInterface::sip_msg2am_request(const sip_msg *msg,
 	req.first_hop = (via1->parms.size() == 1);
     }
 
+	req.recv_timestamp = msg->recv_timestamp;
+
     return true;
 }
 
@@ -642,6 +644,8 @@ inline bool _SipCtrlInterface::sip_msg2am_reply(sip_msg *msg, AmSipReply &reply)
 
     reply.local_ip = get_addr_str(&msg->local_ip);
     reply.local_port = am_get_port(&msg->local_ip);
+
+	reply.recv_timestamp = msg->recv_timestamp;
 
     return true;
 }

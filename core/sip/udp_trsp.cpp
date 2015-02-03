@@ -59,6 +59,19 @@
 # error "can't determine v4 socket option (IP_RECVDSTADDR or IP_PKTINFO)"
 #endif
 
+//#define RECV_SOCKET_TIMESTAMP
+
+#if defined RECV_SOCKET_TIMESTAMP
+#if defined SO_TIMESTAMP
+# define TIMESTAMP_DATASIZE (CMSG_SPACE(sizeof(struct timeval)))
+# define CMD_MSG_SIZE (DSTADDR_DATASIZE+TIMESTAMP_DATASIZE)
+#else //SO_TIMESTAMP
+# error "socket option SO_TIMESTAMP not supported"
+#endif //SO_TIMESTAMP
+#else //RECV_SOCKET_TIMESTAMP
+# define CMD_MSG_SIZE (DSTADDR_DATASIZE)
+#endif //RECV_SOCKET_TIMESTAMP
+
 #if !defined IPV6_RECVPKTINFO
 # define DSTADDR6_SOCKOPT IPV6_PKTINFO
 # define dstaddr6(x) (&(((struct in6_pktinfo *)(CMSG_DATA(x)))->ipi6_addr))
@@ -126,6 +139,15 @@ int udp_trsp_socket::bind(const string& bind_ip, unsigned short bind_port)
 	    return -1;
 	}
     }
+
+#if defined RECV_SOCKET_TIMESTAMP
+	if(setsockopt(sd,SOL_SOCKET,SO_TIMESTAMP,
+				  (void*)&true_opt, sizeof(true_opt)) < 0) {
+		ERROR("%s\n",strerror(errno));
+		close(sd);
+		return -1;
+	}
+#endif
 
     port = bind_port;
     ip   = bind_ip;
@@ -298,8 +320,8 @@ void udp_trsp::run()
     msg.msg_namelen    = sizeof(sockaddr_storage);
     msg.msg_iov        = iov;
     msg.msg_iovlen     = 1;
-    msg.msg_control    = new u_char[DSTADDR_DATASIZE];
-    msg.msg_controllen = DSTADDR_DATASIZE;
+	msg.msg_control    = new u_char[CMD_MSG_SIZE];
+	msg.msg_controllen = CMD_MSG_SIZE;
 
     if(sock->get_sd()<=0){
 	ERROR("Transport instance not bound\n");
@@ -354,26 +376,37 @@ void udp_trsp::run()
 	inc_ref(sock);
 
 	for (cmsgptr = CMSG_FIRSTHDR(&msg);
-             cmsgptr != NULL;
-             cmsgptr = CMSG_NXTHDR(&msg, cmsgptr)) {
-	    
-            if (cmsgptr->cmsg_level == IPPROTO_IP &&
-                cmsgptr->cmsg_type == DSTADDR_SOCKOPT) {
-		
-		s_msg->local_ip.ss_family = AF_INET;
-	        am_set_port(&s_msg->local_ip,sock->get_port());
-                memcpy(&((sockaddr_in*)(&s_msg->local_ip))->sin_addr,
-		       dstaddr(cmsgptr),sizeof(in_addr));
-            }
-	    else if(cmsgptr->cmsg_level == IPPROTO_IPV6 &&
-		    cmsgptr->cmsg_type == IPV6_PKTINFO) {
+		cmsgptr != NULL;
+		cmsgptr = CMSG_NXTHDR(&msg, cmsgptr))
+	{
+		if (cmsgptr->cmsg_level == IPPROTO_IP &&
+			cmsgptr->cmsg_type == DSTADDR_SOCKOPT)
+		{
+				s_msg->local_ip.ss_family = AF_INET;
+				am_set_port(&s_msg->local_ip,sock->get_port());
+				memcpy(&((sockaddr_in*)(&s_msg->local_ip))->sin_addr,
+				dstaddr(cmsgptr),sizeof(in_addr));
+		} else if(cmsgptr->cmsg_level == IPPROTO_IPV6 &&
+				  cmsgptr->cmsg_type == IPV6_PKTINFO)
+		{
+			s_msg->local_ip.ss_family = AF_INET6;
+			am_set_port(&s_msg->local_ip,sock->get_port());
+			memcpy(&((sockaddr_in6*)(&s_msg->local_ip))->sin6_addr,
+			dstaddr6(cmsgptr),sizeof(in6_addr));
+		}
+#if defined RECV_SOCKET_TIMESTAMP
+		else if(cmsgptr->cmsg_level == SOL_SOCKET &&
+				  cmsgptr->cmsg_type == SO_TIMESTAMP)
+		{
+			s_msg->recv_timestamp = *(struct timeval *)CMSG_DATA(cmsgptr);
+			DBG("got timestamp %ld.%ld",s_msg->recv_timestamp.tv_sec,s_msg->recv_timestamp.tv_usec);
+		}
+#endif
+	}
 
-		s_msg->local_ip.ss_family = AF_INET6;
-	        am_set_port(&s_msg->local_ip,sock->get_port());
-                memcpy(&((sockaddr_in6*)(&s_msg->local_ip))->sin6_addr,
-		       dstaddr6(cmsgptr),sizeof(in6_addr));
-	    }
-        }
+#if !defined RECV_SOCKET_TIMESTAMP
+	gettimeofday(&s_msg->recv_timestamp,NULL);
+#endif
 
 	// pass message to the parser / transaction layer
 	trans_layer::instance()->received_msg(s_msg);

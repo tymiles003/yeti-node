@@ -129,7 +129,7 @@ SBCCallLeg *Yeti::getCallLeg(	const AmSipRequest& req,
 	}
 
 	PROF_END(gprof);
-	PROF_PRINT("getting profile",gprof);
+	PROF_PRINT("get profiles",gprof);
 
 	Cdr *cdr = getCdr(call_ctx);
 	cdr->set_start_time(t);
@@ -467,13 +467,14 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 	}
 
 	PROF_END(rchk);
-	PROF_PRINT("resources checking and grabbing",rchk);
+	PROF_PRINT("check and grab resources",rchk);
 
 	SBCCallProfile &call_profile = call->getCallProfile();
 	profile = ctx->getCurrentProfile();
 	profile->global_tag = call_profile.global_tag; //save to old global_tag profile to new profile
 	call_profile = *profile; //replace leg call_profile
 
+	PROF_START(sdp_processing);
 	//filterSDP
 	int res = negotiateRequestSdp(call_profile,
 							  req,
@@ -495,6 +496,8 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 		INFO("onInitialInvite() Not acceptable codecs for legB");
 		throw AmSession::Exception(488, SIP_REPLY_NOT_ACCEPTABLE_HERE);
 	}
+	PROF_END(sdp_processing);
+	PROF_PRINT("initial sdp processing",sdp_processing);
 
 	if(cdr->time_limit){
 		DBG("%s() save timer %d with timeout %d",FUNC_NAME,
@@ -530,7 +533,7 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 	}
 
 	PROF_END(func);
-	PROF_PRINT("Yeti::onInitialInvite",func);
+	PROF_PRINT("yeti onInitialInvite()",func);
 
 	return ContinueProcessing;
 }
