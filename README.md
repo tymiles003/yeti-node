@@ -4,7 +4,7 @@ sems-yeti is a part of project [Yeti]
 
 ## Install via Package
 ```sh
-# echo "echo "deb http://pkg.yeti-switch.org/debian wheezy/" > /etc/apt/sources.list.d/yeti.list
+# echo "deb http://pkg.yeti-switch.org/debian wheezy/" > /etc/apt/sources.list.d/yeti.list
 # gpg --recv-key 9CEBFFC569A832B6 && gpg -a --export 69A832B6 | apt-key add -
 # aptitude update
 # aptitude install sems-yeti
