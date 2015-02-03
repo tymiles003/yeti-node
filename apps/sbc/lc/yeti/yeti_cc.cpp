@@ -449,7 +449,7 @@ CCChainProcessing Yeti::onInitialInvite(SBCCallLeg *call, InitialInviteHandlerPa
 			/* show resource disconnect reason instead of
 			 * refuse_profile if refuse_profile follows failed resource with
 			 * failover to next */
-			if(profile->disconnect_code_id==0){
+			if(profile->disconnect_code_id!=0){
 				throw AmSession::Exception(refuse_code,refuse_reason);
 			}
 
