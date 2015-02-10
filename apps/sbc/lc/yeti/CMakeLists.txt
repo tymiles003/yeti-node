@@ -42,7 +42,7 @@ INSTALL(FILES
 
 INSTALL(PROGRAMS
 	tools/yetictl
-	tools/yeticmd
+#	tools/yeticmd
 	tools/yeti-getcounters
 	tools/yeti-sumcounters
 	tools/yeti-csv2sql
